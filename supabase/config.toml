@@ -1,1 +1,7 @@
 project_id = "dqpwmylocoapbnjrurxe"
+
+[functions.generate-lesson]
+verify_jwt = false
+
+[functions.chat-tutor]
+verify_jwt = false
