@@ -17,7 +17,7 @@ export default function Auth() {
 
   // Redirect if already logged in
   if (user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -35,7 +35,7 @@ export default function Auth() {
           }
         } else {
           toast.success("Welcome back, ninja! 🥷");
-          navigate("/");
+          navigate("/dashboard");
         }
       } else {
         if (!firstName.trim()) {
@@ -53,7 +53,8 @@ export default function Auth() {
           }
         } else {
           toast.success("Welcome to Dingo Dojo! 🦊");
-          navigate("/");
+          // New users go to onboarding
+          navigate("/onboarding");
         }
       }
     } catch (err) {

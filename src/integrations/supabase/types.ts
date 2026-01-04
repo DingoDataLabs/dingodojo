@@ -94,6 +94,8 @@ export type Database = {
           id: string
           last_active_date: string | null
           missions_this_week: number | null
+          onboarding_completed: boolean
+          subscription_tier: string
           total_xp: number | null
           updated_at: string
           user_id: string
@@ -107,6 +109,8 @@ export type Database = {
           id?: string
           last_active_date?: string | null
           missions_this_week?: number | null
+          onboarding_completed?: boolean
+          subscription_tier?: string
           total_xp?: number | null
           updated_at?: string
           user_id: string
@@ -120,6 +124,8 @@ export type Database = {
           id?: string
           last_active_date?: string | null
           missions_this_week?: number | null
+          onboarding_completed?: boolean
+          subscription_tier?: string
           total_xp?: number | null
           updated_at?: string
           user_id?: string
