@@ -3,7 +3,9 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Trophy } from "lucide-react";
+import { TopicCard } from "@/components/TopicCard";
+import { getSydneyWeekStart, isNewWeek } from "@/lib/weekUtils";
 
 interface Subject {
   id: string;
@@ -25,6 +27,9 @@ interface Topic {
 interface Progress {
   topic_id: string;
   is_completed: boolean;
+  xp_earned: number;
+  weekly_xp: number;
+  week_start_date: string | null;
 }
 
 export default function SubjectTopics() {
@@ -35,6 +40,7 @@ export default function SubjectTopics() {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [progress, setProgress] = useState<Progress[]>([]);
   const [loading, setLoading] = useState(true);
+  const [subjectTotalXp, setSubjectTotalXp] = useState(0);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -85,13 +91,28 @@ export default function SubjectTopics() {
         .eq("user_id", user?.id)
         .maybeSingle();
 
-      if (profileData) {
+      if (profileData && topicsData) {
+        const topicIds = topicsData.map((t) => t.id);
         const { data: progressData } = await supabase
           .from("student_progress")
-          .select("topic_id, is_completed")
-          .eq("student_id", profileData.id);
+          .select("topic_id, is_completed, xp_earned, weekly_xp, week_start_date")
+          .eq("student_id", profileData.id)
+          .in("topic_id", topicIds);
 
-        setProgress(progressData || []);
+        const currentWeekStart = getSydneyWeekStart();
+        
+        // Process progress data - reset weekly_xp if it's a new week
+        const processedProgress = (progressData || []).map((p) => ({
+          ...p,
+          xp_earned: p.xp_earned || 0,
+          weekly_xp: isNewWeek(p.week_start_date) ? 0 : (p.weekly_xp || 0),
+        }));
+
+        setProgress(processedProgress);
+
+        // Calculate total XP for this subject
+        const totalXp = processedProgress.reduce((sum, p) => sum + (p.xp_earned || 0), 0);
+        setSubjectTotalXp(totalXp);
       }
     } catch (err) {
       console.error("Error:", err);
@@ -100,8 +121,12 @@ export default function SubjectTopics() {
     }
   };
 
-  const isTopicCompleted = (topicId: string) => {
-    return progress.some((p) => p.topic_id === topicId && p.is_completed);
+  const getTopicProgress = (topicId: string): { xpEarned: number; weeklyXp: number } => {
+    const p = progress.find((p) => p.topic_id === topicId);
+    return {
+      xpEarned: p?.xp_earned || 0,
+      weeklyXp: p?.weekly_xp || 0,
+    };
   };
 
   const getHeaderGradient = (color: string) => {
@@ -141,15 +166,22 @@ export default function SubjectTopics() {
             <ArrowLeft className="w-5 h-5 mr-2" />
             Back to Dojo
           </Button>
-          <div className="flex items-center gap-4">
-            <span className="text-6xl">{subject?.emoji}</span>
-            <div>
-              <h1 className="text-3xl md:text-4xl font-display font-bold">
-                {subject?.name}
-              </h1>
-              <p className="opacity-80 text-lg">
-                {topics.length} topics to master
-              </p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <span className="text-6xl">{subject?.emoji}</span>
+              <div>
+                <h1 className="text-3xl md:text-4xl font-display font-bold">
+                  {subject?.name}
+                </h1>
+                <p className="opacity-80 text-lg">
+                  {topics.length} topics to master
+                </p>
+              </div>
+            </div>
+            {/* Subject Total XP */}
+            <div className="hidden sm:flex items-center gap-2 bg-primary-foreground/10 rounded-2xl px-4 py-2">
+              <Trophy className="w-5 h-5" />
+              <span className="font-display font-bold text-xl">{subjectTotalXp.toLocaleString()} XP</span>
             </div>
           </div>
         </div>
@@ -159,35 +191,16 @@ export default function SubjectTopics() {
       <main className="max-w-4xl mx-auto p-4 md:p-6 -mt-6">
         <div className="space-y-3">
           {topics.map((topic, index) => {
-            const completed = isTopicCompleted(topic.id);
+            const { xpEarned, weeklyXp } = getTopicProgress(topic.id);
             return (
-              <button
+              <TopicCard
                 key={topic.id}
+                topic={topic}
+                xpEarned={xpEarned}
+                weeklyXp={weeklyXp}
                 onClick={() => navigate(`/learn/${subject?.slug}/${topic.slug}`)}
-                className={`topic-card w-full text-left flex items-center gap-4 animate-slide-up ${
-                  completed ? "border-eucalyptus/30 bg-eucalyptus/5" : ""
-                }`}
-                style={{ animationDelay: `${0.05 * (index + 1)}s` }}
-              >
-                <div className="text-4xl flex-shrink-0">{topic.emoji}</div>
-                <div className="flex-grow min-w-0">
-                  <h3 className="text-lg font-display font-bold text-foreground truncate">
-                    {topic.name}
-                  </h3>
-                  {topic.description && (
-                    <p className="text-sm text-muted-foreground truncate">
-                      {topic.description}
-                    </p>
-                  )}
-                </div>
-                <div className="flex-shrink-0">
-                  {completed ? (
-                    <CheckCircle2 className="w-6 h-6 text-eucalyptus" />
-                  ) : (
-                    <div className="w-6 h-6 rounded-full border-2 border-muted" />
-                  )}
-                </div>
-              </button>
+                animationDelay={`${0.05 * (index + 1)}s`}
+              />
             );
           })}
         </div>

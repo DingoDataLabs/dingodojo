@@ -3,8 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Flame, Trophy, LogOut } from "lucide-react";
+import { Flame, Trophy, LogOut, Zap } from "lucide-react";
 import { toast } from "sonner";
+import { ProgressRing } from "@/components/ProgressRing";
+import { getSydneyWeekStart, isNewWeek, getStreakMessage, isStreakSecured } from "@/lib/weekUtils";
 
 interface Profile {
   id: string;
@@ -12,6 +14,8 @@ interface Profile {
   total_xp: number;
   current_streak: number;
   grade_level: string;
+  missions_this_week: number;
+  week_start_date: string | null;
 }
 
 interface Subject {
@@ -22,11 +26,17 @@ interface Subject {
   color: string;
 }
 
+interface SubjectXp {
+  subject_id: string;
+  total_xp: number;
+}
+
 export default function Dashboard() {
   const { user, signOut, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [subjectXps, setSubjectXps] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -52,20 +62,78 @@ export default function Dashboard() {
 
       if (profileError) {
         console.error("Profile error:", profileError);
-      } else {
-        setProfile(profileData);
-      }
+      } else if (profileData) {
+        // Check if it's a new week and handle streak logic
+        const currentWeekStart = getSydneyWeekStart();
+        const wasNewWeek = isNewWeek(profileData.week_start_date);
 
-      // Fetch subjects
-      const { data: subjectsData, error: subjectsError } = await supabase
-        .from("subjects")
-        .select("*")
-        .order("name");
+        if (wasNewWeek && profileData.week_start_date) {
+          // It's a new week - check if previous week had 5+ missions
+          const previousMissions = profileData.missions_this_week || 0;
+          const newStreak = previousMissions >= 5 
+            ? (profileData.current_streak || 0) + 1 
+            : 0;
 
-      if (subjectsError) {
-        console.error("Subjects error:", subjectsError);
-      } else {
-        setSubjects(subjectsData || []);
+          // Update profile with reset missions and updated streak
+          await supabase
+            .from("profiles")
+            .update({
+              missions_this_week: 0,
+              week_start_date: currentWeekStart,
+              current_streak: newStreak,
+            })
+            .eq("id", profileData.id);
+
+          setProfile({
+            ...profileData,
+            missions_this_week: 0,
+            week_start_date: currentWeekStart,
+            current_streak: newStreak,
+          });
+        } else if (!profileData.week_start_date) {
+          // First time - initialize week_start_date
+          await supabase
+            .from("profiles")
+            .update({ week_start_date: currentWeekStart })
+            .eq("id", profileData.id);
+
+          setProfile({
+            ...profileData,
+            week_start_date: currentWeekStart,
+          });
+        } else {
+          setProfile(profileData);
+        }
+
+        // Fetch subject XP totals
+        const { data: subjectsData } = await supabase.from("subjects").select("*").order("name");
+        
+        if (subjectsData) {
+          setSubjects(subjectsData);
+
+          // Get all topics grouped by subject
+          const { data: topicsData } = await supabase.from("topics").select("id, subject_id");
+          
+          if (topicsData) {
+            // Get all progress for this user
+            const { data: progressData } = await supabase
+              .from("student_progress")
+              .select("topic_id, xp_earned")
+              .eq("student_id", profileData.id);
+
+            if (progressData) {
+              // Calculate XP per subject
+              const xpBySubject: Record<string, number> = {};
+              for (const topic of topicsData) {
+                const topicProgress = progressData.find((p) => p.topic_id === topic.id);
+                if (topicProgress) {
+                  xpBySubject[topic.subject_id] = (xpBySubject[topic.subject_id] || 0) + (topicProgress.xp_earned || 0);
+                }
+              }
+              setSubjectXps(xpBySubject);
+            }
+          }
+        }
       }
     } catch (err) {
       console.error("Error fetching data:", err);
@@ -90,6 +158,11 @@ export default function Dashboard() {
         return "subject-card-ochre";
     }
   };
+
+  const missionsThisWeek = profile?.missions_this_week || 0;
+  const missionsProgress = Math.min(100, (missionsThisWeek / 5) * 100);
+  const streakMessage = getStreakMessage(missionsThisWeek);
+  const streakSecured = isStreakSecured(missionsThisWeek);
 
   if (authLoading || loading) {
     return (
@@ -127,7 +200,8 @@ export default function Dashboard() {
         </header>
 
         {/* Stats Row */}
-        <div className="grid grid-cols-2 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+          {/* Training Streak */}
           <div className="stats-card flex items-center gap-4 animate-slide-up stagger-1">
             <div className="w-14 h-14 rounded-2xl bg-destructive/10 flex items-center justify-center">
               <Flame className="w-7 h-7 text-destructive" />
@@ -136,12 +210,34 @@ export default function Dashboard() {
               <p className="text-sm text-muted-foreground font-medium">Training Streak</p>
               <p className="text-3xl font-display font-bold text-foreground">
                 {profile?.current_streak || 0}
-                <span className="text-lg ml-1">days</span>
+                <span className="text-lg ml-1">weeks</span>
               </p>
             </div>
           </div>
 
+          {/* Missions This Week */}
           <div className="stats-card flex items-center gap-4 animate-slide-up stagger-2">
+            <ProgressRing
+              progress={missionsProgress}
+              size={56}
+              strokeWidth={5}
+              colorClass={streakSecured ? "stroke-eucalyptus" : "stroke-ochre"}
+            >
+              <Zap className={`w-5 h-5 ${streakSecured ? "text-eucalyptus" : "text-ochre"}`} />
+            </ProgressRing>
+            <div>
+              <p className="text-sm text-muted-foreground font-medium">Missions This Week</p>
+              <p className="text-2xl font-display font-bold text-foreground">
+                {missionsThisWeek}/5
+              </p>
+              <p className={`text-xs font-medium ${streakSecured ? "text-eucalyptus" : "text-ochre"}`}>
+                {streakMessage}
+              </p>
+            </div>
+          </div>
+
+          {/* Total XP */}
+          <div className="stats-card flex items-center gap-4 animate-slide-up stagger-3">
             <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
               <Trophy className="w-7 h-7 text-primary" />
             </div>
@@ -156,7 +252,7 @@ export default function Dashboard() {
         </div>
 
         {/* Subject Cards - Bento Grid */}
-        <section className="animate-slide-up stagger-3">
+        <section className="animate-slide-up stagger-4">
           <h2 className="text-xl font-display font-bold mb-4 text-foreground">
             Choose Your Training 🎯
           </h2>
@@ -172,9 +268,16 @@ export default function Dashboard() {
                   <span className="text-5xl mb-4 block">{subject.emoji}</span>
                   <h3 className="text-3xl font-display font-bold mb-2">{subject.name}</h3>
                 </div>
-                <div className="flex items-center gap-2 opacity-80">
-                  <span className="text-sm font-medium">Start training</span>
-                  <span className="text-lg">→</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 opacity-80">
+                    <span className="text-sm font-medium">Start training</span>
+                    <span className="text-lg">→</span>
+                  </div>
+                  {subjectXps[subject.id] > 0 && (
+                    <span className="bg-primary-foreground/20 rounded-full px-3 py-1 text-sm font-medium">
+                      {subjectXps[subject.id].toLocaleString()} XP
+                    </span>
+                  )}
                 </div>
               </button>
             ))}
@@ -182,7 +285,7 @@ export default function Dashboard() {
         </section>
 
         {/* Motivation Section */}
-        <section className="mt-8 animate-slide-up stagger-4">
+        <section className="mt-8 animate-slide-up stagger-5">
           <div className="bento-card bg-gradient-to-br from-sky/10 to-sky-light/5 border-2 border-dashed border-sky/20 text-center py-8">
             <p className="text-lg text-muted-foreground mb-2">💡 Tip of the Day</p>
             <p className="text-xl font-display font-semibold text-foreground">

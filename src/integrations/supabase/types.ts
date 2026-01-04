@@ -93,9 +93,11 @@ export type Database = {
           grade_level: string | null
           id: string
           last_active_date: string | null
+          missions_this_week: number | null
           total_xp: number | null
           updated_at: string
           user_id: string
+          week_start_date: string | null
         }
         Insert: {
           created_at?: string
@@ -104,9 +106,11 @@ export type Database = {
           grade_level?: string | null
           id?: string
           last_active_date?: string | null
+          missions_this_week?: number | null
           total_xp?: number | null
           updated_at?: string
           user_id: string
+          week_start_date?: string | null
         }
         Update: {
           created_at?: string
@@ -115,9 +119,11 @@ export type Database = {
           grade_level?: string | null
           id?: string
           last_active_date?: string | null
+          missions_this_week?: number | null
           total_xp?: number | null
           updated_at?: string
           user_id?: string
+          week_start_date?: string | null
         }
         Relationships: []
       }
@@ -126,27 +132,36 @@ export type Database = {
           created_at: string
           id: string
           is_completed: boolean | null
+          missions_this_week: number | null
           student_id: string
           topic_id: string
           updated_at: string
+          week_start_date: string | null
+          weekly_xp: number | null
           xp_earned: number | null
         }
         Insert: {
           created_at?: string
           id?: string
           is_completed?: boolean | null
+          missions_this_week?: number | null
           student_id: string
           topic_id: string
           updated_at?: string
+          week_start_date?: string | null
+          weekly_xp?: number | null
           xp_earned?: number | null
         }
         Update: {
           created_at?: string
           id?: string
           is_completed?: boolean | null
+          missions_this_week?: number | null
           student_id?: string
           topic_id?: string
           updated_at?: string
+          week_start_date?: string | null
+          weekly_xp?: number | null
           xp_earned?: number | null
         }
         Relationships: [
