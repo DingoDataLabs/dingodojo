@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { ArrowLeft, Send, Sparkles, CheckCircle, Loader2, ChevronRight, HelpCircle } from "lucide-react";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
+import { getSydneyWeekStart, isNewWeek } from "@/lib/weekUtils";
 
 interface Topic {
   id: string;
@@ -71,6 +72,9 @@ interface Profile {
 
 interface StudentProgress {
   xp_earned: number;
+  weekly_xp: number;
+  week_start_date: string | null;
+  missions_this_week: number;
 }
 
 export default function TrainingSession() {
@@ -364,28 +368,62 @@ export default function TrainingSession() {
 
     try {
       const totalXp = earnedXp;
-      
-      // Add XP
+      const currentWeekStart = getSydneyWeekStart();
+
+      // Fetch current profile data for missions_this_week
+      const { data: currentProfile } = await supabase
+        .from("profiles")
+        .select("total_xp, missions_this_week, week_start_date, current_streak")
+        .eq("id", profile.id)
+        .maybeSingle();
+
+      const profileMissionsNewWeek = isNewWeek(currentProfile?.week_start_date);
+      const profileMissionsThisWeek = profileMissionsNewWeek ? 0 : (currentProfile?.missions_this_week || 0);
+
+      // Handle streak calculation if it's a new week
+      let newStreak = currentProfile?.current_streak || 0;
+      if (profileMissionsNewWeek && currentProfile?.week_start_date) {
+        // Previous week ended - check if they completed 5+ missions
+        const prevMissions = currentProfile?.missions_this_week || 0;
+        newStreak = prevMissions >= 5 ? newStreak + 1 : 0;
+      }
+
+      // Update profile with XP and mission count
       await supabase
         .from("profiles")
-        .update({ total_xp: (profile.total_xp || 0) + totalXp })
+        .update({
+          total_xp: (currentProfile?.total_xp || 0) + totalXp,
+          missions_this_week: profileMissionsThisWeek + 1,
+          week_start_date: currentWeekStart,
+          current_streak: newStreak,
+        })
         .eq("id", profile.id);
 
-      // Update or create progress
+      // Fetch existing progress for this topic
       const { data: existingProgress } = await supabase
         .from("student_progress")
-        .select("xp_earned")
+        .select("xp_earned, weekly_xp, week_start_date, missions_this_week")
         .eq("student_id", profile.id)
         .eq("topic_id", topic.id)
         .maybeSingle();
 
-      const newXpEarned = ((existingProgress as StudentProgress)?.xp_earned || 0) + totalXp;
+      const topicIsNewWeek = isNewWeek(existingProgress?.week_start_date);
+      const existingXp = (existingProgress as StudentProgress)?.xp_earned || 0;
+      const existingWeeklyXp = topicIsNewWeek ? 0 : ((existingProgress as StudentProgress)?.weekly_xp || 0);
+      const existingMissions = topicIsNewWeek ? 0 : ((existingProgress as StudentProgress)?.missions_this_week || 0);
 
+      const newXpEarned = existingXp + totalXp;
+      const isMastered = newXpEarned >= 500;
+
+      // Update or create progress with weekly tracking
       await supabase.from("student_progress").upsert({
         student_id: profile.id,
         topic_id: topic.id,
-        is_completed: true,
+        is_completed: isMastered,
         xp_earned: newXpEarned,
+        weekly_xp: existingWeeklyXp + totalXp,
+        week_start_date: currentWeekStart,
+        missions_this_week: existingMissions + 1,
       }, {
         onConflict: "student_id,topic_id",
       });
