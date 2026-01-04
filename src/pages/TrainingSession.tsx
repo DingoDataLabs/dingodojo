@@ -68,6 +68,9 @@ interface Profile {
   id: string;
   total_xp: number;
   grade_level: string;
+  subscription_tier: string;
+  missions_this_week: number;
+  week_start_date: string | null;
 }
 
 interface StudentProgress {
@@ -139,11 +142,24 @@ export default function TrainingSession() {
   const fetchProfile = async () => {
     const { data } = await supabase
       .from("profiles")
-      .select("id, total_xp, grade_level")
+      .select("id, total_xp, grade_level, subscription_tier, missions_this_week, week_start_date")
       .eq("user_id", user?.id)
       .maybeSingle();
     
-    if (data) setProfile(data);
+    if (data) {
+      // Check mission limit for Explorer tier
+      const currentWeekStart = getSydneyWeekStart();
+      const profileIsNewWeek = isNewWeek(data.week_start_date);
+      const effectiveMissions = profileIsNewWeek ? 0 : (data.missions_this_week || 0);
+      
+      if (data.subscription_tier !== "champion" && effectiveMissions >= 5) {
+        toast.error("You've completed all 5 missions this week! Come back next week or upgrade to Champion.");
+        navigate("/dashboard");
+        return;
+      }
+      
+      setProfile(data);
+    }
   };
 
   const fetchTopicXp = async (topicId: string, profileId: string) => {
@@ -179,7 +195,7 @@ export default function TrainingSession() {
       // Get profile first to fetch topic XP
       const { data: profileData } = await supabase
         .from("profiles")
-        .select("id, total_xp, grade_level")
+        .select("id, total_xp, grade_level, subscription_tier, missions_this_week, week_start_date")
         .eq("user_id", user?.id)
         .maybeSingle();
 

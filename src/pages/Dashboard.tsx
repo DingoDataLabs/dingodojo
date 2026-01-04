@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Flame, Trophy, LogOut, Zap } from "lucide-react";
+import { Flame, Trophy, LogOut, Zap, Settings, Crown, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { ProgressRing } from "@/components/ProgressRing";
 import { getSydneyWeekStart, isNewWeek, getStreakMessage, isStreakSecured } from "@/lib/weekUtils";
@@ -16,6 +16,8 @@ interface Profile {
   grade_level: string;
   missions_this_week: number;
   week_start_date: string | null;
+  subscription_tier: string;
+  onboarding_completed: boolean;
 }
 
 interface Subject {
@@ -63,6 +65,12 @@ export default function Dashboard() {
       if (profileError) {
         console.error("Profile error:", profileError);
       } else if (profileData) {
+        // Check if onboarding is completed
+        if (!profileData.onboarding_completed) {
+          navigate("/onboarding");
+          return;
+        }
+
         // Check if it's a new week and handle streak logic
         const currentWeekStart = getSydneyWeekStart();
         const wasNewWeek = isNewWeek(profileData.week_start_date);
@@ -163,6 +171,8 @@ export default function Dashboard() {
   const missionsProgress = Math.min(100, (missionsThisWeek / 5) * 100);
   const streakMessage = getStreakMessage(missionsThisWeek);
   const streakSecured = isStreakSecured(missionsThisWeek);
+  const isExplorer = profile?.subscription_tier !== "champion";
+  const missionsRemaining = isExplorer ? Math.max(0, 5 - missionsThisWeek) : null;
 
   if (authLoading || loading) {
     return (
@@ -189,15 +199,50 @@ export default function Dashboard() {
               <p className="text-muted-foreground">{profile?.grade_level || "Year 5"} • The Dojo</p>
             </div>
           </div>
-          <Button
-            variant="outline"
-            onClick={handleLogout}
-            className="rounded-xl gap-2"
-          >
-            <LogOut className="w-4 h-4" />
-            <span className="hidden sm:inline">Logout</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/profile")}
+              className="rounded-xl"
+            >
+              <Settings className="w-5 h-5" />
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleLogout}
+              className="rounded-xl gap-2"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline">Logout</span>
+            </Button>
+          </div>
         </header>
+
+        {/* Subscription Banner for Explorer */}
+        {isExplorer && (
+          <div className="mb-6 bento-card bg-gradient-to-r from-ochre/10 to-eucalyptus/10 border-2 border-ochre/20 animate-slide-up">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-ochre/20 flex items-center justify-center">
+                  <Crown className="w-5 h-5 text-ochre" />
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">Explorer Plan</p>
+                  <p className="text-sm text-muted-foreground">
+                    {missionsRemaining === 0 
+                      ? "You've used all 5 missions this week!" 
+                      : `${missionsRemaining} mission${missionsRemaining === 1 ? '' : 's'} left this week`}
+                  </p>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" className="rounded-xl gap-2" disabled>
+                <Lock className="w-4 h-4" />
+                Champion Coming Soon
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Stats Row */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">

@@ -2,121 +2,125 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Dingo Dojo Design System - Australian Outback Theme */
+/* Dingo Dojo Design System - Australian Outback Theme - Enhanced */
 
 @layer base {
   :root {
-    /* Australian Earth Tones */
-    --background: 40 33% 96%;
-    --foreground: 25 30% 15%;
+    /* Australian Earth Tones - More Vibrant */
+    --background: 42 35% 97%;
+    --foreground: 20 35% 12%;
 
-    --card: 40 30% 98%;
-    --card-foreground: 25 30% 15%;
+    --card: 42 30% 99%;
+    --card-foreground: 20 35% 12%;
 
-    --popover: 40 30% 98%;
-    --popover-foreground: 25 30% 15%;
+    --popover: 42 30% 99%;
+    --popover-foreground: 20 35% 12%;
 
-    /* Ochre - Warm sandy orange */
-    --primary: 30 75% 50%;
-    --primary-foreground: 40 30% 98%;
+    /* Ochre - Richer warm orange */
+    --primary: 28 85% 52%;
+    --primary-foreground: 42 30% 99%;
 
-    /* Eucalyptus Green */
-    --secondary: 150 35% 45%;
-    --secondary-foreground: 40 30% 98%;
+    /* Eucalyptus Green - More vibrant */
+    --secondary: 155 45% 42%;
+    --secondary-foreground: 42 30% 99%;
 
     /* Cream/Sand for muted */
-    --muted: 40 25% 90%;
-    --muted-foreground: 25 20% 40%;
+    --muted: 40 28% 92%;
+    --muted-foreground: 25 18% 45%;
 
-    /* Sky Blue accent */
-    --accent: 200 70% 55%;
-    --accent-foreground: 40 30% 98%;
+    /* Sky Blue accent - Brighter */
+    --accent: 198 78% 52%;
+    --accent-foreground: 42 30% 99%;
 
-    --destructive: 0 65% 55%;
-    --destructive-foreground: 40 30% 98%;
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 42 30% 99%;
 
-    --border: 30 20% 85%;
-    --input: 30 20% 85%;
-    --ring: 30 75% 50%;
+    --border: 32 22% 88%;
+    --input: 32 22% 88%;
+    --ring: 28 85% 52%;
 
     --radius: 1rem;
 
-    /* Custom Dingo Dojo Colors */
-    --ochre: 30 75% 50%;
-    --ochre-light: 35 70% 65%;
-    --ochre-dark: 25 75% 40%;
+    /* Custom Dingo Dojo Colors - Enhanced */
+    --ochre: 28 85% 52%;
+    --ochre-light: 32 78% 62%;
+    --ochre-dark: 24 85% 42%;
     
-    --eucalyptus: 150 35% 45%;
-    --eucalyptus-light: 150 40% 60%;
-    --eucalyptus-dark: 150 35% 35%;
+    --eucalyptus: 155 45% 42%;
+    --eucalyptus-light: 155 48% 55%;
+    --eucalyptus-dark: 155 45% 32%;
     
-    --sky: 200 70% 55%;
-    --sky-light: 200 75% 70%;
-    --sky-dark: 200 70% 45%;
+    --sky: 198 78% 52%;
+    --sky-light: 198 80% 65%;
+    --sky-dark: 198 78% 42%;
     
-    --sand: 40 30% 92%;
-    --sand-dark: 35 25% 80%;
+    --sand: 42 32% 94%;
+    --sand-dark: 38 28% 85%;
     
-    --outback: 25 50% 30%;
+    --outback: 20 45% 28%;
 
-    /* Shadows */
-    --shadow-soft: 0 4px 20px -4px hsl(30 30% 30% / 0.15);
-    --shadow-card: 0 8px 32px -8px hsl(30 30% 30% / 0.2);
-    --shadow-elevated: 0 16px 48px -12px hsl(30 30% 30% / 0.25);
+    /* Enhanced Shadows */
+    --shadow-soft: 0 4px 24px -6px hsl(28 40% 25% / 0.12);
+    --shadow-card: 0 8px 40px -10px hsl(28 40% 25% / 0.18);
+    --shadow-elevated: 0 20px 60px -15px hsl(28 40% 25% / 0.22);
+    --shadow-glow-ochre: 0 0 40px -8px hsl(28 85% 52% / 0.35);
+    --shadow-glow-eucalyptus: 0 0 40px -8px hsl(155 45% 42% / 0.35);
+    --shadow-glow-sky: 0 0 40px -8px hsl(198 78% 52% / 0.35);
 
-    /* Gradients */
-    --gradient-ochre: linear-gradient(135deg, hsl(30 75% 50%), hsl(35 70% 60%));
-    --gradient-eucalyptus: linear-gradient(135deg, hsl(150 35% 45%), hsl(155 40% 55%));
-    --gradient-sky: linear-gradient(135deg, hsl(200 70% 55%), hsl(205 75% 65%));
-    --gradient-sunset: linear-gradient(135deg, hsl(30 75% 50%), hsl(15 70% 55%));
+    /* Gradients - More Dynamic */
+    --gradient-ochre: linear-gradient(135deg, hsl(28 85% 52%), hsl(35 78% 58%));
+    --gradient-eucalyptus: linear-gradient(135deg, hsl(155 45% 42%), hsl(160 48% 52%));
+    --gradient-sky: linear-gradient(135deg, hsl(198 78% 52%), hsl(205 80% 62%));
+    --gradient-sunset: linear-gradient(135deg, hsl(28 85% 52%), hsl(8 72% 55%));
+    --gradient-hero: linear-gradient(180deg, hsl(42 35% 97%) 0%, hsl(40 30% 94%) 100%);
 
-    --sidebar-background: 40 30% 96%;
-    --sidebar-foreground: 25 30% 15%;
-    --sidebar-primary: 30 75% 50%;
-    --sidebar-primary-foreground: 40 30% 98%;
-    --sidebar-accent: 40 25% 90%;
-    --sidebar-accent-foreground: 25 30% 15%;
-    --sidebar-border: 30 20% 85%;
-    --sidebar-ring: 30 75% 50%;
+    --sidebar-background: 42 32% 97%;
+    --sidebar-foreground: 20 35% 12%;
+    --sidebar-primary: 28 85% 52%;
+    --sidebar-primary-foreground: 42 30% 99%;
+    --sidebar-accent: 40 28% 92%;
+    --sidebar-accent-foreground: 20 35% 12%;
+    --sidebar-border: 32 22% 88%;
+    --sidebar-ring: 28 85% 52%;
   }
 
   .dark {
-    --background: 25 30% 10%;
-    --foreground: 40 30% 96%;
+    --background: 20 32% 8%;
+    --foreground: 42 30% 96%;
 
-    --card: 25 25% 15%;
-    --card-foreground: 40 30% 96%;
+    --card: 20 28% 12%;
+    --card-foreground: 42 30% 96%;
 
-    --popover: 25 25% 15%;
-    --popover-foreground: 40 30% 96%;
+    --popover: 20 28% 12%;
+    --popover-foreground: 42 30% 96%;
 
-    --primary: 30 70% 55%;
-    --primary-foreground: 25 30% 10%;
+    --primary: 28 78% 58%;
+    --primary-foreground: 20 32% 8%;
 
-    --secondary: 150 30% 40%;
-    --secondary-foreground: 40 30% 96%;
+    --secondary: 155 38% 45%;
+    --secondary-foreground: 42 30% 96%;
 
-    --muted: 25 20% 20%;
-    --muted-foreground: 40 20% 65%;
+    --muted: 20 22% 18%;
+    --muted-foreground: 40 18% 62%;
 
-    --accent: 200 65% 50%;
-    --accent-foreground: 40 30% 96%;
+    --accent: 198 70% 55%;
+    --accent-foreground: 42 30% 96%;
 
-    --destructive: 0 60% 45%;
-    --destructive-foreground: 40 30% 96%;
+    --destructive: 0 65% 50%;
+    --destructive-foreground: 42 30% 96%;
 
-    --border: 25 20% 25%;
-    --input: 25 20% 25%;
-    --ring: 30 70% 55%;
+    --border: 20 22% 22%;
+    --input: 20 22% 22%;
+    --ring: 28 78% 58%;
 
-    --sidebar-background: 25 25% 12%;
-    --sidebar-foreground: 40 30% 96%;
-    --sidebar-primary: 30 70% 55%;
-    --sidebar-primary-foreground: 25 30% 10%;
-    --sidebar-accent: 25 20% 20%;
-    --sidebar-accent-foreground: 40 30% 96%;
-    --sidebar-border: 25 20% 25%;
-    --sidebar-ring: 30 70% 55%;
+    --sidebar-background: 20 28% 10%;
+    --sidebar-foreground: 42 30% 96%;
+    --sidebar-primary: 28 78% 58%;
+    --sidebar-primary-foreground: 20 32% 8%;
+    --sidebar-accent: 20 22% 18%;
+    --sidebar-accent-foreground: 42 30% 96%;
+    --sidebar-border: 20 22% 22%;
+    --sidebar-ring: 28 78% 58%;
   }
 }
 
@@ -137,37 +141,45 @@
 }
 
 @layer components {
-  /* Bento Grid Cards */
+  /* Bento Grid Cards - Enhanced */
   .bento-card {
-    @apply rounded-3xl p-6 transition-all duration-300 ease-out;
+    @apply rounded-3xl p-6 transition-all duration-300 ease-out bg-card;
     box-shadow: var(--shadow-card);
   }
 
   .bento-card:hover {
-    transform: translateY(-4px) scale(1.01);
+    transform: translateY(-6px) scale(1.01);
     box-shadow: var(--shadow-elevated);
   }
 
-  /* Subject Cards */
+  /* Subject Cards - More vibrant gradients */
   .subject-card-ochre {
     background: var(--gradient-ochre);
     @apply text-primary-foreground;
+    box-shadow: var(--shadow-glow-ochre);
   }
 
   .subject-card-eucalyptus {
     background: var(--gradient-eucalyptus);
     @apply text-secondary-foreground;
+    box-shadow: var(--shadow-glow-eucalyptus);
   }
 
   .subject-card-sky {
     background: var(--gradient-sky);
     @apply text-accent-foreground;
+    box-shadow: var(--shadow-glow-sky);
   }
 
-  /* Stats Cards */
+  /* Stats Cards - Enhanced */
   .stats-card {
-    @apply bg-card rounded-2xl p-4 border border-border;
+    @apply bg-card rounded-2xl p-5 border border-border/50;
     box-shadow: var(--shadow-soft);
+  }
+
+  .stats-card:hover {
+    @apply border-primary/20;
+    box-shadow: var(--shadow-card);
   }
 
   /* Fun Fact Card */
@@ -198,28 +210,53 @@
     box-shadow: var(--shadow-card);
   }
 
-  /* Topic Card */
+  /* Topic Card - Enhanced */
   .topic-card {
     @apply bg-card rounded-2xl p-5 border-2 border-transparent transition-all duration-200 cursor-pointer;
     box-shadow: var(--shadow-soft);
   }
 
   .topic-card:hover {
-    @apply border-primary/30;
-    transform: translateX(4px);
+    @apply border-primary/40 bg-card;
+    transform: translateX(6px);
     box-shadow: var(--shadow-card);
   }
 
-  /* XP Badge */
+  /* XP Badge - Enhanced */
   .xp-badge {
     @apply inline-flex items-center gap-1 bg-gradient-to-r from-ochre to-ochre-light text-primary-foreground px-3 py-1 rounded-full text-sm font-bold;
-    box-shadow: 0 2px 8px hsl(30 75% 50% / 0.3);
+    box-shadow: 0 4px 12px hsl(28 85% 52% / 0.35);
   }
 
-  /* Streak Badge */
+  /* Streak Badge - Enhanced */
   .streak-badge {
     @apply inline-flex items-center gap-1 bg-gradient-to-r from-destructive to-destructive/80 text-destructive-foreground px-3 py-1 rounded-full text-sm font-bold;
-    box-shadow: 0 2px 8px hsl(0 65% 55% / 0.3);
+    box-shadow: 0 4px 12px hsl(0 72% 55% / 0.35);
+  }
+
+  /* Level Badges */
+  .level-badge {
+    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold;
+  }
+
+  .level-badge-beginning {
+    @apply bg-ochre/15 text-ochre-dark;
+  }
+
+  .level-badge-developing {
+    @apply bg-sky/15 text-sky-dark;
+  }
+
+  .level-badge-consolidating {
+    @apply bg-sky-light/20 text-sky-dark;
+  }
+
+  .level-badge-extending {
+    @apply bg-eucalyptus/15 text-eucalyptus-dark;
+  }
+
+  .level-badge-mastering {
+    @apply bg-eucalyptus/20 text-eucalyptus-dark;
   }
 }
 
@@ -258,7 +295,7 @@
     touch-action: pan-y;
   }
 
-  /* Gradient text */
+  /* Gradient text - Enhanced */
   .gradient-text-ochre {
     @apply bg-clip-text text-transparent;
     background-image: var(--gradient-ochre);
@@ -275,16 +312,16 @@
   }
 }
 
-/* Animations */
+/* Animations - Enhanced */
 @keyframes float {
   0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
+  50% { transform: translateY(-12px); }
 }
 
 @keyframes wiggle {
   0%, 100% { transform: rotate(0deg); }
-  25% { transform: rotate(-5deg); }
-  75% { transform: rotate(5deg); }
+  25% { transform: rotate(-6deg); }
+  75% { transform: rotate(6deg); }
 }
 
 @keyframes pulse-soft {
@@ -295,7 +332,7 @@
 @keyframes slide-up {
   from { 
     opacity: 0; 
-    transform: translateY(20px); 
+    transform: translateY(24px); 
   }
   to { 
     opacity: 1; 
@@ -309,15 +346,20 @@
     transform: scale(0.3); 
   }
   50% { 
-    transform: scale(1.05); 
+    transform: scale(1.08); 
   }
   70% { 
-    transform: scale(0.9); 
+    transform: scale(0.92); 
   }
   100% { 
     opacity: 1; 
     transform: scale(1); 
   }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
 .animate-float {
@@ -333,19 +375,25 @@
 }
 
 .animate-slide-up {
-  animation: slide-up 0.4s ease-out forwards;
+  animation: slide-up 0.5s ease-out forwards;
 }
 
 .animate-bounce-in {
   animation: bounce-in 0.5s ease-out forwards;
 }
 
+.animate-shimmer {
+  animation: shimmer 2s ease-in-out infinite;
+  background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.1), transparent);
+  background-size: 200% 100%;
+}
+
 /* Staggered animations */
 .stagger-1 { animation-delay: 0.1s; }
-.stagger-2 { animation-delay: 0.2s; }
-.stagger-3 { animation-delay: 0.3s; }
-.stagger-4 { animation-delay: 0.4s; }
-.stagger-5 { animation-delay: 0.5s; }
+.stagger-2 { animation-delay: 0.15s; }
+.stagger-3 { animation-delay: 0.2s; }
+.stagger-4 { animation-delay: 0.25s; }
+.stagger-5 { animation-delay: 0.3s; }
 
 /* Import Google Fonts */
 @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;500;600;700;800&display=swap');
