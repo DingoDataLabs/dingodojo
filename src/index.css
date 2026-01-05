@@ -395,5 +395,22 @@
 .stagger-4 { animation-delay: 0.25s; }
 .stagger-5 { animation-delay: 0.3s; }
 
+/* Dingo animation keyframes */
+@keyframes ear-twitch {
+  0%, 90%, 100% { transform: rotate(0deg); }
+  92%, 98% { transform: rotate(-5deg); }
+  95% { transform: rotate(3deg); }
+}
+
+@keyframes tail-wag {
+  0%, 100% { transform: rotate(-10deg); }
+  50% { transform: rotate(10deg); }
+}
+
+@keyframes tongue-wag {
+  0%, 100% { transform: translateX(-1px); }
+  50% { transform: translateX(1px); }
+}
+
 /* Import Google Fonts */
 @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;500;600;700;800&display=swap');

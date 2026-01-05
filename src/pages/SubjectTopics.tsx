@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Trophy } from "lucide-react";
 import { TopicCard } from "@/components/TopicCard";
 import { getSydneyWeekStart, isNewWeek } from "@/lib/weekUtils";
+import { toast } from "sonner";
+import { isMastered } from "@/lib/progressUtils";
 
 interface Subject {
   id: string;
@@ -41,6 +43,7 @@ export default function SubjectTopics() {
   const [progress, setProgress] = useState<Progress[]>([]);
   const [loading, setLoading] = useState(true);
   const [subjectTotalXp, setSubjectTotalXp] = useState(0);
+  const [profileId, setProfileId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -92,6 +95,7 @@ export default function SubjectTopics() {
         .maybeSingle();
 
       if (profileData && topicsData) {
+        setProfileId(profileData.id);
         const topicIds = topicsData.map((t) => t.id);
         const { data: progressData } = await supabase
           .from("student_progress")
@@ -118,6 +122,69 @@ export default function SubjectTopics() {
       console.error("Error:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleLevelChange = async (topicId: string, newXp: number) => {
+    if (!profileId) return;
+
+    try {
+      // Check if progress record exists
+      const existingProgress = progress.find(p => p.topic_id === topicId);
+      
+      if (existingProgress) {
+        // Update existing record
+        await supabase
+          .from("student_progress")
+          .update({ 
+            xp_earned: newXp,
+            is_completed: isMastered(newXp)
+          })
+          .eq("student_id", profileId)
+          .eq("topic_id", topicId);
+      } else {
+        // Create new record
+        await supabase
+          .from("student_progress")
+          .insert({
+            student_id: profileId,
+            topic_id: topicId,
+            xp_earned: newXp,
+            is_completed: isMastered(newXp)
+          });
+      }
+
+      // Update local state
+      setProgress(prev => {
+        const existing = prev.find(p => p.topic_id === topicId);
+        if (existing) {
+          return prev.map(p => 
+            p.topic_id === topicId 
+              ? { ...p, xp_earned: newXp, is_completed: isMastered(newXp) }
+              : p
+          );
+        } else {
+          return [...prev, { 
+            topic_id: topicId, 
+            xp_earned: newXp, 
+            weekly_xp: 0, 
+            week_start_date: null,
+            is_completed: isMastered(newXp)
+          }];
+        }
+      });
+
+      // Recalculate total XP
+      const newTotal = progress.reduce((sum, p) => {
+        if (p.topic_id === topicId) return sum + newXp;
+        return sum + (p.xp_earned || 0);
+      }, 0);
+      setSubjectTotalXp(newTotal);
+
+      toast.success("Level updated! 🎯");
+    } catch (err) {
+      console.error("Error updating level:", err);
+      toast.error("Failed to update level");
     }
   };
 
@@ -160,7 +227,7 @@ export default function SubjectTopics() {
         <div className="max-w-4xl mx-auto">
           <Button
             variant="ghost"
-            onClick={() => navigate("/")}
+            onClick={() => navigate("/dashboard")}
             className="mb-4 text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10 -ml-2"
           >
             <ArrowLeft className="w-5 h-5 mr-2" />
@@ -199,6 +266,7 @@ export default function SubjectTopics() {
                 xpEarned={xpEarned}
                 weeklyXp={weeklyXp}
                 onClick={() => navigate(`/learn/${subject?.slug}/${topic.slug}`)}
+                onLevelChange={handleLevelChange}
                 animationDelay={`${0.05 * (index + 1)}s`}
               />
             );

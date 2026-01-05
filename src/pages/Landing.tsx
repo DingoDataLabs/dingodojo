@@ -1,13 +1,22 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Check, Zap, Target, Clock, Star, Shield, ArrowRight } from "lucide-react";
+import { Check, Zap, Target, Clock, Star, Shield, ArrowRight, Compass, Crown } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { AnimatedDingo } from "@/components/AnimatedDingo";
 
 export default function Landing() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
   const handleGetStarted = () => {
+    if (user) {
+      navigate("/dashboard");
+    } else {
+      navigate("/auth");
+    }
+  };
+
+  const handleEnterDojo = () => {
     if (user) {
       navigate("/dashboard");
     } else {
@@ -23,13 +32,13 @@ export default function Landing() {
         <div className="max-w-6xl mx-auto px-4 py-6">
           <nav className="flex items-center justify-between mb-16">
             <div className="flex items-center gap-3">
-              <span className="text-4xl">🦊</span>
+              <AnimatedDingo />
               <span className="text-2xl font-display font-bold text-foreground">Dingo Dojo</span>
             </div>
             <div className="flex items-center gap-4">
               {user ? (
-                <Button onClick={() => navigate("/dashboard")} className="rounded-xl font-semibold">
-                  Go to Dashboard
+                <Button onClick={handleEnterDojo} className="rounded-xl font-semibold">
+                  Enter Your Dojo
                 </Button>
               ) : (
                 <>
@@ -69,17 +78,17 @@ export default function Landing() {
                 <Button 
                   size="lg" 
                   variant="outline"
-                  onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
-                  className="rounded-xl font-bold text-lg h-14 px-8"
+                  onClick={() => navigate("/demo")}
+                  className="rounded-xl font-bold text-lg h-14 px-8 gap-2"
                 >
-                  Learn More
+                  <Compass className="w-5 h-5" />
+                  Try Demo
                 </Button>
               </div>
             </div>
             
             <div className="relative animate-slide-up stagger-2">
               <div className="relative bg-gradient-to-br from-card to-muted rounded-3xl p-8 shadow-elevated">
-                <div className="absolute -top-6 -right-6 text-8xl animate-float">🦘</div>
                 <div className="space-y-4">
                   <div className="flex items-center gap-3 p-4 bg-background rounded-2xl shadow-soft">
                     <div className="w-12 h-12 rounded-xl bg-eucalyptus/20 flex items-center justify-center text-2xl">📐</div>
@@ -223,7 +232,10 @@ export default function Landing() {
             {/* Explorer - Free */}
             <div className="bento-card bg-card p-8 border-2 border-border">
               <div className="mb-6">
-                <h3 className="text-2xl font-display font-bold text-foreground mb-2">Explorer</h3>
+                <div className="flex items-center gap-2 mb-2">
+                  <Compass className="w-6 h-6 text-sky" />
+                  <h3 className="text-2xl font-display font-bold text-foreground">Explorer</h3>
+                </div>
                 <p className="text-muted-foreground">Perfect for getting started</p>
               </div>
               <div className="mb-6">
@@ -265,7 +277,10 @@ export default function Landing() {
                 </span>
               </div>
               <div className="mb-6">
-                <h3 className="text-2xl font-display font-bold text-foreground mb-2">Champion</h3>
+                <div className="flex items-center gap-2 mb-2">
+                  <Crown className="w-6 h-6 text-ochre" />
+                  <h3 className="text-2xl font-display font-bold text-foreground">Champion</h3>
+                </div>
                 <p className="text-muted-foreground">Unlimited learning power</p>
               </div>
               <div className="mb-6">
@@ -308,7 +323,9 @@ export default function Landing() {
       {/* CTA */}
       <section className="py-20 px-4 bg-gradient-to-br from-ochre/10 via-transparent to-eucalyptus/10">
         <div className="max-w-3xl mx-auto text-center">
-          <div className="text-6xl mb-6 animate-float">🦊</div>
+          <div className="mb-6 flex justify-center">
+            <AnimatedDingo />
+          </div>
           <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-4">
             Ready to Start the Adventure?
           </h2>
