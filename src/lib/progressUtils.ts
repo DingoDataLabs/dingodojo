@@ -11,7 +11,7 @@ export interface MasteryLevel {
   emoji: string;
 }
 
-const MASTERY_LEVELS: MasteryLevel[] = [
+export const MASTERY_LEVELS: MasteryLevel[] = [
   { name: "Beginning", color: "ochre", colorClass: "bg-ochre text-ochre-foreground", minXp: 0, maxXp: 49, emoji: "🌱" },
   { name: "Developing", color: "sky", colorClass: "bg-sky text-sky-foreground", minXp: 50, maxXp: 149, emoji: "📚" },
   { name: "Consolidating", color: "sky-light", colorClass: "bg-sky-light text-sky-foreground", minXp: 150, maxXp: 299, emoji: "💪" },

@@ -107,12 +107,12 @@ export default function Onboarding() {
       // Create initial progress records for selected topics
       const progressRecords = [];
 
-      // Confident topics start at higher XP (Developing level: 50+)
+      // Confident topics start at Consolidating level (150+ XP)
       for (const topicId of confidentTopics) {
         progressRecords.push({
           student_id: profileId,
           topic_id: topicId,
-          xp_earned: 75, // Start at Developing level
+          xp_earned: 150, // Start at Consolidating level
         });
       }
 

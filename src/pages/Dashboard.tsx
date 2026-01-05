@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Flame, Trophy, LogOut, Zap, Settings, Crown, Lock } from "lucide-react";
+import { Flame, Trophy, LogOut, Zap, Settings, Compass, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { ProgressRing } from "@/components/ProgressRing";
 import { getSydneyWeekStart, isNewWeek, getStreakMessage, isStreakSecured } from "@/lib/weekUtils";
@@ -224,8 +224,8 @@ export default function Dashboard() {
           <div className="mb-6 bento-card bg-gradient-to-r from-ochre/10 to-eucalyptus/10 border-2 border-ochre/20 animate-slide-up">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-ochre/20 flex items-center justify-center">
-                  <Crown className="w-5 h-5 text-ochre" />
+                <div className="w-10 h-10 rounded-xl bg-sky/20 flex items-center justify-center">
+                  <Compass className="w-5 h-5 text-sky" />
                 </div>
                 <div>
                   <p className="font-semibold text-foreground">Explorer Plan</p>
