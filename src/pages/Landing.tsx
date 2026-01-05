@@ -2,7 +2,6 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Check, Zap, Target, Clock, Star, Shield, ArrowRight, Compass, Crown } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { AnimatedDingo } from "@/components/AnimatedDingo";
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -32,7 +31,7 @@ export default function Landing() {
         <div className="max-w-6xl mx-auto px-4 py-6">
           <nav className="flex items-center justify-between mb-16">
             <div className="flex items-center gap-3">
-              <AnimatedDingo />
+              <span className="text-4xl">🦊</span>
               <span className="text-2xl font-display font-bold text-foreground">Dingo Dojo</span>
             </div>
             <div className="flex items-center gap-4">
@@ -324,7 +323,7 @@ export default function Landing() {
       <section className="py-20 px-4 bg-gradient-to-br from-ochre/10 via-transparent to-eucalyptus/10">
         <div className="max-w-3xl mx-auto text-center">
           <div className="mb-6 flex justify-center">
-            <AnimatedDingo />
+            <span className="text-6xl">🦊</span>
           </div>
           <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-4">
             Ready to Start the Adventure?
