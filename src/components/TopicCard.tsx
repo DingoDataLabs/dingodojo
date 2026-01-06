@@ -54,73 +54,71 @@ export function TopicCard({ topic, xpEarned, weeklyXp, onClick, onLevelChange, a
 
   return (
     <div
-      className={`topic-card w-full text-left flex items-center gap-4 animate-slide-up ${
-        mastered ? "border-eucalyptus/30 bg-eucalyptus/5" : ""
+      className={`topic-card-refined animate-slide-up ${
+        mastered ? "topic-card-mastered" : ""
       }`}
       style={{ animationDelay }}
     >
       {/* Clickable main area */}
-      <button onClick={onClick} className="flex items-center gap-4 flex-grow min-w-0">
+      <button onClick={onClick} className="flex items-center gap-3 flex-1 min-w-0 py-3 px-4">
         {/* Emoji */}
-        <div className="text-4xl flex-shrink-0">{topic.emoji}</div>
+        <span className="text-2xl flex-shrink-0">{topic.emoji}</span>
 
         {/* Topic info */}
-        <div className="flex-grow min-w-0">
-          <h3 className="text-lg font-display font-bold text-foreground truncate">
+        <div className="flex-1 min-w-0 text-left">
+          <h3 className="text-base font-display font-bold text-foreground truncate leading-tight">
             {topic.name}
           </h3>
-          <div className="flex items-center gap-2 mt-1">
-            {/* Level badge */}
+          <div className="flex items-center gap-2 mt-0.5">
             <span
-              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${level.colorClass}`}
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${level.colorClass}`}
             >
               {level.emoji} {level.name}
             </span>
-            {/* Total XP */}
-            <span className="text-xs text-muted-foreground">{xpEarned} XP</span>
+            <span className="text-[10px] text-muted-foreground font-medium">{xpEarned} XP</span>
           </div>
         </div>
       </button>
 
-      {/* Progress section */}
-      <div className="flex-shrink-0 flex items-center gap-2">
+      {/* Right section - Progress & Controls */}
+      <div className="flex items-center gap-1 pr-3 flex-shrink-0">
         {/* Level controls */}
         {onLevelChange && (
-          <div className="flex flex-col gap-0.5">
+          <div className="flex flex-col">
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 rounded-md hover:bg-eucalyptus/10"
+              className="h-5 w-5 rounded hover:bg-eucalyptus/10"
               onClick={handleAdvance}
               disabled={!canAdvance}
               title="Advance to next level"
             >
-              <ChevronUp className={`w-4 h-4 ${canAdvance ? "text-eucalyptus" : "text-muted-foreground/30"}`} />
+              <ChevronUp className={`w-3.5 h-3.5 ${canAdvance ? "text-eucalyptus" : "text-muted-foreground/20"}`} />
             </Button>
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 rounded-md hover:bg-ochre/10"
+              className="h-5 w-5 rounded hover:bg-ochre/10"
               onClick={handleGoBack}
               disabled={!canGoBack}
               title="Go back a level"
             >
-              <ChevronDown className={`w-4 h-4 ${canGoBack ? "text-ochre" : "text-muted-foreground/30"}`} />
+              <ChevronDown className={`w-3.5 h-3.5 ${canGoBack ? "text-ochre" : "text-muted-foreground/20"}`} />
             </Button>
           </div>
         )}
 
         {/* Progress ring */}
-        <div className="flex flex-col items-center gap-1">
+        <div className="flex flex-col items-center">
           {mastered ? (
-            <CheckCircle2 className="w-10 h-10 text-eucalyptus" />
+            <CheckCircle2 className="w-8 h-8 text-eucalyptus" />
           ) : (
-            <ProgressRing progress={progress} size={40} strokeWidth={4} colorClass={ringColor}>
-              <span className="text-xs font-bold text-foreground">{progress}%</span>
+            <ProgressRing progress={progress} size={32} strokeWidth={3} colorClass={ringColor}>
+              <span className="text-[9px] font-bold text-foreground">{progress}%</span>
             </ProgressRing>
           )}
           {weeklyXp > 0 && (
-            <span className="text-xs text-eucalyptus font-medium">+{weeklyXp} this week</span>
+            <span className="text-[9px] text-eucalyptus font-semibold mt-0.5">+{weeklyXp}</span>
           )}
         </div>
       </div>
