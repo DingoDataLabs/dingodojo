@@ -29,7 +29,7 @@ export default function Landing() {
       <header className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-ochre/5 via-transparent to-eucalyptus/5" />
         <div className="max-w-6xl mx-auto px-4 py-6">
-          <nav className="flex items-center justify-between mb-16">
+          <nav className="flex items-center justify-between mb-16 relative z-10">
             <div className="flex items-center gap-3">
               <span className="text-4xl">🦊</span>
               <span className="text-2xl font-display font-bold text-foreground">Dingo Dojo</span>
