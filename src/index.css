@@ -210,16 +210,43 @@
     box-shadow: var(--shadow-card);
   }
 
-  /* Topic Card - Enhanced */
-  .topic-card {
-    @apply bg-card rounded-2xl p-5 border-2 border-transparent transition-all duration-200 cursor-pointer;
+  /* Subject Tiles - Compact */
+  .subject-tile {
+    @apply rounded-2xl overflow-hidden cursor-pointer;
     box-shadow: var(--shadow-soft);
   }
 
-  .topic-card:hover {
-    @apply border-primary/40 bg-card;
-    transform: translateX(6px);
+  .subject-tile:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .subject-tile-details {
+    @apply px-4 py-2 bg-black/10 opacity-0 max-h-0 overflow-hidden transition-all duration-200;
+  }
+
+  .subject-tile:hover .subject-tile-details {
+    @apply opacity-100 max-h-16;
+  }
+
+  /* Topic Card - Refined */
+  .topic-card-refined {
+    @apply bg-card rounded-xl flex items-center border border-border/50 transition-all duration-200 cursor-pointer overflow-hidden;
+    box-shadow: var(--shadow-soft);
+  }
+
+  .topic-card-refined:hover {
+    @apply border-primary/30 bg-card;
+    transform: translateX(4px);
     box-shadow: var(--shadow-card);
+  }
+
+  .topic-card-mastered {
+    @apply border-eucalyptus/30 bg-eucalyptus/5;
+  }
+
+  .topic-card-mastered:hover {
+    @apply border-eucalyptus/50;
   }
 
   /* XP Badge - Enhanced */

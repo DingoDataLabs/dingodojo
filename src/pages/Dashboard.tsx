@@ -296,33 +296,35 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Subject Cards - Bento Grid */}
+        {/* Subject Cards - Compact Grid */}
         <section className="animate-slide-up stagger-4">
           <h2 className="text-xl font-display font-bold mb-4 text-foreground">
             Choose Your Training 🎯
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
             {subjects.map((subject, index) => (
               <button
                 key={subject.id}
                 onClick={() => navigate(`/subject/${subject.slug}`)}
-                className={`bento-card ${getSubjectCardClass(subject.color)} text-left p-8 min-h-[180px] flex flex-col justify-between transition-all active:scale-[0.98]`}
-                style={{ animationDelay: `${0.1 * (index + 1)}s` }}
+                className={`group subject-tile ${getSubjectCardClass(subject.color)} text-left transition-all active:scale-[0.98]`}
+                style={{ animationDelay: `${0.05 * (index + 1)}s` }}
               >
-                <div>
-                  <span className="text-5xl mb-4 block">{subject.emoji}</span>
-                  <h3 className="text-3xl font-display font-bold mb-2">{subject.name}</h3>
+                <div className="flex flex-col items-center text-center p-4 md:p-5">
+                  <span className="text-4xl md:text-5xl mb-2 group-hover:scale-110 transition-transform duration-200">{subject.emoji}</span>
+                  <h3 className="text-base md:text-lg font-display font-bold leading-tight">{subject.name}</h3>
                 </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 opacity-80">
-                    <span className="text-sm font-medium">Start training</span>
-                    <span className="text-lg">→</span>
-                  </div>
-                  {subjectXps[subject.id] > 0 && (
-                    <span className="bg-primary-foreground/20 rounded-full px-3 py-1 text-sm font-medium">
-                      {subjectXps[subject.id].toLocaleString()} XP
+                {/* Expandable details on hover */}
+                <div className="subject-tile-details">
+                  <div className="flex items-center justify-between text-xs md:text-sm opacity-90">
+                    <span className="font-medium">
+                      {subjectXps[subject.id] > 0 
+                        ? `${subjectXps[subject.id].toLocaleString()} XP` 
+                        : "Not started"}
                     </span>
-                  )}
+                    <span className="flex items-center gap-1">
+                      Train →
+                    </span>
+                  </div>
                 </div>
               </button>
             ))}
