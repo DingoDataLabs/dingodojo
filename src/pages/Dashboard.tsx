@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,6 +7,8 @@ import { Flame, Trophy, LogOut, Zap, Settings, Compass, Lock } from "lucide-reac
 import { toast } from "sonner";
 import { ProgressRing } from "@/components/ProgressRing";
 import { getSydneyWeekStart, isNewWeek, getStreakMessage, isStreakSecured } from "@/lib/weekUtils";
+import { MirriSuggestion } from "@/components/MirriSuggestion";
+import { useMirriSuggestion } from "@/hooks/useMirriSuggestion";
 
 interface Profile {
   id: string;
@@ -174,6 +176,23 @@ export default function Dashboard() {
   const isExplorer = profile?.subscription_tier !== "champion";
   const missionsRemaining = isExplorer ? Math.max(0, 5 - missionsThisWeek) : null;
 
+  const subjectProgressData = useMemo(() => 
+    subjects.map(s => ({
+      subjectId: s.id,
+      subjectName: s.name,
+      totalXp: subjectXps[s.id] || 0,
+    })),
+    [subjects, subjectXps]
+  );
+
+  const mirriMessage = useMirriSuggestion({
+    firstName: profile?.first_name,
+    missionsThisWeek,
+    currentStreak: profile?.current_streak || 0,
+    subjectProgress: subjectProgressData,
+    totalXp: profile?.total_xp || 0,
+  });
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -296,8 +315,13 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Mirri Suggestion */}
+        <section className="mb-6 animate-slide-up stagger-4">
+          <MirriSuggestion message={mirriMessage} />
+        </section>
+
         {/* Subject Cards - Compact Grid */}
-        <section className="animate-slide-up stagger-4">
+        <section className="animate-slide-up stagger-5">
           <h2 className="text-xl font-display font-bold mb-4 text-foreground">
             Choose Your Training 🎯
           </h2>
@@ -332,7 +356,7 @@ export default function Dashboard() {
         </section>
 
         {/* Motivation Section */}
-        <section className="mt-8 animate-slide-up stagger-5">
+        <section className="mt-8 animate-slide-up stagger-6">
           <div className="bento-card bg-gradient-to-br from-sky/10 to-sky-light/5 border-2 border-dashed border-sky/20 text-center py-8">
             <p className="text-lg text-muted-foreground mb-2">💡 Tip of the Day</p>
             <p className="text-xl font-display font-semibold text-foreground">

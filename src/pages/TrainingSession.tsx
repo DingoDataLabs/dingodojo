@@ -8,6 +8,8 @@ import { ArrowLeft, Send, Sparkles, CheckCircle, Loader2, ChevronRight, HelpCirc
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
 import { getSydneyWeekStart, isNewWeek } from "@/lib/weekUtils";
+import { MirriChatDrawer } from "@/components/MirriChatDrawer";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Topic {
   id: string;
@@ -84,6 +86,7 @@ export default function TrainingSession() {
   const { subjectSlug, topicSlug } = useParams<{ subjectSlug: string; topicSlug: string }>();
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const isMobile = useIsMobile();
 
   const [topic, setTopic] = useState<Topic | null>(null);
   const [subject, setSubject] = useState<Subject | null>(null);
@@ -846,9 +849,20 @@ export default function TrainingSession() {
       </header>
 
       {/* Split View */}
-      <main className="flex-grow flex overflow-hidden">
+      <main className="flex-grow flex overflow-hidden relative">
+        {/* Mobile/Tablet: Full width lesson + floating Mirri */}
+        {isMobile && (
+          <MirriChatDrawer
+            messages={messages}
+            inputMessage={inputMessage}
+            setInputMessage={setInputMessage}
+            isChatLoading={isChatLoading}
+            onSendMessage={sendMessage}
+          />
+        )}
+
         {/* Left Column - The Mission */}
-        <div ref={lessonRef} className="w-1/2 border-r border-border overflow-y-auto scrollbar-thin p-4 md:p-6">
+        <div ref={lessonRef} className={`${isMobile ? 'w-full' : 'w-1/2'} border-r border-border overflow-y-auto scrollbar-thin p-4 md:p-6`}>
           {lessonContent ? (
             <div className="space-y-6 max-w-xl mx-auto">
               {/* Title & Fun Fact (always visible) */}
@@ -905,73 +919,75 @@ export default function TrainingSession() {
           )}
         </div>
 
-        {/* Right Column - The Sensei */}
-        <div className="w-1/2 flex flex-col bg-sand/30">
-          <div className="flex-shrink-0 p-4 border-b border-border bg-card/50">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-ochre flex items-center justify-center text-2xl">
-                🦊
-              </div>
-              <div>
-                <h3 className="font-display font-bold text-foreground">Mirri the Study Buddy</h3>
-                <p className="text-sm text-muted-foreground">Ask me for hints!</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex-grow overflow-y-auto scrollbar-thin p-4 space-y-4">
-            {messages.map((message, index) => (
-              <div
-                key={index}
-                className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} animate-slide-up`}
-              >
-                {message.role === "assistant" && (
-                  <div className="w-8 h-8 rounded-full bg-ochre flex items-center justify-center text-lg mr-2 flex-shrink-0">
-                    🦊
-                  </div>
-                )}
-                <div
-                  className={`max-w-[80%] ${
-                    message.role === "user" ? "chat-bubble-user" : "chat-bubble-assistant"
-                  }`}
-                >
-                  <p className="whitespace-pre-wrap">{message.content}</p>
-                </div>
-              </div>
-            ))}
-            {isChatLoading && messages[messages.length - 1]?.content === "" && (
-              <div className="flex justify-start">
-                <div className="w-8 h-8 rounded-full bg-ochre flex items-center justify-center text-lg mr-2">
+        {/* Right Column - The Sensei (Desktop only) */}
+        {!isMobile && (
+          <div className="w-1/2 flex flex-col bg-sand/30">
+            <div className="flex-shrink-0 p-4 border-b border-border bg-card/50">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-ochre flex items-center justify-center text-2xl">
                   🦊
                 </div>
-                <div className="chat-bubble-assistant">
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                <div>
+                  <h3 className="font-display font-bold text-foreground">Mirri the Study Buddy</h3>
+                  <p className="text-sm text-muted-foreground">Ask me for hints!</p>
                 </div>
               </div>
-            )}
-            <div ref={chatEndRef} />
-          </div>
+            </div>
 
-          <div className="flex-shrink-0 p-4 border-t border-border bg-card/50">
-            <div className="flex gap-2">
-              <Input
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
-                placeholder="Ask Mirri for help..."
-                className="flex-grow h-12 rounded-xl bg-background"
-                disabled={isChatLoading}
-              />
-              <Button
-                onClick={sendMessage}
-                disabled={!inputMessage.trim() || isChatLoading}
-                className="h-12 w-12 rounded-xl"
-              >
-                <Send className="w-5 h-5" />
-              </Button>
+            <div className="flex-grow overflow-y-auto scrollbar-thin p-4 space-y-4">
+              {messages.map((message, index) => (
+                <div
+                  key={index}
+                  className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} animate-slide-up`}
+                >
+                  {message.role === "assistant" && (
+                    <div className="w-8 h-8 rounded-full bg-ochre flex items-center justify-center text-lg mr-2 flex-shrink-0">
+                      🦊
+                    </div>
+                  )}
+                  <div
+                    className={`max-w-[80%] ${
+                      message.role === "user" ? "chat-bubble-user" : "chat-bubble-assistant"
+                    }`}
+                  >
+                    <p className="whitespace-pre-wrap">{message.content}</p>
+                  </div>
+                </div>
+              ))}
+              {isChatLoading && messages[messages.length - 1]?.content === "" && (
+                <div className="flex justify-start">
+                  <div className="w-8 h-8 rounded-full bg-ochre flex items-center justify-center text-lg mr-2">
+                    🦊
+                  </div>
+                  <div className="chat-bubble-assistant">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  </div>
+                </div>
+              )}
+              <div ref={chatEndRef} />
+            </div>
+
+            <div className="flex-shrink-0 p-4 border-t border-border bg-card/50">
+              <div className="flex gap-2">
+                <Input
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
+                  placeholder="Ask Mirri for help..."
+                  className="flex-grow h-12 rounded-xl bg-background"
+                  disabled={isChatLoading}
+                />
+                <Button
+                  onClick={sendMessage}
+                  disabled={!inputMessage.trim() || isChatLoading}
+                  className="h-12 w-12 rounded-xl"
+                >
+                  <Send className="w-5 h-5" />
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </main>
     </div>
   );
