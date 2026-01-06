@@ -8,6 +8,7 @@ import { TopicCard } from "@/components/TopicCard";
 import { getSydneyWeekStart, isNewWeek } from "@/lib/weekUtils";
 import { toast } from "sonner";
 import { isMastered } from "@/lib/progressUtils";
+import { MirriSuggestion } from "@/components/MirriSuggestion";
 
 interface Subject {
   id: string;
@@ -207,6 +208,37 @@ export default function SubjectTopics() {
     }
   };
 
+  const getMirriTopicMessage = () => {
+    const masteredCount = progress.filter(p => isMastered(p.xp_earned || 0)).length;
+    const totalTopics = topics.length;
+    
+    if (masteredCount === 0) {
+      return `Let's dive into ${subject?.name}! Pick any topic to get started 🎯`;
+    }
+    
+    if (masteredCount === totalTopics) {
+      return `Amazing! You've mastered all ${subject?.name} topics! 🏆`;
+    }
+    
+    const inProgressTopics = progress.filter(p => {
+      const xp = p.xp_earned || 0;
+      return xp > 0 && !isMastered(xp);
+    });
+    
+    if (inProgressTopics.length > 0) {
+      const closestToMastery = inProgressTopics.reduce((prev, curr) => 
+        (curr.xp_earned || 0) > (prev.xp_earned || 0) ? curr : prev
+      );
+      const topic = topics.find(t => t.id === closestToMastery.topic_id);
+      if (topic) {
+        const remaining = 500 - (closestToMastery.xp_earned || 0);
+        return `You're only ${remaining} XP away from mastering ${topic.name}! Keep going! ⭐`;
+      }
+    }
+    
+    return `${masteredCount}/${totalTopics} topics mastered! You're making great progress! 🌟`;
+  };
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -256,6 +288,13 @@ export default function SubjectTopics() {
 
       {/* Topics List */}
       <main className="max-w-4xl mx-auto p-4 md:p-6 -mt-6">
+        {/* Mirri Suggestion */}
+        <div className="mb-6">
+          <MirriSuggestion 
+            message={getMirriTopicMessage()} 
+          />
+        </div>
+
         <div className="space-y-3">
           {topics.map((topic, index) => {
             const { xpEarned, weeklyXp } = getTopicProgress(topic.id);
