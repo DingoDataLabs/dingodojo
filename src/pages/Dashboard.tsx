@@ -168,11 +168,11 @@ export default function Dashboard() {
           bgLight: "bg-violet-50",
           icon: "📖",
         };
-      case "mathematics":
+      case "maths":
         return {
-          gradient: "from-amber-500 to-orange-500",
-          glow: "shadow-amber-500/30",
-          bgLight: "bg-amber-50",
+          gradient: "from-blue-500 to-indigo-600",
+          glow: "shadow-blue-500/30",
+          bgLight: "bg-blue-50",
           icon: "🔢",
         };
       case "geography":
@@ -184,16 +184,16 @@ export default function Dashboard() {
         };
       case "history":
         return {
-          gradient: "from-amber-700 to-yellow-600",
-          glow: "shadow-amber-700/30",
+          gradient: "from-amber-600 to-yellow-500",
+          glow: "shadow-amber-600/30",
           bgLight: "bg-amber-50",
           icon: "🏛️",
         };
       case "science-technology":
         return {
-          gradient: "from-cyan-500 to-blue-600",
-          glow: "shadow-cyan-500/30",
-          bgLight: "bg-cyan-50",
+          gradient: "from-rose-500 to-red-600",
+          glow: "shadow-rose-500/30",
+          bgLight: "bg-rose-50",
           icon: "🔬",
         };
       default:
@@ -208,7 +208,7 @@ export default function Dashboard() {
 
   // Check if subject requires Champion tier
   const isSubjectLocked = (slug: string) => {
-    const freeSubjects = ["english", "mathematics"];
+    const freeSubjects = ["english", "maths"];
     return isExplorer && !freeSubjects.includes(slug);
   };
 
