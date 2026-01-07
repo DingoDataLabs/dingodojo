@@ -210,23 +210,50 @@
     box-shadow: var(--shadow-card);
   }
 
-  /* Subject Tiles - Compact */
-  .subject-tile {
-    @apply rounded-2xl overflow-hidden cursor-pointer;
-    box-shadow: var(--shadow-soft);
+  /* Flip Card System */
+  .perspective-1000 {
+    perspective: 1000px;
   }
 
-  .subject-tile:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-elevated);
+  .transform-style-3d {
+    transform-style: preserve-3d;
   }
 
-  .subject-tile-details {
-    @apply px-4 py-2 bg-black/10 opacity-0 max-h-0 overflow-hidden transition-all duration-200;
+  .backface-hidden {
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
   }
 
-  .subject-tile:hover .subject-tile-details {
-    @apply opacity-100 max-h-16;
+  .rotate-y-180 {
+    transform: rotateY(180deg);
+  }
+
+  .flip-card-inner {
+    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .flip-card:hover .flip-card-inner,
+  .flip-card:focus-within .flip-card-inner {
+    transform: rotateY(180deg);
+  }
+
+  .flip-card-front,
+  .flip-card-back {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+
+  .flip-card-back {
+    transform: rotateY(180deg);
+  }
+
+  /* Touch devices - tap to flip */
+  @media (hover: none) {
+    .flip-card:active .flip-card-inner {
+      transform: rotateY(180deg);
+    }
   }
 
   /* Topic Card - Refined */

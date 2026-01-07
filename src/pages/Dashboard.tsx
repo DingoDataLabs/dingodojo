@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Flame, Trophy, LogOut, Zap, Settings, Compass, Lock } from "lucide-react";
+import { Flame, Trophy, LogOut, Zap, Settings, Compass, Lock, Crown, Star } from "lucide-react";
 import { toast } from "sonner";
 import { ProgressRing } from "@/components/ProgressRing";
 import { getSydneyWeekStart, isNewWeek, getStreakMessage, isStreakSecured } from "@/lib/weekUtils";
@@ -158,15 +158,58 @@ export default function Dashboard() {
     navigate("/auth");
   };
 
-  const getSubjectCardClass = (color: string) => {
-    switch (color) {
-      case "eucalyptus":
-        return "subject-card-eucalyptus";
-      case "sky":
-        return "subject-card-sky";
+  // Subject-specific color schemes
+  const getSubjectTheme = (slug: string) => {
+    switch (slug) {
+      case "english":
+        return {
+          gradient: "from-violet-500 to-purple-600",
+          glow: "shadow-violet-500/30",
+          bgLight: "bg-violet-50",
+          icon: "📖",
+        };
+      case "mathematics":
+        return {
+          gradient: "from-amber-500 to-orange-500",
+          glow: "shadow-amber-500/30",
+          bgLight: "bg-amber-50",
+          icon: "🔢",
+        };
+      case "geography":
+        return {
+          gradient: "from-emerald-500 to-teal-600",
+          glow: "shadow-emerald-500/30",
+          bgLight: "bg-emerald-50",
+          icon: "🌏",
+        };
+      case "history":
+        return {
+          gradient: "from-amber-700 to-yellow-600",
+          glow: "shadow-amber-700/30",
+          bgLight: "bg-amber-50",
+          icon: "🏛️",
+        };
+      case "science-technology":
+        return {
+          gradient: "from-cyan-500 to-blue-600",
+          glow: "shadow-cyan-500/30",
+          bgLight: "bg-cyan-50",
+          icon: "🔬",
+        };
       default:
-        return "subject-card-ochre";
+        return {
+          gradient: "from-ochre to-ochre-light",
+          glow: "shadow-ochre/30",
+          bgLight: "bg-ochre/10",
+          icon: "📚",
+        };
     }
+  };
+
+  // Check if subject requires Champion tier
+  const isSubjectLocked = (slug: string) => {
+    const freeSubjects = ["english", "mathematics"];
+    return isExplorer && !freeSubjects.includes(slug);
   };
 
   const missionsThisWeek = profile?.missions_this_week || 0;
@@ -320,38 +363,69 @@ export default function Dashboard() {
           <MirriSuggestion message={mirriMessage} />
         </section>
 
-        {/* Subject Cards - Compact Grid */}
+        {/* Subject Cards - Flip Cards */}
         <section className="animate-slide-up stagger-5">
-          <h2 className="text-xl font-display font-bold mb-4 text-foreground">
-            Choose Your Training 🎯
+          <h2 className="text-xl font-display font-bold mb-5 text-foreground flex items-center gap-2">
+            <Star className="w-5 h-5 text-ochre" />
+            Choose Your Training
           </h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
-            {subjects.map((subject, index) => (
-              <button
-                key={subject.id}
-                onClick={() => navigate(`/subject/${subject.slug}`)}
-                className={`group subject-tile ${getSubjectCardClass(subject.color)} text-left transition-all active:scale-[0.98]`}
-                style={{ animationDelay: `${0.05 * (index + 1)}s` }}
-              >
-                <div className="flex flex-col items-center text-center p-4 md:p-5">
-                  <span className="text-4xl md:text-5xl mb-2 group-hover:scale-110 transition-transform duration-200">{subject.emoji}</span>
-                  <h3 className="text-base md:text-lg font-display font-bold leading-tight">{subject.name}</h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            {subjects.map((subject, index) => {
+              const theme = getSubjectTheme(subject.slug);
+              const locked = isSubjectLocked(subject.slug);
+              const xp = subjectXps[subject.id] || 0;
+              
+              return (
+                <div
+                  key={subject.id}
+                  className="flip-card h-40 md:h-48 perspective-1000"
+                  style={{ animationDelay: `${0.05 * (index + 1)}s` }}
+                >
+                  <button
+                    onClick={() => !locked && navigate(`/subject/${subject.slug}`)}
+                    disabled={locked}
+                    className={`flip-card-inner w-full h-full relative transition-transform duration-500 transform-style-3d ${locked ? 'cursor-not-allowed' : 'cursor-pointer'} group`}
+                  >
+                    {/* Front of card */}
+                    <div className={`flip-card-front absolute inset-0 rounded-2xl bg-gradient-to-br ${theme.gradient} text-white flex flex-col items-center justify-center p-4 backface-hidden shadow-lg ${theme.glow} ${locked ? 'opacity-60' : ''}`}>
+                      <span className="text-5xl md:text-6xl mb-3 drop-shadow-lg">{subject.emoji}</span>
+                      <h3 className="text-base md:text-lg font-display font-bold text-center leading-tight drop-shadow-sm">{subject.name}</h3>
+                      {locked && (
+                        <div className="absolute top-3 right-3 w-7 h-7 bg-black/30 backdrop-blur-sm rounded-full flex items-center justify-center">
+                          <Crown className="w-4 h-4 text-yellow-300" />
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Back of card */}
+                    <div className={`flip-card-back absolute inset-0 rounded-2xl bg-card border-2 ${locked ? 'border-muted' : 'border-primary/20'} flex flex-col items-center justify-center p-4 backface-hidden rotate-y-180 shadow-lg`}>
+                      {locked ? (
+                        <>
+                          <Crown className="w-10 h-10 text-amber-500 mb-2" />
+                          <p className="font-display font-bold text-sm text-foreground mb-1">Champion Only</p>
+                          <p className="text-xs text-muted-foreground text-center">Upgrade to unlock {subject.name}</p>
+                        </>
+                      ) : (
+                        <>
+                          <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${theme.gradient} flex items-center justify-center mb-3 shadow-md`}>
+                            <Zap className="w-6 h-6 text-white" />
+                          </div>
+                          <p className="font-display font-bold text-lg text-foreground">
+                            {xp > 0 ? `${xp.toLocaleString()} XP` : "Start Fresh!"}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1 mb-3">
+                            {xp > 0 ? "Keep building your skills" : "Begin your journey"}
+                          </p>
+                          <span className={`px-4 py-1.5 rounded-full bg-gradient-to-r ${theme.gradient} text-white text-sm font-bold shadow-md`}>
+                            Train →
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </button>
                 </div>
-                {/* Expandable details on hover */}
-                <div className="subject-tile-details">
-                  <div className="flex items-center justify-between text-xs md:text-sm opacity-90">
-                    <span className="font-medium">
-                      {subjectXps[subject.id] > 0 
-                        ? `${subjectXps[subject.id].toLocaleString()} XP` 
-                        : "Not started"}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      Train →
-                    </span>
-                  </div>
-                </div>
-              </button>
-            ))}
+              );
+            })}
           </div>
         </section>
 
