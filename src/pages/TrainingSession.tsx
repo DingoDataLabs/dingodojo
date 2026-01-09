@@ -4,13 +4,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Send, Sparkles, CheckCircle, Loader2, ChevronRight, HelpCircle } from "lucide-react";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
 import { getSydneyWeekStart, isNewWeek } from "@/lib/weekUtils";
 import { MirriChatDrawer } from "@/components/MirriChatDrawer";
 import { useIsMobile } from "@/hooks/use-mobile";
-
+import { getMasteryLevel } from "@/lib/progressUtils";
 interface Topic {
   id: string;
   name: string;
@@ -27,11 +28,25 @@ interface Subject {
 
 interface CheckQuestion {
   question: string;
-  options: string[];
-  correct_answer: number;
+  options?: string[];
+  correct_answer?: number;
   hint: string;
   explanation: string;
   points?: number;
+  type?: "multiple_choice" | "free_text";
+  assessment_criteria?: string[];
+  example_elements?: string[];
+  max_words?: number;
+  min_words?: number;
+}
+
+interface FreeTextFeedback {
+  score: number;
+  maxScore: number;
+  feedback: string;
+  strengths: string[];
+  improvements: string[];
+  overallRating: string;
 }
 
 interface LessonSection {
@@ -43,6 +58,11 @@ interface LessonSection {
   correct_answer?: number;
   hint?: string;
   explanation?: string;
+  question_type?: "multiple_choice" | "free_text";
+  assessment_criteria?: string[];
+  example_elements?: string[];
+  max_words?: number;
+  min_words?: number;
 }
 
 interface FinalChallenge {
@@ -112,6 +132,11 @@ export default function TrainingSession() {
   const [challengeAttempts, setChallengeAttempts] = useState<Record<number, number>>({});
   const [earnedXp, setEarnedXp] = useState(0);
   const [missionComplete, setMissionComplete] = useState(false);
+
+  // Free-text state
+  const [freeTextAnswers, setFreeTextAnswers] = useState<Record<string, string>>({});
+  const [freeTextFeedback, setFreeTextFeedback] = useState<Record<string, FreeTextFeedback>>({});
+  const [assessingFreeText, setAssessingFreeText] = useState<Record<string, boolean>>({});
 
   // Chat state
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -208,13 +233,17 @@ export default function TrainingSession() {
         setTopicXp(xp);
       }
 
-      // Check for existing generated module
+      // Calculate the student's current difficulty level from their XP
+      const xp = profileData?.id ? await fetchTopicXp(topicData.id, profileData.id) : 0;
+      setTopicXp(xp);
+      const difficultyLevel = getMasteryLevel(xp).name;
+
+      // Check for existing generated module at this difficulty level
       const { data: moduleData } = await supabase
         .from("generated_modules")
-        .select("content_json")
+        .select("content_json, difficulty_level")
         .eq("topic_id", topicData.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
+        .eq("difficulty_level", difficultyLevel)
         .maybeSingle();
 
       if (moduleData?.content_json) {
@@ -222,13 +251,14 @@ export default function TrainingSession() {
         // Check if it's the new format with sections
         if (content.sections && content.final_challenge) {
           setLessonContent(content);
+          setLoading(false);
         } else {
           // Old format, regenerate
-          await generateLesson(topicData, subjectData, profileData?.grade_level, profileData?.id ? await fetchTopicXp(topicData.id, profileData.id) : 0);
+          await generateLesson(topicData, subjectData, profileData?.grade_level, xp);
         }
-        setLoading(false);
       } else {
-        await generateLesson(topicData, subjectData, profileData?.grade_level, topicXp);
+        // No cached lesson at this level - generate new content
+        await generateLesson(topicData, subjectData, profileData?.grade_level, xp);
       }
     } catch (err) {
       console.error("Error:", err);
@@ -254,10 +284,14 @@ export default function TrainingSession() {
       if (data?.content) {
         setLessonContent(data.content);
 
-        // Save to database
-        await supabase.from("generated_modules").insert({
+        // Save to database with difficulty level for XP-based caching
+        const difficultyLevel = data.difficultyLevel || getMasteryLevel(xp || 0).name;
+        await supabase.from("generated_modules").upsert({
           topic_id: topicData.id,
           content_json: data.content,
+          difficulty_level: difficultyLevel,
+        }, {
+          onConflict: "topic_id,difficulty_level",
         });
       }
     } catch (err) {
@@ -375,6 +409,72 @@ export default function TrainingSession() {
       
       setChallengeAnswers(prev => ({ ...prev, [questionIdx]: null }));
     }
+  };
+
+  const submitFreeTextAnswer = async (questionIdx: number) => {
+    const question = lessonContent?.final_challenge.questions[questionIdx];
+    if (!question) return;
+
+    const key = `challenge_${questionIdx}`;
+    const studentResponse = freeTextAnswers[key];
+    
+    if (!studentResponse || studentResponse.trim().length === 0) {
+      toast.error("Please write your response first!");
+      return;
+    }
+
+    const wordCount = studentResponse.trim().split(/\s+/).filter(w => w.length > 0).length;
+    const minWords = question.min_words || 50;
+    
+    if (wordCount < minWords) {
+      toast.error(`Your response needs at least ${minWords} words. You've written ${wordCount}.`);
+      return;
+    }
+
+    setAssessingFreeText(prev => ({ ...prev, [key]: true }));
+
+    try {
+      const { data, error } = await supabase.functions.invoke("assess-writing", {
+        body: {
+          studentResponse,
+          question: question.question,
+          assessmentCriteria: question.assessment_criteria,
+          exampleElements: question.example_elements,
+          minWords: question.min_words || 50,
+          maxWords: question.max_words || 200,
+          maxPoints: question.points || 50,
+          gradeLevel: profile?.grade_level,
+          topicName: topic?.name,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.assessment) {
+        setFreeTextFeedback(prev => ({ ...prev, [key]: data.assessment }));
+        setChallengeCompleted(prev => ({ ...prev, [questionIdx]: true }));
+        setEarnedXp(prev => prev + (data.assessment.score || 0));
+        toast.success(`${data.assessment.overallRating} +${data.assessment.score} XP ✍️`);
+
+        // Move to next question if there is one
+        if (questionIdx < lessonContent!.final_challenge.questions.length - 1) {
+          setTimeout(() => setCurrentChallengeIndex(questionIdx + 1), 2000);
+        }
+      }
+    } catch (err) {
+      console.error("Assessment error:", err);
+      toast.error("Couldn't assess your writing. Please try again!");
+    } finally {
+      setAssessingFreeText(prev => ({ ...prev, [key]: false }));
+    }
+  };
+
+  const handleFreeTextChange = (key: string, value: string) => {
+    setFreeTextAnswers(prev => ({ ...prev, [key]: value }));
+  };
+
+  const getWordCount = (text: string): number => {
+    return text.trim().split(/\s+/).filter(w => w.length > 0).length;
   };
 
   const allChallengesComplete = () => {
@@ -720,59 +820,175 @@ export default function TrainingSession() {
             </div>
             <p className="font-medium text-foreground mb-4">{question.question}</p>
 
-            <div className="space-y-2 mb-4">
-              {question.options.map((option, index) => {
-                const isCorrect = index === question.correct_answer;
-                const isSelected = selectedAnswer === index;
+            {/* Free-text question */}
+            {question.type === "free_text" ? (
+              <div className="space-y-4">
+                {question.assessment_criteria && (
+                  <div className="bg-sky/10 border border-sky/20 rounded-xl p-3 text-sm">
+                    <p className="font-semibold text-sky mb-2">What we're looking for:</p>
+                    <ul className="list-disc list-inside text-foreground/80 space-y-1">
+                      {question.assessment_criteria.map((criteria, i) => (
+                        <li key={i}>{criteria}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
-                return (
-                  <button
-                    key={index}
-                    onClick={() => handleChallengeAnswer(currentChallengeIndex, index)}
-                    disabled={isCompleted}
-                    className={`w-full p-4 rounded-xl text-left font-medium transition-all ${
-                      isCompleted
-                        ? isCorrect
-                          ? "bg-eucalyptus text-eucalyptus-foreground"
-                          : "bg-muted text-muted-foreground"
-                        : isSelected
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted hover:bg-muted/80 text-foreground"
-                    }`}
-                  >
-                    <span className="mr-2">{String.fromCharCode(65 + index)}.</span>
-                    {option}
-                  </button>
-                );
-              })}
-            </div>
-
-            {showHint && !isCompleted && (
-              <div className="bg-ochre/10 border border-ochre/20 rounded-xl p-4 mb-4 animate-slide-up">
-                <div className="flex items-start gap-2">
-                  <HelpCircle className="w-5 h-5 text-ochre flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-semibold text-sm text-ochre mb-1">Hint:</p>
-                    <p className="text-foreground/80">{question.hint}</p>
+                <div className="relative">
+                  <Textarea
+                    value={freeTextAnswers[`challenge_${currentChallengeIndex}`] || ""}
+                    onChange={(e) => handleFreeTextChange(`challenge_${currentChallengeIndex}`, e.target.value)}
+                    placeholder="Write your response here..."
+                    className="min-h-[200px] resize-none"
+                    disabled={isCompleted || assessingFreeText[`challenge_${currentChallengeIndex}`]}
+                  />
+                  <div className="absolute bottom-2 right-2 text-xs text-muted-foreground">
+                    {getWordCount(freeTextAnswers[`challenge_${currentChallengeIndex}`] || "")} / {question.min_words || 50}-{question.max_words || 200} words
                   </div>
                 </div>
-              </div>
-            )}
 
-            {!isCompleted && (
-              <Button
-                onClick={() => checkChallengeAnswer(currentChallengeIndex)}
-                className="w-full h-12 text-lg font-bold rounded-xl"
-                disabled={selectedAnswer === null || selectedAnswer === undefined}
-              >
-                Check Answer
-              </Button>
-            )}
+                {showHint && !isCompleted && (
+                  <div className="bg-ochre/10 border border-ochre/20 rounded-xl p-4 animate-slide-up">
+                    <div className="flex items-start gap-2">
+                      <HelpCircle className="w-5 h-5 text-ochre flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold text-sm text-ochre mb-1">Writing Tip:</p>
+                        <p className="text-foreground/80">{question.hint}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
-            {isCompleted && (
-              <div className="bg-eucalyptus/10 border border-eucalyptus/20 p-4 rounded-xl">
-                <p className="text-foreground">{question.explanation}</p>
+                {!isCompleted && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowChallengeHint(prev => ({ ...prev, [currentChallengeIndex]: true }))}
+                      className="flex-shrink-0"
+                      disabled={showHint}
+                    >
+                      <HelpCircle className="w-4 h-4 mr-2" />
+                      Get a Tip
+                    </Button>
+                    <Button
+                      onClick={() => submitFreeTextAnswer(currentChallengeIndex)}
+                      className="flex-1 h-12 text-lg font-bold rounded-xl"
+                      disabled={assessingFreeText[`challenge_${currentChallengeIndex}`] || !freeTextAnswers[`challenge_${currentChallengeIndex}`]}
+                    >
+                      {assessingFreeText[`challenge_${currentChallengeIndex}`] ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                          Mirri is reading...
+                        </>
+                      ) : (
+                        "Submit Writing ✍️"
+                      )}
+                    </Button>
+                  </div>
+                )}
+
+                {/* Free-text feedback */}
+                {isCompleted && freeTextFeedback[`challenge_${currentChallengeIndex}`] && (
+                  <div className="space-y-3 animate-slide-up">
+                    <div className="bg-eucalyptus/10 border border-eucalyptus/20 rounded-xl p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-2xl">{
+                          freeTextFeedback[`challenge_${currentChallengeIndex}`].overallRating === "Fantastic!" ? "🌟" :
+                          freeTextFeedback[`challenge_${currentChallengeIndex}`].overallRating === "Great Work!" ? "⭐" :
+                          freeTextFeedback[`challenge_${currentChallengeIndex}`].overallRating === "Good Effort!" ? "👍" : "💪"
+                        }</span>
+                        <span className="font-bold text-eucalyptus text-lg">
+                          {freeTextFeedback[`challenge_${currentChallengeIndex}`].overallRating}
+                        </span>
+                        <span className="text-sm font-medium text-foreground">
+                          +{freeTextFeedback[`challenge_${currentChallengeIndex}`].score}/{freeTextFeedback[`challenge_${currentChallengeIndex}`].maxScore} XP
+                        </span>
+                      </div>
+                      <p className="text-foreground mb-3">{freeTextFeedback[`challenge_${currentChallengeIndex}`].feedback}</p>
+                      
+                      {freeTextFeedback[`challenge_${currentChallengeIndex}`].strengths.length > 0 && (
+                        <div className="mb-2">
+                          <p className="font-semibold text-sm text-eucalyptus mb-1">✓ What you did well:</p>
+                          <ul className="text-sm text-foreground/80 list-disc list-inside">
+                            {freeTextFeedback[`challenge_${currentChallengeIndex}`].strengths.map((s, i) => (
+                              <li key={i}>{s}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      
+                      {freeTextFeedback[`challenge_${currentChallengeIndex}`].improvements.length > 0 && (
+                        <div>
+                          <p className="font-semibold text-sm text-sky mb-1">💡 Next time, try:</p>
+                          <ul className="text-sm text-foreground/80 list-disc list-inside">
+                            {freeTextFeedback[`challenge_${currentChallengeIndex}`].improvements.map((s, i) => (
+                              <li key={i}>{s}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
+            ) : (
+              /* Multiple choice question */
+              <>
+                <div className="space-y-2 mb-4">
+                  {question.options?.map((option, index) => {
+                    const isCorrect = index === question.correct_answer;
+                    const isSelected = selectedAnswer === index;
+
+                    return (
+                      <button
+                        key={index}
+                        onClick={() => handleChallengeAnswer(currentChallengeIndex, index)}
+                        disabled={isCompleted}
+                        className={`w-full p-4 rounded-xl text-left font-medium transition-all ${
+                          isCompleted
+                            ? isCorrect
+                              ? "bg-eucalyptus text-eucalyptus-foreground"
+                              : "bg-muted text-muted-foreground"
+                            : isSelected
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted hover:bg-muted/80 text-foreground"
+                        }`}
+                      >
+                        <span className="mr-2">{String.fromCharCode(65 + index)}.</span>
+                        {option}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {showHint && !isCompleted && (
+                  <div className="bg-ochre/10 border border-ochre/20 rounded-xl p-4 mb-4 animate-slide-up">
+                    <div className="flex items-start gap-2">
+                      <HelpCircle className="w-5 h-5 text-ochre flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold text-sm text-ochre mb-1">Hint:</p>
+                        <p className="text-foreground/80">{question.hint}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {!isCompleted && (
+                  <Button
+                    onClick={() => checkChallengeAnswer(currentChallengeIndex)}
+                    className="w-full h-12 text-lg font-bold rounded-xl"
+                    disabled={selectedAnswer === null || selectedAnswer === undefined}
+                  >
+                    Check Answer
+                  </Button>
+                )}
+
+                {isCompleted && (
+                  <div className="bg-eucalyptus/10 border border-eucalyptus/20 p-4 rounded-xl">
+                    <p className="text-foreground">{question.explanation}</p>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}

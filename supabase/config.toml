@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.chat-tutor]
 verify_jwt = false
+
+[functions.assess-writing]
+verify_jwt = false

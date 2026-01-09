@@ -60,18 +60,21 @@ export type Database = {
         Row: {
           content_json: Json
           created_at: string
+          difficulty_level: string
           id: string
           topic_id: string
         }
         Insert: {
           content_json: Json
           created_at?: string
+          difficulty_level?: string
           id?: string
           topic_id: string
         }
         Update: {
           content_json?: Json
           created_at?: string
+          difficulty_level?: string
           id?: string
           topic_id?: string
         }
