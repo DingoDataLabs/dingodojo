@@ -56,8 +56,9 @@ serve(async (req) => {
     const difficulty = getDifficultyLevel(topicXp || 0);
     const yearLevel = gradeLevel || "Year 5";
     const isMaths = subjectSlug === "maths" || subjectSlug === "mathematics";
+    const isEnglish = subjectSlug === "english";
 
-    console.log(`Generating lesson for: ${topicName}, Grade: ${yearLevel}, XP: ${topicXp}, Difficulty: ${difficulty.level}`);
+    console.log(`Generating lesson for: ${topicName}, Grade: ${yearLevel}, XP: ${topicXp}, Difficulty: ${difficulty.level}, Subject: ${subjectSlug}`);
 
     const systemPrompt = `You are an expert educational content creator for Australian primary school students (NSW ${yearLevel}, Stage 3). 
 Create engaging, age-appropriate educational content that builds understanding progressively.
@@ -68,7 +69,42 @@ Keep language simple but not condescending.
 ${isMaths ? NSW_MATHS_CURRICULUM : ""}
 
 CURRENT STUDENT PERFORMANCE LEVEL: ${difficulty.level}
-This means you should be ${difficulty.description}.`;
+This means you should be ${difficulty.description}.
+
+${isEnglish ? `IMPORTANT FOR ENGLISH LESSONS: Include at least one FREE-TEXT writing question in the final challenge where students must write a creative response. This is essential for developing writing skills.` : ''}`;
+
+    // Determine free-text word limits based on difficulty level
+    const freeTextWordLimits: Record<string, { min: number; max: number }> = {
+      "Beginning": { min: 50, max: 100 },
+      "Developing": { min: 100, max: 150 },
+      "Consolidating": { min: 150, max: 200 },
+      "Extending": { min: 200, max: 250 },
+      "Mastering": { min: 250, max: 300 },
+    };
+    const wordLimits = freeTextWordLimits[difficulty.level] || { min: 100, max: 150 };
+
+    const freeTextInstructions = isEnglish ? `
+
+FOR ENGLISH LESSONS - FREE-TEXT WRITING QUESTIONS:
+Include at least ONE free-text question in the final_challenge where students write a creative response.
+Free-text questions should use this structure:
+{
+  "type": "free_text",
+  "question": "Write a short ${wordLimits.min}-${wordLimits.max} word story/paragraph about [creative prompt related to the lesson topic]",
+  "assessment_criteria": [
+    "Clear structure (beginning, middle, end)",
+    "Use of descriptive language",
+    "Correct spelling and punctuation",
+    "Creative and original ideas"
+  ],
+  "example_elements": ["setting description", "character feelings", "dialogue", "sensory details"],
+  "min_words": ${wordLimits.min},
+  "max_words": ${wordLimits.max},
+  "hint": "Think about [guidance for the writing task]",
+  "explanation": "This writing task helps you practise [skill being developed]",
+  "points": 50
+}
+` : '';
 
     const userPrompt = `Create an interactive lesson module for "${topicName}" for a ${yearLevel} Australian student (NSW Stage 3).
 
@@ -76,7 +112,7 @@ The student's current XP on this topic is ${topicXp || 0}, placing them at the "
 Adjust the complexity and challenge accordingly - ${difficulty.description}.
 
 IMPORTANT: This lesson must be INTERACTIVE with multiple checkpoints to verify understanding before progressing.
-
+${freeTextInstructions}
 Return ONLY a valid JSON object with this exact structure (no markdown, no code blocks, just the JSON):
 {
   "title": "An engaging title for the lesson",
@@ -91,6 +127,7 @@ Return ONLY a valid JSON object with this exact structure (no markdown, no code 
     },
     {
       "type": "check",
+      "question_type": "multiple_choice",
       "question": "A quick comprehension check question about what was just taught",
       "options": ["Option A", "Option B", "Option C", "Option D"],
       "correct_answer": 0,
@@ -104,6 +141,7 @@ Return ONLY a valid JSON object with this exact structure (no markdown, no code 
     },
     {
       "type": "check",
+      "question_type": "multiple_choice",
       "question": "Another comprehension check",
       "options": ["Option A", "Option B", "Option C", "Option D"],
       "correct_answer": 0,
@@ -116,6 +154,7 @@ Return ONLY a valid JSON object with this exact structure (no markdown, no code 
     "description": "A brief intro to the final challenge",
     "questions": [
       {
+        "type": "multiple_choice",
         "question": "A more challenging question that requires applying what was learned",
         "options": ["Option A", "Option B", "Option C", "Option D"],
         "correct_answer": 0,
@@ -124,6 +163,7 @@ Return ONLY a valid JSON object with this exact structure (no markdown, no code 
         "points": 20
       },
       {
+        "type": "multiple_choice",
         "question": "Another challenging question, possibly multi-step or requiring reasoning",
         "options": ["Option A", "Option B", "Option C", "Option D"],
         "correct_answer": 0,
@@ -142,7 +182,8 @@ Guidelines:
 - Hints should guide thinking, not reveal answers (e.g., "Think about what happens when..." not "The answer is...")
 - For "${difficulty.level}" level, ${difficulty.description}
 - Use Australian contexts: kilometres not miles, dollars not pounds, local wildlife, sports like cricket or AFL
-- Make questions progressively harder within the module`;
+- Make questions progressively harder within the module
+${isEnglish ? '- IMPORTANT: Include at least one free-text writing question in the final_challenge with type: "free_text"' : ''}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -210,7 +251,7 @@ Guidelines:
     console.log("Parsed lesson content:", lessonContent);
 
     return new Response(
-      JSON.stringify({ success: true, content: lessonContent }),
+      JSON.stringify({ success: true, content: lessonContent, difficultyLevel: difficulty.level }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
