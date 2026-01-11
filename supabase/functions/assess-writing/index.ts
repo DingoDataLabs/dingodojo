@@ -1,8 +1,100 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+// Input validation schema
+const validateInput = (data: unknown): { valid: boolean; error?: string; data?: {
+  studentResponse: string;
+  question: string;
+  assessmentCriteria?: string[];
+  exampleElements?: string[];
+  minWords?: number;
+  maxWords?: number;
+  maxPoints?: number;
+  gradeLevel?: string;
+  topicName?: string;
+}} => {
+  if (!data || typeof data !== 'object') {
+    return { valid: false, error: 'Invalid request body' };
+  }
+
+  const body = data as Record<string, unknown>;
+
+  // Required fields
+  if (typeof body.studentResponse !== 'string' || body.studentResponse.length < 10) {
+    return { valid: false, error: 'Student response must be at least 10 characters' };
+  }
+  if (body.studentResponse.length > 10000) {
+    return { valid: false, error: 'Student response exceeds maximum length of 10000 characters' };
+  }
+
+  if (typeof body.question !== 'string' || body.question.length < 5) {
+    return { valid: false, error: 'Question must be at least 5 characters' };
+  }
+  if (body.question.length > 2000) {
+    return { valid: false, error: 'Question exceeds maximum length of 2000 characters' };
+  }
+
+  // Optional array fields
+  if (body.assessmentCriteria !== undefined) {
+    if (!Array.isArray(body.assessmentCriteria) || body.assessmentCriteria.length > 20) {
+      return { valid: false, error: 'Assessment criteria must be an array with max 20 items' };
+    }
+    for (const criterion of body.assessmentCriteria) {
+      if (typeof criterion !== 'string' || criterion.length > 500) {
+        return { valid: false, error: 'Each criterion must be a string with max 500 characters' };
+      }
+    }
+  }
+
+  if (body.exampleElements !== undefined) {
+    if (!Array.isArray(body.exampleElements) || body.exampleElements.length > 20) {
+      return { valid: false, error: 'Example elements must be an array with max 20 items' };
+    }
+    for (const element of body.exampleElements) {
+      if (typeof element !== 'string' || element.length > 200) {
+        return { valid: false, error: 'Each element must be a string with max 200 characters' };
+      }
+    }
+  }
+
+  // Optional numeric fields
+  if (body.minWords !== undefined && (typeof body.minWords !== 'number' || body.minWords < 0 || body.minWords > 1000)) {
+    return { valid: false, error: 'minWords must be a number between 0 and 1000' };
+  }
+  if (body.maxWords !== undefined && (typeof body.maxWords !== 'number' || body.maxWords < 1 || body.maxWords > 5000)) {
+    return { valid: false, error: 'maxWords must be a number between 1 and 5000' };
+  }
+  if (body.maxPoints !== undefined && (typeof body.maxPoints !== 'number' || body.maxPoints < 1 || body.maxPoints > 100)) {
+    return { valid: false, error: 'maxPoints must be a number between 1 and 100' };
+  }
+
+  // Optional string fields
+  if (body.gradeLevel !== undefined && (typeof body.gradeLevel !== 'string' || body.gradeLevel.length > 50)) {
+    return { valid: false, error: 'gradeLevel must be a string with max 50 characters' };
+  }
+  if (body.topicName !== undefined && (typeof body.topicName !== 'string' || body.topicName.length > 200)) {
+    return { valid: false, error: 'topicName must be a string with max 200 characters' };
+  }
+
+  return {
+    valid: true,
+    data: {
+      studentResponse: body.studentResponse as string,
+      question: body.question as string,
+      assessmentCriteria: body.assessmentCriteria as string[] | undefined,
+      exampleElements: body.exampleElements as string[] | undefined,
+      minWords: body.minWords as number | undefined,
+      maxWords: body.maxWords as number | undefined,
+      maxPoints: body.maxPoints as number | undefined,
+      gradeLevel: body.gradeLevel as string | undefined,
+      topicName: body.topicName as string | undefined,
+    }
+  };
 };
 
 serve(async (req) => {
@@ -11,21 +103,50 @@ serve(async (req) => {
   }
 
   try {
-    const { 
-      studentResponse, 
-      question, 
-      assessmentCriteria, 
-      exampleElements,
-      minWords,
-      maxWords,
-      maxPoints,
-      gradeLevel,
-      topicName
-    } = await req.json();
-
-    if (!studentResponse || !question) {
-      throw new Error("Student response and question are required");
+    // Authentication check
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
+
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Parse and validate input
+    let rawBody: unknown;
+    try {
+      rawBody = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON in request body' }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const validation = validateInput(rawBody);
+    if (!validation.valid || !validation.data) {
+      return new Response(
+        JSON.stringify({ error: validation.error }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { studentResponse, question, assessmentCriteria, exampleElements, minWords, maxWords, maxPoints, gradeLevel, topicName } = validation.data;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -34,8 +155,6 @@ serve(async (req) => {
 
     const wordCount = studentResponse.trim().split(/\s+/).filter((w: string) => w.length > 0).length;
     const yearLevel = gradeLevel || "Year 5";
-
-    console.log(`Assessing writing for: ${topicName}, Words: ${wordCount}, Grade: ${yearLevel}`);
 
     const systemPrompt = `You are a warm, encouraging Australian primary school teacher assessing a ${yearLevel} student's creative writing.
 Your role is to provide constructive, age-appropriate feedback that celebrates what they did well while gently guiding improvement.
@@ -93,9 +212,6 @@ Be generous and encouraging - this is a learning exercise!`;
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      
       if (response.status === 429) {
         return new Response(
           JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }),
@@ -119,8 +235,6 @@ Be generous and encouraging - this is a learning exercise!`;
       throw new Error("No content received from AI");
     }
 
-    console.log("Raw AI assessment:", content);
-
     let assessment;
     try {
       let jsonStr = content.trim();
@@ -133,8 +247,7 @@ Be generous and encouraging - this is a learning exercise!`;
         jsonStr = jsonStr.slice(0, -3);
       }
       assessment = JSON.parse(jsonStr.trim());
-    } catch (parseError) {
-      console.error("Failed to parse AI response:", parseError);
+    } catch {
       // Fallback assessment
       assessment = {
         score: Math.round((maxPoints || 50) * 0.7),
@@ -154,7 +267,7 @@ Be generous and encouraging - this is a learning exercise!`;
     console.error("Error assessing writing:", error);
     return new Response(
       JSON.stringify({ 
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: "An error occurred while processing your request",
         success: false 
       }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

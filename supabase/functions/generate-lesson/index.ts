@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -27,6 +28,56 @@ NSW Mathematics Stage 3 (Years 5 & 6) Curriculum Structure:
 - Chance: List outcomes, represent probability as fraction/decimal/percentage
 `;
 
+// Input validation
+const validateInput = (data: unknown): { valid: boolean; error?: string; data?: {
+  topicName: string;
+  topicEmoji?: string;
+  gradeLevel?: string;
+  topicXp?: number;
+  subjectSlug?: string;
+}} => {
+  if (!data || typeof data !== 'object') {
+    return { valid: false, error: 'Invalid request body' };
+  }
+
+  const body = data as Record<string, unknown>;
+
+  // Required: topicName
+  if (typeof body.topicName !== 'string' || body.topicName.length < 1) {
+    return { valid: false, error: 'topicName is required' };
+  }
+  if (body.topicName.length > 200) {
+    return { valid: false, error: 'topicName exceeds maximum length of 200 characters' };
+  }
+
+  // Optional string fields
+  if (body.topicEmoji !== undefined && (typeof body.topicEmoji !== 'string' || body.topicEmoji.length > 10)) {
+    return { valid: false, error: 'topicEmoji must be a string with max 10 characters' };
+  }
+  if (body.gradeLevel !== undefined && (typeof body.gradeLevel !== 'string' || body.gradeLevel.length > 50)) {
+    return { valid: false, error: 'gradeLevel must be a string with max 50 characters' };
+  }
+  if (body.subjectSlug !== undefined && (typeof body.subjectSlug !== 'string' || body.subjectSlug.length > 50)) {
+    return { valid: false, error: 'subjectSlug must be a string with max 50 characters' };
+  }
+
+  // Optional numeric field
+  if (body.topicXp !== undefined && (typeof body.topicXp !== 'number' || body.topicXp < 0 || body.topicXp > 100000)) {
+    return { valid: false, error: 'topicXp must be a number between 0 and 100000' };
+  }
+
+  return {
+    valid: true,
+    data: {
+      topicName: body.topicName as string,
+      topicEmoji: body.topicEmoji as string | undefined,
+      gradeLevel: body.gradeLevel as string | undefined,
+      topicXp: body.topicXp as number | undefined,
+      subjectSlug: body.subjectSlug as string | undefined,
+    }
+  };
+};
+
 // Difficulty progression based on XP
 const getDifficultyLevel = (topicXp: number): { level: string; description: string; multiplier: number } => {
   if (topicXp < 50) return { level: "Beginning", description: "introducing core concepts with concrete examples", multiplier: 1 };
@@ -42,11 +93,50 @@ serve(async (req) => {
   }
 
   try {
-    const { topicName, topicEmoji, gradeLevel, topicXp, subjectSlug } = await req.json();
-
-    if (!topicName) {
-      throw new Error("Topic name is required");
+    // Authentication check
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
+
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Parse and validate input
+    let rawBody: unknown;
+    try {
+      rawBody = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON in request body' }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const validation = validateInput(rawBody);
+    if (!validation.valid || !validation.data) {
+      return new Response(
+        JSON.stringify({ error: validation.error }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { topicName, topicEmoji, gradeLevel, topicXp, subjectSlug } = validation.data;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -57,8 +147,6 @@ serve(async (req) => {
     const yearLevel = gradeLevel || "Year 5";
     const isMaths = subjectSlug === "maths" || subjectSlug === "mathematics";
     const isEnglish = subjectSlug === "english";
-
-    console.log(`Generating lesson for: ${topicName}, Grade: ${yearLevel}, XP: ${topicXp}, Difficulty: ${difficulty.level}, Subject: ${subjectSlug}`);
 
     const systemPrompt = `You are an expert educational content creator for Australian primary school students (NSW ${yearLevel}, Stage 3). 
 Create engaging, age-appropriate educational content that builds understanding progressively.
@@ -203,9 +291,6 @@ ${isEnglish ? '- IMPORTANT: Include at least one free-text writing question in t
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      
       if (response.status === 429) {
         return new Response(
           JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }),
@@ -229,8 +314,6 @@ ${isEnglish ? '- IMPORTANT: Include at least one free-text writing question in t
       throw new Error("No content received from AI");
     }
 
-    console.log("Raw AI response:", content);
-
     let lessonContent;
     try {
       let jsonStr = content.trim();
@@ -243,12 +326,9 @@ ${isEnglish ? '- IMPORTANT: Include at least one free-text writing question in t
         jsonStr = jsonStr.slice(0, -3);
       }
       lessonContent = JSON.parse(jsonStr.trim());
-    } catch (parseError) {
-      console.error("Failed to parse AI response:", parseError);
+    } catch {
       throw new Error("Failed to parse lesson content");
     }
-
-    console.log("Parsed lesson content:", lessonContent);
 
     return new Response(
       JSON.stringify({ success: true, content: lessonContent, difficultyLevel: difficulty.level }),
@@ -258,7 +338,7 @@ ${isEnglish ? '- IMPORTANT: Include at least one free-text writing question in t
     console.error("Error generating lesson:", error);
     return new Response(
       JSON.stringify({ 
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: "An error occurred while processing your request",
         success: false 
       }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
