@@ -1,8 +1,116 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+// Input validation
+interface Message {
+  role: string;
+  content: string;
+}
+
+interface CurrentQuestion {
+  question?: string;
+  options?: string[];
+  correct_answer?: number | string;
+  hint?: string;
+}
+
+const validateInput = (data: unknown): { valid: boolean; error?: string; data?: {
+  messages: Message[];
+  topicName?: string;
+  lessonContent?: { title?: string };
+  currentQuestion?: CurrentQuestion;
+  studentAnswer?: number | string;
+  gradeLevel?: string;
+}} => {
+  if (!data || typeof data !== 'object') {
+    return { valid: false, error: 'Invalid request body' };
+  }
+
+  const body = data as Record<string, unknown>;
+
+  // Required: messages array
+  if (!Array.isArray(body.messages)) {
+    return { valid: false, error: 'Messages must be an array' };
+  }
+  if (body.messages.length > 50) {
+    return { valid: false, error: 'Maximum 50 messages allowed' };
+  }
+
+  for (const msg of body.messages) {
+    if (!msg || typeof msg !== 'object') {
+      return { valid: false, error: 'Each message must be an object' };
+    }
+    const message = msg as Record<string, unknown>;
+    if (typeof message.role !== 'string' || !['user', 'assistant', 'system'].includes(message.role)) {
+      return { valid: false, error: 'Invalid message role' };
+    }
+    if (typeof message.content !== 'string') {
+      return { valid: false, error: 'Message content must be a string' };
+    }
+    if (message.content.length > 5000) {
+      return { valid: false, error: 'Message content exceeds maximum length of 5000 characters' };
+    }
+  }
+
+  // Optional string fields
+  if (body.topicName !== undefined && (typeof body.topicName !== 'string' || body.topicName.length > 200)) {
+    return { valid: false, error: 'topicName must be a string with max 200 characters' };
+  }
+  if (body.gradeLevel !== undefined && (typeof body.gradeLevel !== 'string' || body.gradeLevel.length > 50)) {
+    return { valid: false, error: 'gradeLevel must be a string with max 50 characters' };
+  }
+
+  // Optional lessonContent
+  if (body.lessonContent !== undefined) {
+    if (typeof body.lessonContent !== 'object' || body.lessonContent === null) {
+      return { valid: false, error: 'lessonContent must be an object' };
+    }
+    const lessonContent = body.lessonContent as Record<string, unknown>;
+    if (lessonContent.title !== undefined && (typeof lessonContent.title !== 'string' || lessonContent.title.length > 500)) {
+      return { valid: false, error: 'lessonContent.title must be a string with max 500 characters' };
+    }
+  }
+
+  // Optional currentQuestion
+  if (body.currentQuestion !== undefined) {
+    if (typeof body.currentQuestion !== 'object' || body.currentQuestion === null) {
+      return { valid: false, error: 'currentQuestion must be an object' };
+    }
+    const currentQuestion = body.currentQuestion as Record<string, unknown>;
+    if (currentQuestion.question !== undefined && (typeof currentQuestion.question !== 'string' || currentQuestion.question.length > 2000)) {
+      return { valid: false, error: 'currentQuestion.question must be a string with max 2000 characters' };
+    }
+    if (currentQuestion.options !== undefined) {
+      if (!Array.isArray(currentQuestion.options) || currentQuestion.options.length > 10) {
+        return { valid: false, error: 'currentQuestion.options must be an array with max 10 items' };
+      }
+      for (const opt of currentQuestion.options) {
+        if (typeof opt !== 'string' || opt.length > 500) {
+          return { valid: false, error: 'Each option must be a string with max 500 characters' };
+        }
+      }
+    }
+    if (currentQuestion.hint !== undefined && (typeof currentQuestion.hint !== 'string' || currentQuestion.hint.length > 1000)) {
+      return { valid: false, error: 'currentQuestion.hint must be a string with max 1000 characters' };
+    }
+  }
+
+  return {
+    valid: true,
+    data: {
+      messages: body.messages as Message[],
+      topicName: body.topicName as string | undefined,
+      lessonContent: body.lessonContent as { title?: string } | undefined,
+      currentQuestion: body.currentQuestion as CurrentQuestion | undefined,
+      studentAnswer: body.studentAnswer as number | string | undefined,
+      gradeLevel: body.gradeLevel as string | undefined,
+    }
+  };
 };
 
 serve(async (req) => {
@@ -11,7 +119,50 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, topicName, lessonContent, currentQuestion, studentAnswer, gradeLevel } = await req.json();
+    // Authentication check
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Parse and validate input
+    let rawBody: unknown;
+    try {
+      rawBody = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON in request body' }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const validation = validateInput(rawBody);
+    if (!validation.valid || !validation.data) {
+      return new Response(
+        JSON.stringify({ error: validation.error }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { messages, topicName, lessonContent, currentQuestion, studentAnswer, gradeLevel } = validation.data;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -25,8 +176,8 @@ serve(async (req) => {
 The student is currently working on this question:
 Question: ${currentQuestion.question}
 Options: ${currentQuestion.options?.join(", ") || "N/A"}
-${studentAnswer !== undefined ? `Their answer: ${currentQuestion.options?.[studentAnswer] || studentAnswer}` : "They haven't answered yet."}
-Correct answer: ${currentQuestion.options?.[currentQuestion.correct_answer] || currentQuestion.correct_answer}
+${studentAnswer !== undefined ? `Their answer: ${currentQuestion.options?.[studentAnswer as number] || studentAnswer}` : "They haven't answered yet."}
+Correct answer: ${currentQuestion.options?.[currentQuestion.correct_answer as number] || currentQuestion.correct_answer}
 Hint (use to guide them): ${currentQuestion.hint || "No hint available"}
 
 IMPORTANT: If they got it wrong, DO NOT reveal the correct answer! Instead:
@@ -89,8 +240,6 @@ CRITICAL GUIDELINES:
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
       throw new Error("AI gateway error");
     }
 
@@ -100,7 +249,7 @@ CRITICAL GUIDELINES:
   } catch (error) {
     console.error("Chat tutor error:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      JSON.stringify({ error: "An error occurred while processing your request" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
