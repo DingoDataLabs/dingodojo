@@ -9,9 +9,11 @@ import { ArrowLeft, Send, Sparkles, CheckCircle, Loader2, ChevronRight, HelpCirc
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
 import { getSydneyWeekStart, isNewWeek } from "@/lib/weekUtils";
+import { getSydneyToday, isNewDay, calculateDailyStreak, isDailyLimitReached } from "@/lib/dailyUtils";
 import { MirriChatDrawer } from "@/components/MirriChatDrawer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { getMasteryLevel } from "@/lib/progressUtils";
+
 interface Topic {
   id: string;
   name: string;
@@ -93,6 +95,9 @@ interface Profile {
   subscription_tier: string;
   missions_this_week: number;
   week_start_date: string | null;
+  missions_today: number;
+  last_mission_date: string | null;
+  daily_streak: number;
 }
 
 interface StudentProgress {
@@ -170,23 +175,28 @@ export default function TrainingSession() {
   const fetchProfile = async () => {
     const { data } = await supabase
       .from("profiles")
-      .select("id, total_xp, grade_level, subscription_tier, missions_this_week, week_start_date")
+      .select("id, total_xp, grade_level, subscription_tier, missions_this_week, week_start_date, missions_today, last_mission_date, daily_streak")
       .eq("user_id", user?.id)
       .maybeSingle();
     
     if (data) {
-      // Check mission limit for Explorer tier
-      const currentWeekStart = getSydneyWeekStart();
-      const profileIsNewWeek = isNewWeek(data.week_start_date);
-      const effectiveMissions = profileIsNewWeek ? 0 : (data.missions_this_week || 0);
+      const today = getSydneyToday();
+      const profileIsNewDay = isNewDay(data.last_mission_date);
+      const effectiveMissionsToday = profileIsNewDay ? 0 : (data.missions_today || 0);
       
-      if (data.subscription_tier !== "champion" && effectiveMissions >= 5) {
-        toast.error("You've completed all 5 missions this week! Come back next week or upgrade to Champion.");
+      // Check daily mission limit for Explorer tier (2 per day)
+      if (data.subscription_tier !== "champion" && isDailyLimitReached(effectiveMissionsToday)) {
+        toast.error("You've completed your 2 missions for today! Come back tomorrow or upgrade to Champion.");
         navigate("/dashboard");
         return;
       }
       
-      setProfile(data);
+      setProfile({
+        ...data,
+        missions_today: data.missions_today || 0,
+        last_mission_date: data.last_mission_date || null,
+        daily_streak: data.daily_streak || 0,
+      });
     }
   };
 
@@ -223,12 +233,17 @@ export default function TrainingSession() {
       // Get profile first to fetch topic XP
       const { data: profileData } = await supabase
         .from("profiles")
-        .select("id, total_xp, grade_level, subscription_tier, missions_this_week, week_start_date")
+        .select("id, total_xp, grade_level, subscription_tier, missions_this_week, week_start_date, missions_today, last_mission_date, daily_streak")
         .eq("user_id", user?.id)
         .maybeSingle();
 
       if (profileData) {
-        setProfile(profileData);
+        setProfile({
+          ...profileData,
+          missions_today: profileData.missions_today || 0,
+          last_mission_date: profileData.last_mission_date || null,
+          daily_streak: profileData.daily_streak || 0,
+        });
         const xp = await fetchTopicXp(topicData.id, profileData.id);
         setTopicXp(xp);
       }
@@ -488,33 +503,45 @@ export default function TrainingSession() {
     try {
       const totalXp = earnedXp;
       const currentWeekStart = getSydneyWeekStart();
+      const today = getSydneyToday();
 
-      // Fetch current profile data for missions_this_week
+      // Fetch current profile data
       const { data: currentProfile } = await supabase
         .from("profiles")
-        .select("total_xp, missions_this_week, week_start_date, current_streak")
+        .select("total_xp, missions_this_week, week_start_date, current_streak, missions_today, last_mission_date, daily_streak")
         .eq("id", profile.id)
         .maybeSingle();
 
       const profileMissionsNewWeek = isNewWeek(currentProfile?.week_start_date);
       const profileMissionsThisWeek = profileMissionsNewWeek ? 0 : (currentProfile?.missions_this_week || 0);
+      
+      const profileIsNewDay = isNewDay(currentProfile?.last_mission_date);
+      const missionsToday = profileIsNewDay ? 0 : (currentProfile?.missions_today || 0);
 
-      // Handle streak calculation if it's a new week
-      let newStreak = currentProfile?.current_streak || 0;
+      // Handle weekly streak calculation if it's a new week
+      let newWeeklyStreak = currentProfile?.current_streak || 0;
       if (profileMissionsNewWeek && currentProfile?.week_start_date) {
-        // Previous week ended - check if they completed 5+ missions
         const prevMissions = currentProfile?.missions_this_week || 0;
-        newStreak = prevMissions >= 5 ? newStreak + 1 : 0;
+        newWeeklyStreak = prevMissions >= 5 ? newWeeklyStreak + 1 : 0;
       }
 
-      // Update profile with XP and mission count
+      // Calculate daily streak
+      const newDailyStreak = calculateDailyStreak(
+        currentProfile?.daily_streak || 0,
+        currentProfile?.last_mission_date || null
+      );
+
+      // Update profile with XP, mission counts, and streaks
       await supabase
         .from("profiles")
         .update({
           total_xp: (currentProfile?.total_xp || 0) + totalXp,
           missions_this_week: profileMissionsThisWeek + 1,
           week_start_date: currentWeekStart,
-          current_streak: newStreak,
+          current_streak: newWeeklyStreak,
+          missions_today: missionsToday + 1,
+          last_mission_date: today,
+          daily_streak: newDailyStreak,
         })
         .eq("id", profile.id);
 

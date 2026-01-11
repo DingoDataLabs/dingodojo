@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      badges: {
+        Row: {
+          badge_type: string
+          created_at: string
+          description: string
+          emoji: string
+          id: string
+          name: string
+          threshold: number
+        }
+        Insert: {
+          badge_type: string
+          created_at?: string
+          description: string
+          emoji: string
+          id?: string
+          name: string
+          threshold: number
+        }
+        Update: {
+          badge_type?: string
+          created_at?: string
+          description?: string
+          emoji?: string
+          id?: string
+          name?: string
+          threshold?: number
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           content: string
@@ -92,12 +122,16 @@ export type Database = {
         Row: {
           created_at: string
           current_streak: number | null
+          daily_streak: number | null
           first_name: string | null
           grade_level: string | null
           id: string
           last_active_date: string | null
+          last_mission_date: string | null
           missions_this_week: number | null
+          missions_today: number | null
           onboarding_completed: boolean
+          stripe_customer_id: string | null
           subscription_tier: string
           total_xp: number | null
           updated_at: string
@@ -107,12 +141,16 @@ export type Database = {
         Insert: {
           created_at?: string
           current_streak?: number | null
+          daily_streak?: number | null
           first_name?: string | null
           grade_level?: string | null
           id?: string
           last_active_date?: string | null
+          last_mission_date?: string | null
           missions_this_week?: number | null
+          missions_today?: number | null
           onboarding_completed?: boolean
+          stripe_customer_id?: string | null
           subscription_tier?: string
           total_xp?: number | null
           updated_at?: string
@@ -122,12 +160,16 @@ export type Database = {
         Update: {
           created_at?: string
           current_streak?: number | null
+          daily_streak?: number | null
           first_name?: string | null
           grade_level?: string | null
           id?: string
           last_active_date?: string | null
+          last_mission_date?: string | null
           missions_this_week?: number | null
+          missions_today?: number | null
           onboarding_completed?: boolean
+          stripe_customer_id?: string | null
           subscription_tier?: string
           total_xp?: number | null
           updated_at?: string
@@ -254,6 +296,42 @@ export type Database = {
             columns: ["subject_id"]
             isOneToOne: false
             referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_badges: {
+        Row: {
+          badge_id: string
+          earned_at: string
+          id: string
+          profile_id: string
+        }
+        Insert: {
+          badge_id: string
+          earned_at?: string
+          id?: string
+          profile_id: string
+        }
+        Update: {
+          badge_id?: string
+          earned_at?: string
+          id?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_badges_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "badges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_badges_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]

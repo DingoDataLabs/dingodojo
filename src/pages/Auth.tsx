@@ -5,12 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { Gift, Tag } from "lucide-react";
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
+  const [promoCode, setPromoCode] = useState("");
+  const [showPromoField, setShowPromoField] = useState(false);
   const [loading, setLoading] = useState(false);
   const { user, signIn, signUp } = useAuth();
   const navigate = useNavigate();
@@ -52,8 +55,11 @@ export default function Auth() {
             toast.error(error.message);
           }
         } else {
+          // Store promo code in sessionStorage for checkout after onboarding
+          if (promoCode.trim()) {
+            sessionStorage.setItem("dingo_promo_code", promoCode.trim().toUpperCase());
+          }
           toast.success("Welcome to Dingo Dojo! 🦊");
-          // New users go to onboarding
           navigate("/onboarding");
         }
       }
@@ -128,6 +134,40 @@ export default function Auth() {
                 minLength={6}
               />
             </div>
+
+            {/* Promo Code Field - Sign up only */}
+            {!isLogin && (
+              <div className="space-y-2">
+                {!showPromoField ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowPromoField(true)}
+                    className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    <Tag className="w-4 h-4" />
+                    Have a promo code?
+                  </button>
+                ) : (
+                  <>
+                    <Label htmlFor="promoCode" className="text-base font-semibold flex items-center gap-2">
+                      <Gift className="w-4 h-4 text-ochre" />
+                      Promo Code
+                    </Label>
+                    <Input
+                      id="promoCode"
+                      type="text"
+                      placeholder="Enter code (e.g. 3MFREE)"
+                      value={promoCode}
+                      onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                      className="h-12 text-lg rounded-xl uppercase"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Promo codes are applied when upgrading to Champion
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
 
             <Button
               type="submit"

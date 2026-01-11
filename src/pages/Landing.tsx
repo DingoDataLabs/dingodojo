@@ -244,11 +244,11 @@ export default function Landing() {
               <ul className="space-y-3 mb-8">
                 <li className="flex items-center gap-3 text-foreground">
                   <Check className="w-5 h-5 text-eucalyptus" />
-                  5 missions per week
+                  2 missions per day
                 </li>
                 <li className="flex items-center gap-3 text-foreground">
                   <Check className="w-5 h-5 text-eucalyptus" />
-                  All 5 subjects
+                  English & Maths
                 </li>
                 <li className="flex items-center gap-3 text-foreground">
                   <Check className="w-5 h-5 text-eucalyptus" />
@@ -256,7 +256,7 @@ export default function Landing() {
                 </li>
                 <li className="flex items-center gap-3 text-foreground">
                   <Check className="w-5 h-5 text-eucalyptus" />
-                  Progress tracking
+                  Daily & weekly streaks
                 </li>
               </ul>
               <Button 
@@ -272,7 +272,7 @@ export default function Landing() {
             <div className="bento-card bg-gradient-to-br from-ochre/5 to-ochre/10 p-8 border-2 border-ochre/30 relative">
               <div className="absolute -top-3 right-6">
                 <span className="bg-ochre text-primary-foreground px-4 py-1 rounded-full text-sm font-bold">
-                  Coming Soon
+                  Most Popular
                 </span>
               </div>
               <div className="mb-6">
@@ -293,7 +293,7 @@ export default function Landing() {
                 </li>
                 <li className="flex items-center gap-3 text-foreground">
                   <Check className="w-5 h-5 text-eucalyptus" />
-                  All 5 subjects
+                  All 5 subjects unlocked
                 </li>
                 <li className="flex items-center gap-3 text-foreground">
                   <Check className="w-5 h-5 text-eucalyptus" />
@@ -301,7 +301,7 @@ export default function Landing() {
                 </li>
                 <li className="flex items-center gap-3 text-foreground">
                   <Check className="w-5 h-5 text-eucalyptus" />
-                  Progress tracking
+                  Exclusive badges & rewards
                 </li>
                 <li className="flex items-center gap-3 text-foreground">
                   <Check className="w-5 h-5 text-eucalyptus" />
@@ -310,10 +310,13 @@ export default function Landing() {
               </ul>
               <Button 
                 className="w-full h-12 rounded-xl font-semibold"
-                disabled
+                onClick={handleGetStarted}
               >
-                Join Waitlist
+                Start Champion Trial
               </Button>
+              <p className="text-xs text-muted-foreground text-center mt-3">
+                Use code <span className="font-bold text-ochre">3MFREE</span> for 3 months free!
+              </p>
             </div>
           </div>
         </div>

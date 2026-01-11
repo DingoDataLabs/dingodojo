@@ -1,12 +1,13 @@
 import { useEffect, useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Flame, Trophy, LogOut, Zap, Settings, Compass, Lock, Crown, Star } from "lucide-react";
+import { Flame, Trophy, LogOut, Zap, Settings, Compass, Lock, Crown, Star, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { ProgressRing } from "@/components/ProgressRing";
 import { getSydneyWeekStart, isNewWeek, getStreakMessage, isStreakSecured } from "@/lib/weekUtils";
+import { getSydneyToday, isNewDay, getDailyStreakMessage, getDailyMissionsRemaining } from "@/lib/dailyUtils";
 import { MirriSuggestion } from "@/components/MirriSuggestion";
 import { useMirriSuggestion } from "@/hooks/useMirriSuggestion";
 
@@ -15,9 +16,12 @@ interface Profile {
   first_name: string | null;
   total_xp: number;
   current_streak: number;
+  daily_streak: number;
   grade_level: string;
   missions_this_week: number;
+  missions_today: number;
   week_start_date: string | null;
+  last_mission_date: string | null;
   subscription_tier: string;
   onboarding_completed: boolean;
 }
@@ -38,6 +42,7 @@ interface SubjectXp {
 export default function Dashboard() {
   const { user, signOut, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [subjectXps, setSubjectXps] = useState<Record<string, number>>({});
@@ -52,8 +57,48 @@ export default function Dashboard() {
   useEffect(() => {
     if (user) {
       fetchData();
+      checkSubscriptionStatus();
+      
+      // Handle subscription callback
+      const subscriptionStatus = searchParams.get("subscription");
+      if (subscriptionStatus === "success") {
+        toast.success("Welcome to Champion tier! 🏆 Unlimited learning awaits!");
+      } else if (subscriptionStatus === "cancelled") {
+        toast("No worries! You can upgrade anytime.", { icon: "👍" });
+      }
     }
-  }, [user]);
+  }, [user, searchParams]);
+
+  const checkSubscriptionStatus = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("check-subscription");
+      if (error) {
+        console.error("Subscription check error:", error);
+        return;
+      }
+      // Subscription tier is updated via the edge function
+    } catch (err) {
+      console.error("Failed to check subscription:", err);
+    }
+  };
+
+  const handleUpgrade = async () => {
+    const promoCode = sessionStorage.getItem("dingo_promo_code") || "";
+    
+    try {
+      const { data, error } = await supabase.functions.invoke("create-checkout", {
+        body: { promoCode },
+      });
+      
+      if (error) throw error;
+      if (data?.url) {
+        window.open(data.url, "_blank");
+      }
+    } catch (err) {
+      console.error("Checkout error:", err);
+      toast.error("Couldn't start checkout. Please try again!");
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -73,47 +118,66 @@ export default function Dashboard() {
           return;
         }
 
-        // Check if it's a new week and handle streak logic
         const currentWeekStart = getSydneyWeekStart();
         const wasNewWeek = isNewWeek(profileData.week_start_date);
+        const today = getSydneyToday();
+        const wasNewDay = isNewDay(profileData.last_mission_date);
 
+        let updatedProfile = { ...profileData };
+
+        // Handle new week reset
         if (wasNewWeek && profileData.week_start_date) {
-          // It's a new week - check if previous week had 5+ missions
           const previousMissions = profileData.missions_this_week || 0;
-          const newStreak = previousMissions >= 5 
+          const newWeeklyStreak = previousMissions >= 5 
             ? (profileData.current_streak || 0) + 1 
             : 0;
 
-          // Update profile with reset missions and updated streak
           await supabase
             .from("profiles")
             .update({
               missions_this_week: 0,
               week_start_date: currentWeekStart,
-              current_streak: newStreak,
+              current_streak: newWeeklyStreak,
             })
             .eq("id", profileData.id);
 
-          setProfile({
-            ...profileData,
+          updatedProfile = {
+            ...updatedProfile,
             missions_this_week: 0,
             week_start_date: currentWeekStart,
-            current_streak: newStreak,
-          });
+            current_streak: newWeeklyStreak,
+          };
         } else if (!profileData.week_start_date) {
-          // First time - initialize week_start_date
           await supabase
             .from("profiles")
             .update({ week_start_date: currentWeekStart })
             .eq("id", profileData.id);
 
-          setProfile({
-            ...profileData,
+          updatedProfile = {
+            ...updatedProfile,
             week_start_date: currentWeekStart,
-          });
-        } else {
-          setProfile(profileData);
+          };
         }
+
+        // Handle new day reset for daily missions
+        if (wasNewDay && profileData.last_mission_date) {
+          await supabase
+            .from("profiles")
+            .update({ missions_today: 0 })
+            .eq("id", profileData.id);
+
+          updatedProfile = {
+            ...updatedProfile,
+            missions_today: 0,
+          };
+        }
+
+        setProfile({
+          ...updatedProfile,
+          daily_streak: updatedProfile.daily_streak || 0,
+          missions_today: updatedProfile.missions_today || 0,
+          last_mission_date: updatedProfile.last_mission_date || null,
+        });
 
         // Fetch subject XP totals
         const { data: subjectsData } = await supabase.from("subjects").select("*").order("name");
@@ -213,11 +277,14 @@ export default function Dashboard() {
   };
 
   const missionsThisWeek = profile?.missions_this_week || 0;
+  const missionsToday = profile?.missions_today || 0;
+  const dailyStreak = profile?.daily_streak || 0;
   const missionsProgress = Math.min(100, (missionsThisWeek / 5) * 100);
+  const dailyProgress = Math.min(100, (missionsToday / 2) * 100);
   const streakMessage = getStreakMessage(missionsThisWeek);
   const streakSecured = isStreakSecured(missionsThisWeek);
   const isExplorer = profile?.subscription_tier !== "champion";
-  const missionsRemaining = isExplorer ? Math.max(0, 5 - missionsThisWeek) : null;
+  const dailyMissionsRemaining = isExplorer ? getDailyMissionsRemaining(missionsToday) : null;
 
   const subjectProgressData = useMemo(() => 
     subjects.map(s => ({
@@ -292,79 +359,112 @@ export default function Dashboard() {
                 <div>
                   <p className="font-semibold text-foreground">Explorer Plan</p>
                   <p className="text-sm text-muted-foreground">
-                    {missionsRemaining === 0 
-                      ? "You've used all 5 missions this week!" 
-                      : `${missionsRemaining} mission${missionsRemaining === 1 ? '' : 's'} left this week`}
+                    {dailyMissionsRemaining === 0 
+                      ? "You've used all 2 missions for today!" 
+                      : `${dailyMissionsRemaining} mission${dailyMissionsRemaining === 1 ? '' : 's'} left today`}
                   </p>
                 </div>
               </div>
-              <Button variant="outline" size="sm" className="rounded-xl gap-2" disabled>
-                <Lock className="w-4 h-4" />
-                Champion Coming Soon
+              <Button 
+                onClick={handleUpgrade}
+                size="sm" 
+                className="rounded-xl gap-2 bg-gradient-to-r from-ochre to-amber-500 hover:from-ochre/90 hover:to-amber-500/90"
+              >
+                <Crown className="w-4 h-4" />
+                Upgrade to Champion
               </Button>
             </div>
           </div>
         )}
 
         {/* Stats Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-          {/* Training Streak */}
-          <div className="stats-card flex items-center gap-4 animate-slide-up stagger-1">
-            <div className="w-14 h-14 rounded-2xl bg-destructive/10 flex items-center justify-center">
-              <Flame className="w-7 h-7 text-destructive" />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+          {/* Daily Streak */}
+          <div className="stats-card flex items-center gap-3 animate-slide-up stagger-1">
+            <div className="w-12 h-12 rounded-2xl bg-orange-500/10 flex items-center justify-center">
+              <Sparkles className="w-6 h-6 text-orange-500" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground font-medium">Training Streak</p>
-              <p className="text-3xl font-display font-bold text-foreground">
-                {profile?.current_streak || 0}
-                <span className="text-lg ml-1">weeks</span>
+              <p className="text-xs text-muted-foreground font-medium">Daily Streak</p>
+              <p className="text-2xl font-display font-bold text-foreground">
+                {dailyStreak}
+                <span className="text-sm ml-1">days</span>
               </p>
             </div>
           </div>
 
-          {/* Missions This Week */}
-          <div className="stats-card flex items-center gap-4 animate-slide-up stagger-2">
-            <ProgressRing
-              progress={missionsProgress}
-              size={56}
-              strokeWidth={5}
-              colorClass={streakSecured ? "stroke-eucalyptus" : "stroke-ochre"}
-            >
-              <Zap className={`w-5 h-5 ${streakSecured ? "text-eucalyptus" : "text-ochre"}`} />
-            </ProgressRing>
+          {/* Weekly Streak */}
+          <div className="stats-card flex items-center gap-3 animate-slide-up stagger-2">
+            <div className="w-12 h-12 rounded-2xl bg-destructive/10 flex items-center justify-center">
+              <Flame className="w-6 h-6 text-destructive" />
+            </div>
             <div>
-              <p className="text-sm text-muted-foreground font-medium">Missions This Week</p>
+              <p className="text-xs text-muted-foreground font-medium">Weekly Streak</p>
               <p className="text-2xl font-display font-bold text-foreground">
-                {missionsThisWeek}/5
-              </p>
-              <p className={`text-xs font-medium ${streakSecured ? "text-eucalyptus" : "text-ochre"}`}>
-                {streakMessage}
+                {profile?.current_streak || 0}
+                <span className="text-sm ml-1">weeks</span>
               </p>
             </div>
           </div>
+
+          {/* Today's Missions (Explorer only) */}
+          {isExplorer ? (
+            <div className="stats-card flex items-center gap-3 animate-slide-up stagger-3">
+              <ProgressRing
+                progress={dailyProgress}
+                size={48}
+                strokeWidth={4}
+                colorClass={missionsToday >= 2 ? "stroke-eucalyptus" : "stroke-ochre"}
+              >
+                <Zap className={`w-4 h-4 ${missionsToday >= 2 ? "text-eucalyptus" : "text-ochre"}`} />
+              </ProgressRing>
+              <div>
+                <p className="text-xs text-muted-foreground font-medium">Today</p>
+                <p className="text-xl font-display font-bold text-foreground">
+                  {missionsToday}/2
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="stats-card flex items-center gap-3 animate-slide-up stagger-3">
+              <ProgressRing
+                progress={missionsProgress}
+                size={48}
+                strokeWidth={4}
+                colorClass={streakSecured ? "stroke-eucalyptus" : "stroke-ochre"}
+              >
+                <Zap className={`w-4 h-4 ${streakSecured ? "text-eucalyptus" : "text-ochre"}`} />
+              </ProgressRing>
+              <div>
+                <p className="text-xs text-muted-foreground font-medium">This Week</p>
+                <p className="text-xl font-display font-bold text-foreground">
+                  {missionsThisWeek}/5
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Total XP */}
-          <div className="stats-card flex items-center gap-4 animate-slide-up stagger-3">
-            <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
-              <Trophy className="w-7 h-7 text-primary" />
+          <div className="stats-card flex items-center gap-3 animate-slide-up stagger-4">
+            <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
+              <Trophy className="w-6 h-6 text-primary" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground font-medium">Total XP</p>
-              <p className="text-3xl font-display font-bold text-foreground">
+              <p className="text-xs text-muted-foreground font-medium">Total XP</p>
+              <p className="text-2xl font-display font-bold text-foreground">
                 {profile?.total_xp?.toLocaleString() || 0}
-                <span className="text-lg ml-1">XP</span>
               </p>
             </div>
           </div>
         </div>
 
         {/* Mirri Suggestion */}
-        <section className="mb-6 animate-slide-up stagger-4">
+        <section className="mb-6 animate-slide-up stagger-5">
           <MirriSuggestion message={mirriMessage} />
         </section>
 
         {/* Subject Cards - Flip Cards */}
-        <section className="animate-slide-up stagger-5">
+        <section className="animate-slide-up stagger-6">
           <h2 className="text-xl font-display font-bold mb-5 text-foreground flex items-center gap-2">
             <Star className="w-5 h-5 text-ochre" />
             Choose Your Training
@@ -403,7 +503,17 @@ export default function Dashboard() {
                         <>
                           <Crown className="w-10 h-10 text-amber-500 mb-2" />
                           <p className="font-display font-bold text-sm text-foreground mb-1">Champion Only</p>
-                          <p className="text-xs text-muted-foreground text-center">Upgrade to unlock {subject.name}</p>
+                          <p className="text-xs text-muted-foreground text-center mb-2">Upgrade to unlock {subject.name}</p>
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUpgrade();
+                            }}
+                            size="sm"
+                            className="text-xs rounded-lg"
+                          >
+                            Upgrade
+                          </Button>
                         </>
                       ) : (
                         <>
@@ -430,7 +540,7 @@ export default function Dashboard() {
         </section>
 
         {/* Motivation Section */}
-        <section className="mt-8 animate-slide-up stagger-6">
+        <section className="mt-8 animate-slide-up stagger-7">
           <div className="bento-card bg-gradient-to-br from-sky/10 to-sky-light/5 border-2 border-dashed border-sky/20 text-center py-8">
             <p className="text-lg text-muted-foreground mb-2">💡 Tip of the Day</p>
             <p className="text-xl font-display font-semibold text-foreground">
