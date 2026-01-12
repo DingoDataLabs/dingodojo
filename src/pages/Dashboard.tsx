@@ -3,13 +3,14 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Flame, Trophy, LogOut, Zap, Settings, Compass, Lock, Crown, Star, Sparkles } from "lucide-react";
+import { Flame, Trophy, LogOut, Zap, Settings, Compass, Crown, Star, Sparkles, Play } from "lucide-react";
 import { toast } from "sonner";
 import { ProgressRing } from "@/components/ProgressRing";
 import { getSydneyWeekStart, isNewWeek, getStreakMessage, isStreakSecured } from "@/lib/weekUtils";
 import { getSydneyToday, isNewDay, getDailyStreakMessage, getDailyMissionsRemaining } from "@/lib/dailyUtils";
 import { MirriSuggestion } from "@/components/MirriSuggestion";
 import { useMirriSuggestion } from "@/hooks/useMirriSuggestion";
+import { useSmartMission } from "@/hooks/useSmartMission";
 
 interface Profile {
   id: string;
@@ -39,6 +40,18 @@ interface SubjectXp {
   total_xp: number;
 }
 
+interface Topic {
+  id: string;
+  name: string;
+  slug: string;
+  subject_id: string;
+}
+
+interface TopicProgress {
+  topic_id: string;
+  xp_earned: number;
+}
+
 export default function Dashboard() {
   const { user, signOut, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -46,6 +59,8 @@ export default function Dashboard() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [subjectXps, setSubjectXps] = useState<Record<string, number>>({});
+  const [topics, setTopics] = useState<Topic[]>([]);
+  const [topicProgressData, setTopicProgressData] = useState<TopicProgress[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -186,9 +201,11 @@ export default function Dashboard() {
           setSubjects(subjectsData);
 
           // Get all topics grouped by subject
-          const { data: topicsData } = await supabase.from("topics").select("id, subject_id");
+          const { data: topicsData } = await supabase.from("topics").select("id, name, slug, subject_id");
           
           if (topicsData) {
+            setTopics(topicsData);
+            
             // Get all progress for this user
             const { data: progressData } = await supabase
               .from("student_progress")
@@ -196,6 +213,8 @@ export default function Dashboard() {
               .eq("student_id", profileData.id);
 
             if (progressData) {
+              setTopicProgressData(progressData);
+              
               // Calculate XP per subject
               const xpBySubject: Record<string, number> = {};
               for (const topic of topicsData) {
@@ -295,13 +314,43 @@ export default function Dashboard() {
     [subjects, subjectXps]
   );
 
-  const mirriMessage = useMirriSuggestion({
+  const mirriData = useMirriSuggestion({
     firstName: profile?.first_name,
     missionsThisWeek,
+    missionsToday,
     currentStreak: profile?.current_streak || 0,
+    dailyStreak,
     subjectProgress: subjectProgressData,
     totalXp: profile?.total_xp || 0,
   });
+
+  // Build topic progress for smart mission selection
+  const smartMissionTopics = useMemo(() => {
+    return topics.map(topic => {
+      const subject = subjects.find(s => s.id === topic.subject_id);
+      const progress = topicProgressData.find(p => p.topic_id === topic.id);
+      return {
+        topicId: topic.id,
+        topicName: topic.name,
+        topicSlug: topic.slug,
+        subjectSlug: subject?.slug || '',
+        subjectName: subject?.name || '',
+        xpEarned: progress?.xp_earned || 0,
+      };
+    }).filter(t => {
+      // Filter out locked subjects for Explorer users
+      const freeSubjects = ["english", "maths"];
+      return !isExplorer || freeSubjects.includes(t.subjectSlug);
+    });
+  }, [topics, subjects, topicProgressData, isExplorer]);
+
+  const smartMission = useSmartMission({ topicProgress: smartMissionTopics });
+
+  const handleStartSmartMission = () => {
+    if (smartMission) {
+      navigate(`/learn/${smartMission.subjectSlug}/${smartMission.topicSlug}`);
+    }
+  };
 
   if (authLoading || loading) {
     return (
@@ -458,10 +507,43 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Mirri Suggestion */}
-        <section className="mb-6 animate-slide-up stagger-5">
-          <MirriSuggestion message={mirriMessage} />
-        </section>
+        {/* Start Mission Button */}
+        {smartMission && (
+          <section className="mb-8 animate-slide-up stagger-5">
+            <button
+              onClick={handleStartSmartMission}
+              className="w-full group relative overflow-hidden rounded-2xl bg-gradient-to-r from-ochre via-amber-500 to-ochre-light p-1 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <div className="relative flex items-center justify-between gap-4 rounded-xl bg-gradient-to-r from-ochre via-amber-500 to-ochre-light px-6 py-5 md:py-6">
+                {/* Animated background shimmer */}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                
+                <div className="flex items-center gap-4 relative z-10">
+                  <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-inner">
+                    <Play className="w-8 h-8 md:w-10 md:h-10 text-white fill-white" />
+                  </div>
+                  <div className="text-left">
+                    <h3 className="text-xl md:text-2xl font-display font-bold text-white drop-shadow-sm">
+                      Start Mission
+                    </h3>
+                    <p className="text-white/90 text-sm md:text-base font-medium">
+                      {smartMission.reasonText}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="hidden sm:flex flex-col items-end relative z-10">
+                  <span className="text-white/80 text-xs font-medium uppercase tracking-wide">Next up</span>
+                  <span className="text-white font-display font-bold text-lg">
+                    {smartMission.topicName}
+                  </span>
+                </div>
+                
+                <Zap className="w-6 h-6 text-white/80 animate-pulse relative z-10" />
+              </div>
+            </button>
+          </section>
+        )}
 
         {/* Subject Cards - Flip Cards */}
         <section className="animate-slide-up stagger-6">
@@ -539,14 +621,9 @@ export default function Dashboard() {
           </div>
         </section>
 
-        {/* Motivation Section */}
+        {/* Mirri Speech Bubble */}
         <section className="mt-8 animate-slide-up stagger-7">
-          <div className="bento-card bg-gradient-to-br from-sky/10 to-sky-light/5 border-2 border-dashed border-sky/20 text-center py-8">
-            <p className="text-lg text-muted-foreground mb-2">💡 Tip of the Day</p>
-            <p className="text-xl font-display font-semibold text-foreground">
-              "Practice a little every day, and you'll be amazed how much you grow!"
-            </p>
-          </div>
+          <MirriSuggestion message={mirriData.message} />
         </section>
       </div>
     </div>
