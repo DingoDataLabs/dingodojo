@@ -194,8 +194,24 @@ Return ONLY a valid JSON object (no markdown, no code blocks):
   "feedback": "<2-3 encouraging sentences about their overall work>",
   "strengths": ["<specific thing they did well>", "<another strength>"],
   "improvements": ["<gentle suggestion framed positively>", "<optional second suggestion>"],
-  "overallRating": "<one of: 'Fantastic!', 'Great Work!', 'Good Effort!', 'Keep Practising!'>"
+  "overallRating": "<one of: 'Fantastic!', 'Great Work!', 'Good Effort!', 'Keep Practising!'>",
+  "annotations": [
+    {
+      "originalText": "<exact text from student's response that needs attention>",
+      "suggestion": "<corrected version or improvement suggestion>",
+      "type": "<one of: 'spelling', 'grammar', 'punctuation', 'style', 'praise'>",
+      "comment": "<brief, encouraging explanation for the student>"
+    }
+  ]
 }
+
+ANNOTATION GUIDELINES:
+- Include 2-5 annotations highlighting the most important areas
+- For "praise" type, highlight excellent phrases or word choices with positive comments
+- For corrections, be gentle - use phrases like "Try this:" or "Even better:"
+- Focus on teaching moments, not every error
+- Include at least 1-2 "praise" annotations to celebrate good writing
+- Use exact text matches from the student's response for "originalText"
 
 SCORING GUIDE:
 - 90-100%: Exceptional - exceeds all criteria, creative, well-structured
