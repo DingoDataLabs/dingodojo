@@ -13,6 +13,7 @@ import { getSydneyToday, isNewDay, calculateDailyStreak, isDailyLimitReached } f
 import { MirriChatDrawer } from "@/components/MirriChatDrawer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { getMasteryLevel } from "@/lib/progressUtils";
+import { AnnotatedWriting } from "@/components/AnnotatedWriting";
 
 interface Topic {
   id: string;
@@ -42,6 +43,13 @@ interface CheckQuestion {
   min_words?: number;
 }
 
+interface WritingAnnotation {
+  originalText: string;
+  suggestion: string;
+  type: "spelling" | "grammar" | "punctuation" | "style" | "praise";
+  comment: string;
+}
+
 interface FreeTextFeedback {
   score: number;
   maxScore: number;
@@ -49,6 +57,7 @@ interface FreeTextFeedback {
   strengths: string[];
   improvements: string[];
   overallRating: string;
+  annotations?: WritingAnnotation[];
 }
 
 interface LessonSection {
@@ -916,7 +925,7 @@ export default function TrainingSession() {
 
                 {/* Free-text feedback */}
                 {isCompleted && freeTextFeedback[`challenge_${currentChallengeIndex}`] && (
-                  <div className="space-y-3 animate-slide-up">
+                  <div className="space-y-4 animate-slide-up">
                     <div className="bg-eucalyptus/10 border border-eucalyptus/20 rounded-xl p-4">
                       <div className="flex items-center justify-between mb-3">
                         <span className="text-2xl">{
@@ -955,6 +964,14 @@ export default function TrainingSession() {
                         </div>
                       )}
                     </div>
+                    
+                    {/* Show annotated student response */}
+                    {freeTextAnswers[`challenge_${currentChallengeIndex}`] && (
+                      <AnnotatedWriting
+                        originalText={freeTextAnswers[`challenge_${currentChallengeIndex}`]}
+                        annotations={freeTextFeedback[`challenge_${currentChallengeIndex}`].annotations || []}
+                      />
+                    )}
                   </div>
                 )}
               </div>
