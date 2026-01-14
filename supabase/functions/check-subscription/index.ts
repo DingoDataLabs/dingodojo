@@ -84,10 +84,16 @@ serve(async (req) => {
           .eq("id", profileData.id);
       }
 
+      // Safely handle subscription end date
+      const periodEnd = activeSub.current_period_end;
+      const subscriptionEnd = periodEnd && typeof periodEnd === 'number' 
+        ? new Date(periodEnd * 1000).toISOString() 
+        : null;
+
       return new Response(JSON.stringify({
         subscribed: true,
         tier: isChampion ? "champion" : "explorer",
-        subscriptionEnd: new Date(activeSub.current_period_end * 1000).toISOString(),
+        subscriptionEnd,
         status: activeSub.status,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
