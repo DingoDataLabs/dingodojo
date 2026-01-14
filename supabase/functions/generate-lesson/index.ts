@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -108,14 +108,27 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    // Verify the user with getUser
+    const { data: userData, error: userError } = await supabaseClient.auth.getUser();
     
-    if (userError || !user) {
+    if (userError) {
+      console.error('Auth error:', userError.message, userError.status);
       return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
+        JSON.stringify({ error: 'Unauthorized', details: userError.message }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+    
+    if (!userData?.user) {
+      console.error('No user found in session');
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized', details: 'No user in session' }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    const userId = userData.user.id;
+    console.log('Authenticated user:', userId);
 
     // Parse and validate input
     let rawBody: unknown;
