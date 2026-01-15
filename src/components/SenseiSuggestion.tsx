@@ -1,16 +1,16 @@
-import { AnimatedDingo } from "./AnimatedDingo";
-
-interface MirriSuggestionProps {
+interface SenseiSuggestionProps {
   message: string;
   className?: string;
 }
 
-export function MirriSuggestion({ message, className = "" }: MirriSuggestionProps) {
+export function SenseiSuggestion({ message, className = "" }: SenseiSuggestionProps) {
   return (
     <div className={`flex items-end gap-2 ${className}`}>
-      {/* Dingo mascot */}
+      {/* Dingo mascot emoji */}
       <div className="flex-shrink-0 -mb-1">
-        <AnimatedDingo />
+        <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-ochre/20 flex items-center justify-center text-4xl md:text-5xl">
+          🦊
+        </div>
       </div>
       
       {/* Speech bubble */}

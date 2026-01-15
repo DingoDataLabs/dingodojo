@@ -8,8 +8,8 @@ import { toast } from "sonner";
 import { ProgressRing } from "@/components/ProgressRing";
 import { getSydneyWeekStart, isNewWeek, getStreakMessage, isStreakSecured } from "@/lib/weekUtils";
 import { getSydneyToday, isNewDay, getDailyStreakMessage, getDailyMissionsRemaining } from "@/lib/dailyUtils";
-import { MirriSuggestion } from "@/components/MirriSuggestion";
-import { useMirriSuggestion } from "@/hooks/useMirriSuggestion";
+import { SenseiSuggestion } from "@/components/SenseiSuggestion";
+import { useSenseiSuggestion } from "@/hooks/useSenseiSuggestion";
 import { useSmartMission } from "@/hooks/useSmartMission";
 
 interface Profile {
@@ -314,7 +314,7 @@ export default function Dashboard() {
     [subjects, subjectXps]
   );
 
-  const mirriData = useMirriSuggestion({
+  const senseiData = useSenseiSuggestion({
     firstName: profile?.first_name,
     missionsThisWeek,
     missionsToday,
@@ -621,9 +621,9 @@ export default function Dashboard() {
           </div>
         </section>
 
-        {/* Mirri Speech Bubble */}
+        {/* Sensei Speech Bubble */}
         <section className="mt-8 animate-slide-up stagger-7">
-          <MirriSuggestion message={mirriData.message} />
+          <SenseiSuggestion message={senseiData.message} />
         </section>
       </div>
     </div>

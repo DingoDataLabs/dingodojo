@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import confetti from "canvas-confetti";
 import { getSydneyWeekStart, isNewWeek } from "@/lib/weekUtils";
 import { getSydneyToday, isNewDay, calculateDailyStreak, isDailyLimitReached } from "@/lib/dailyUtils";
-import { MirriChatDrawer } from "@/components/MirriChatDrawer";
+import { SenseiChatDrawer } from "@/components/SenseiChatDrawer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { getMasteryLevel } from "@/lib/progressUtils";
 import { AnnotatedWriting } from "@/components/AnnotatedWriting";
@@ -159,7 +159,7 @@ export default function TrainingSession() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "assistant",
-      content: "G'day! I'm Mirri, your study buddy! 🦘 Work through the lesson on the left, and ask me if you need help with any questions. I'll give you hints to guide you - no worries!",
+      content: "G'day! I'm your Sensei! 🦊 Work through the lesson on the left, and ask me if you need help with any questions. I'll give you hints to guide you - no worries!",
     },
   ]);
   const [inputMessage, setInputMessage] = useState("");
@@ -1092,9 +1092,9 @@ export default function TrainingSession() {
 
       {/* Split View */}
       <main className="flex-grow flex overflow-hidden relative">
-        {/* Mobile/Tablet: Full width lesson + floating Mirri */}
+        {/* Mobile/Tablet: Full width lesson + floating Sensei */}
         {isMobile && (
-          <MirriChatDrawer
+          <SenseiChatDrawer
             messages={messages}
             inputMessage={inputMessage}
             setInputMessage={setInputMessage}

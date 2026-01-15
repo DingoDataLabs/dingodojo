@@ -11,7 +11,7 @@ interface Badge {
   earnedAt: string;
 }
 
-interface UseMirriSuggestionProps {
+interface UseSenseiSuggestionProps {
   firstName?: string | null;
   missionsThisWeek?: number;
   missionsToday?: number;
@@ -27,22 +27,23 @@ const greetings = [
   "Hey there",
   "Howdy",
   "Hi",
+  "Greetings, young warrior",
 ];
 
 const motivationalQuotes = [
-  "Practice a little every day, and you'll be amazed how much you grow! 🌱",
-  "Every expert was once a beginner. Keep going! 💪",
-  "Your brain is like a muscle - the more you use it, the stronger it gets! 🧠",
-  "Mistakes are proof that you're trying. Don't give up! ⭐",
-  "Small steps every day lead to big achievements! 🚀",
-  "You're doing awesome - one question at a time! 🎯",
-  "Learning is a superpower, and you've got it! 🦸",
-  "Today is a great day to learn something new! ☀️",
+  "Practice a little every day, and you'll be amazed how much you grow! 🥋",
+  "Every black belt was once a white belt. Keep training! 💪",
+  "Your mind is your greatest weapon - train it well! 🧠",
+  "In the dojo of life, mistakes are lessons in disguise! ⭐",
+  "Small steps every day lead to mastery! 🚀",
+  "You're doing great - one technique at a time! 🎯",
+  "Discipline and practice - the way of the warrior! 🥷",
+  "Today is a great day to level up! ☀️",
 ];
 
-export type MirriMessageType = 'streak' | 'milestone' | 'quote';
+export type SenseiMessageType = 'streak' | 'milestone' | 'quote';
 
-export function useMirriSuggestion({
+export function useSenseiSuggestion({
   firstName,
   missionsThisWeek = 0,
   missionsToday = 0,
@@ -51,19 +52,19 @@ export function useMirriSuggestion({
   subjectProgress = [],
   totalXp = 0,
   recentBadges = [],
-}: UseMirriSuggestionProps): { message: string; type: MirriMessageType } {
+}: UseSenseiSuggestionProps): { message: string; type: SenseiMessageType } {
   return useMemo(() => {
-    const name = firstName || "mate";
+    const name = firstName || "young warrior";
     const greeting = greetings[Math.floor(Math.random() * greetings.length)];
     
     // Build a pool of possible messages with types
-    const possibleMessages: { message: string; type: MirriMessageType; priority: number }[] = [];
+    const possibleMessages: { message: string; type: SenseiMessageType; priority: number }[] = [];
 
     // Recent badge achievements (highest priority)
     if (recentBadges.length > 0) {
       const badge = recentBadges[0];
       possibleMessages.push({
-        message: `${greeting}, ${name}! Congrats on earning the "${badge.name}" badge! You're crushing it! 🏅`,
+        message: `${greeting}, ${name}! Congrats on earning the "${badge.name}" badge! You're a true warrior! 🏅`,
         type: 'milestone',
         priority: 10,
       });
@@ -72,7 +73,7 @@ export function useMirriSuggestion({
     // Close to completing weekly missions
     if (missionsThisWeek === 4) {
       possibleMessages.push({
-        message: `${greeting}, ${name}! Just 1 more mission to secure your weekly streak! 🔥`,
+        message: `${greeting}, ${name}! Just 1 more training session to secure your weekly streak! 🔥`,
         type: 'streak',
         priority: 8,
       });
@@ -81,22 +82,21 @@ export function useMirriSuggestion({
     // Weekly goal complete
     if (missionsThisWeek >= 5) {
       possibleMessages.push({
-        message: `${greeting}, ${name}! You've crushed your weekly goal! Keep building that streak! 🏆`,
+        message: `${greeting}, ${name}! You've completed your weekly training! Keep building that discipline! 🏆`,
         type: 'milestone',
         priority: 7,
       });
     }
     
-    // Check for subjects close to leveling up
-    const almostLevelUp = subjectProgress.find(s => {
-      const level = Math.floor(s.totalXp / 500);
+    // Check for subjects close to leveling up (belt promotion)
+    const almostBeltUp = subjectProgress.find(s => {
       const xpInLevel = s.totalXp % 500;
-      return xpInLevel >= 400; // Within 100 XP of next level
+      return xpInLevel >= 400; // Within 100 XP of next belt
     });
     
-    if (almostLevelUp) {
+    if (almostBeltUp) {
       possibleMessages.push({
-        message: `${greeting}, ${name}! You're so close to levelling up in ${almostLevelUp.subjectName}! Just a bit more! ⭐`,
+        message: `${greeting}, ${name}! You're so close to your next belt in ${almostBeltUp.subjectName}! Keep training! 🥋`,
         type: 'milestone',
         priority: 6,
       });
@@ -107,7 +107,7 @@ export function useMirriSuggestion({
     for (const milestone of xpMilestones) {
       if (totalXp >= milestone && totalXp < milestone + 50) {
         possibleMessages.push({
-          message: `${greeting}, ${name}! Wow, you've hit ${milestone.toLocaleString()} XP! That's amazing! 🎉`,
+          message: `${greeting}, ${name}! Wow, you've earned ${milestone.toLocaleString()} XP! That's impressive discipline! 🎉`,
           type: 'milestone',
           priority: 5,
         });
@@ -118,13 +118,13 @@ export function useMirriSuggestion({
     // Daily streak encouragement
     if (dailyStreak >= 7) {
       possibleMessages.push({
-        message: `${greeting}, ${name}! A ${dailyStreak}-day streak! You're on fire! 🔥`,
+        message: `${greeting}, ${name}! A ${dailyStreak}-day training streak! The way of the warrior! 🔥`,
         type: 'streak',
         priority: 4,
       });
     } else if (dailyStreak >= 3) {
       possibleMessages.push({
-        message: `${greeting}, ${name}! ${dailyStreak} days in a row! Keep the momentum going! ⚡`,
+        message: `${greeting}, ${name}! ${dailyStreak} days of training in a row! Keep the discipline! ⚡`,
         type: 'streak',
         priority: 3,
       });
@@ -133,7 +133,7 @@ export function useMirriSuggestion({
     // Weekly streak encouragement
     if (currentStreak > 0) {
       possibleMessages.push({
-        message: `${greeting}, ${name}! You're on a ${currentStreak}-week streak! Let's keep it going! 🔥`,
+        message: `${greeting}, ${name}! You're on a ${currentStreak}-week training streak! True warrior spirit! 🔥`,
         type: 'streak',
         priority: 2,
       });
@@ -142,7 +142,7 @@ export function useMirriSuggestion({
     // Default encouragements based on progress
     if (totalXp === 0) {
       possibleMessages.push({
-        message: `${greeting}, ${name}! Ready to start your learning adventure? Let's go! 🎯`,
+        message: `${greeting}, ${name}! Ready to begin your training? Let's enter the dojo! 🎯`,
         type: 'quote',
         priority: 1,
       });
@@ -150,7 +150,7 @@ export function useMirriSuggestion({
     
     if (missionsToday === 0 && totalXp > 0) {
       possibleMessages.push({
-        message: `${greeting}, ${name}! Time for your first mission of the day! You've got this! 💪`,
+        message: `${greeting}, ${name}! Time for your first training session of the day! 💪`,
         type: 'streak',
         priority: 1,
       });
@@ -165,12 +165,10 @@ export function useMirriSuggestion({
     });
 
     // If we have high-priority messages, prefer those
-    // Otherwise, randomly pick between streak updates and quotes (weighted)
     if (possibleMessages.length > 0) {
       const maxPriority = Math.max(...possibleMessages.map(m => m.priority));
       const topMessages = possibleMessages.filter(m => m.priority === maxPriority);
       
-      // If top priority is 0, give slight randomization
       if (maxPriority === 0) {
         return topMessages[Math.floor(Math.random() * topMessages.length)];
       }
@@ -178,6 +176,6 @@ export function useMirriSuggestion({
       return topMessages[0];
     }
 
-    return { message: `${greeting}, ${name}! ${randomQuote}`, type: 'quote' as MirriMessageType };
+    return { message: `${greeting}, ${name}! ${randomQuote}`, type: 'quote' as SenseiMessageType };
   }, [firstName, missionsThisWeek, missionsToday, currentStreak, dailyStreak, subjectProgress, totalXp, recentBadges]);
 }
