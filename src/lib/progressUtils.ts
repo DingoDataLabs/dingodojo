@@ -12,11 +12,14 @@ export interface MasteryLevel {
 }
 
 export const MASTERY_LEVELS: MasteryLevel[] = [
-  { name: "Beginning", color: "ochre", colorClass: "bg-ochre text-ochre-foreground", minXp: 0, maxXp: 49, emoji: "🌱" },
-  { name: "Developing", color: "sky", colorClass: "bg-sky text-sky-foreground", minXp: 50, maxXp: 149, emoji: "📚" },
-  { name: "Consolidating", color: "sky-light", colorClass: "bg-sky-light text-sky-foreground", minXp: 150, maxXp: 299, emoji: "💪" },
-  { name: "Extending", color: "eucalyptus", colorClass: "bg-eucalyptus text-eucalyptus-foreground", minXp: 300, maxXp: 499, emoji: "🚀" },
-  { name: "Mastering", color: "eucalyptus", colorClass: "bg-eucalyptus text-eucalyptus-foreground", minXp: 500, maxXp: Infinity, emoji: "⭐" },
+  { name: "White Belt", color: "muted", colorClass: "bg-muted text-muted-foreground", minXp: 0, maxXp: 49, emoji: "🥋" },
+  { name: "Yellow Belt", color: "ochre-light", colorClass: "bg-ochre-light text-ochre-foreground", minXp: 50, maxXp: 149, emoji: "🥋" },
+  { name: "Orange Belt", color: "ochre", colorClass: "bg-ochre text-ochre-foreground", minXp: 150, maxXp: 299, emoji: "🥋" },
+  { name: "Green Belt", color: "eucalyptus-light", colorClass: "bg-eucalyptus-light text-eucalyptus-foreground", minXp: 300, maxXp: 499, emoji: "🥋" },
+  { name: "Blue Belt", color: "sky", colorClass: "bg-sky text-sky-foreground", minXp: 500, maxXp: 749, emoji: "🥋" },
+  { name: "Purple Belt", color: "purple", colorClass: "bg-purple-500 text-white", minXp: 750, maxXp: 999, emoji: "🥋" },
+  { name: "Brown Belt", color: "brown", colorClass: "bg-amber-700 text-white", minXp: 1000, maxXp: 1499, emoji: "🥋" },
+  { name: "Black Belt", color: "black", colorClass: "bg-gray-900 text-white", minXp: 1500, maxXp: Infinity, emoji: "🥷" },
 ];
 
 /**
@@ -75,19 +78,29 @@ export function getXpToNextLevel(xp: number): number {
 export function getRingColor(xp: number): string {
   const level = getMasteryLevel(xp);
   switch (level.color) {
-    case "eucalyptus":
+    case "muted":
+      return "stroke-muted-foreground";
+    case "ochre-light":
+    case "ochre":
+      return "stroke-ochre";
+    case "eucalyptus-light":
       return "stroke-eucalyptus";
     case "sky":
-    case "sky-light":
       return "stroke-sky";
+    case "purple":
+      return "stroke-purple-500";
+    case "brown":
+      return "stroke-amber-700";
+    case "black":
+      return "stroke-gray-900";
     default:
-      return "stroke-ochre";
+      return "stroke-muted-foreground";
   }
 }
 
 /**
- * Check if topic has reached mastery level
+ * Check if topic has reached mastery level (Black Belt)
  */
 export function isMastered(xp: number): boolean {
-  return xp >= 500;
+  return xp >= 1500;
 }

@@ -8,7 +8,7 @@ import { TopicCard } from "@/components/TopicCard";
 import { getSydneyWeekStart, isNewWeek } from "@/lib/weekUtils";
 import { toast } from "sonner";
 import { isMastered } from "@/lib/progressUtils";
-import { MirriSuggestion } from "@/components/MirriSuggestion";
+import { SenseiSuggestion } from "@/components/SenseiSuggestion";
 
 interface Subject {
   id: string;
@@ -208,7 +208,7 @@ export default function SubjectTopics() {
     }
   };
 
-  const getMirriTopicMessage = () => {
+  const getSenseiTopicMessage = () => {
     const masteredCount = progress.filter(p => isMastered(p.xp_earned || 0)).length;
     const totalTopics = topics.length;
     
@@ -288,10 +288,10 @@ export default function SubjectTopics() {
 
       {/* Topics List */}
       <main className="max-w-4xl mx-auto p-4 md:p-6 -mt-6">
-        {/* Mirri Suggestion */}
+        {/* Sensei Suggestion */}
         <div className="mb-6">
-          <MirriSuggestion 
-            message={getMirriTopicMessage()} 
+          <SenseiSuggestion 
+            message={getSenseiTopicMessage()} 
           />
         </div>
 

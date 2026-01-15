@@ -2,14 +2,14 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Send, Loader2, MessageCircle, X } from "lucide-react";
+import { Send, Loader2 } from "lucide-react";
 
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
 }
 
-interface MirriChatDrawerProps {
+interface SenseiChatDrawerProps {
   messages: ChatMessage[];
   inputMessage: string;
   setInputMessage: (value: string) => void;
@@ -17,13 +17,13 @@ interface MirriChatDrawerProps {
   onSendMessage: () => void;
 }
 
-export function MirriChatDrawer({
+export function SenseiChatDrawer({
   messages,
   inputMessage,
   setInputMessage,
   isChatLoading,
   onSendMessage,
-}: MirriChatDrawerProps) {
+}: SenseiChatDrawerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -42,13 +42,13 @@ export function MirriChatDrawer({
 
   return (
     <>
-      {/* Floating Mirri button with speech bubble */}
+      {/* Floating Sensei button with speech bubble */}
       <div className="fixed top-16 right-4 z-40 flex items-start gap-2">
         {/* Speech bubble hint */}
         {!isOpen && (
           <div className="bg-card border border-border rounded-2xl rounded-tr-sm px-3 py-2 shadow-lg animate-slide-up max-w-[180px]">
             <p className="text-xs text-muted-foreground">
-              Need help? Tap to chat with me! 🦊
+              Need help? Ask Sensei! 🦊
             </p>
           </div>
         )}
@@ -70,7 +70,7 @@ export function MirriChatDrawer({
                 </div>
                 <div className="flex-1">
                   <SheetTitle className="font-display font-bold text-foreground">
-                    Mirri the Study Buddy
+                    Sensei
                   </SheetTitle>
                   <p className="text-sm text-muted-foreground">Ask me for hints!</p>
                 </div>
@@ -115,7 +115,7 @@ export function MirriChatDrawer({
                 <Input
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
-                  placeholder="Ask Mirri a question..."
+                  placeholder="Ask Sensei a question..."
                   onKeyPress={handleKeyPress}
                   disabled={isChatLoading}
                   className="flex-1 rounded-xl"
