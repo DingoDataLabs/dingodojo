@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Check, ChevronRight, ChevronLeft } from "lucide-react";
+import { Check, ChevronRight, ChevronLeft, LogOut } from "lucide-react";
 
 interface Topic {
   id: string;
@@ -14,7 +14,7 @@ interface Topic {
 }
 
 export default function Onboarding() {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [gradeLevel, setGradeLevel] = useState("Year 5");
@@ -23,6 +23,11 @@ export default function Onboarding() {
   const [challengingTopics, setChallengingTopics] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [profileId, setProfileId] = useState<string | null>(null);
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/");
+  };
 
   useEffect(() => {
     if (!user) {
@@ -143,6 +148,19 @@ export default function Onboarding() {
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
+      {/* Logout Button */}
+      <div className="absolute top-4 right-4">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleLogout}
+          className="rounded-xl gap-2"
+        >
+          <LogOut className="w-4 h-4" />
+          <span className="hidden sm:inline">Logout</span>
+        </Button>
+      </div>
+
       <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8 animate-slide-up">
