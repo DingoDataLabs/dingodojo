@@ -416,6 +416,10 @@ export default function Dashboard() {
               </div>
               <Button 
                 onClick={handleUpgrade}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  handleUpgrade();
+                }}
                 size="sm" 
                 className="rounded-xl gap-2 bg-gradient-to-r from-ochre to-amber-500 hover:from-ochre/90 hover:to-amber-500/90"
               >
@@ -563,9 +567,10 @@ export default function Dashboard() {
                   className="flip-card h-40 md:h-48 perspective-1000"
                   style={{ animationDelay: `${0.05 * (index + 1)}s` }}
                 >
-                  <button
+                  <div
                     onClick={() => !locked && navigate(`/subject/${subject.slug}`)}
-                    disabled={locked}
+                    role="button"
+                    tabIndex={locked ? -1 : 0}
                     className={`flip-card-inner w-full h-full relative transition-transform duration-500 transform-style-3d ${locked ? 'cursor-not-allowed' : 'cursor-pointer'} group`}
                   >
                     {/* Front of card */}
@@ -591,8 +596,13 @@ export default function Dashboard() {
                               e.stopPropagation();
                               handleUpgrade();
                             }}
+                            onTouchEnd={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              handleUpgrade();
+                            }}
                             size="sm"
-                            className="text-xs rounded-lg"
+                            className="text-xs rounded-lg pointer-events-auto"
                           >
                             Upgrade
                           </Button>
@@ -614,7 +624,7 @@ export default function Dashboard() {
                         </>
                       )}
                     </div>
-                  </button>
+                  </div>
                 </div>
               );
             })}
