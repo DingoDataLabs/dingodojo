@@ -120,7 +120,7 @@ interface StudentProgress {
 export default function TrainingSession() {
   const { subjectSlug, topicSlug } = useParams<{ subjectSlug: string; topicSlug: string }>();
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
+  const { user, session, loading: authLoading } = useAuth();
   const isMobile = useIsMobile();
 
   const [topic, setTopic] = useState<Topic | null>(null);
@@ -632,7 +632,7 @@ export default function TrainingSession() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            Authorization: `Bearer ${session?.access_token}`,
           },
           body: JSON.stringify({
             messages: chatMessages,
