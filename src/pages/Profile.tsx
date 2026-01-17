@@ -59,8 +59,9 @@ export default function ProfilePage() {
   }, [user, navigate]);
 
   const fetchProfile = async () => {
+    // Use secure view to exclude stripe_customer_id
     const { data, error } = await supabase
-      .from("profiles")
+      .from("user_profiles")
       .select("*")
       .eq("user_id", user?.id)
       .maybeSingle();

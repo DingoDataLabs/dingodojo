@@ -117,9 +117,9 @@ export default function Dashboard() {
 
   const fetchData = async () => {
     try {
-      // Fetch profile
+      // Fetch profile using secure view (excludes stripe_customer_id)
       const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
+        .from("user_profiles")
         .select("*")
         .eq("user_id", user?.id)
         .maybeSingle();
