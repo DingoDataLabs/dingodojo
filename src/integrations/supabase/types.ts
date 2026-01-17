@@ -78,6 +78,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "chat_messages_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "chat_messages_topic_id_fkey"
             columns: ["topic_id"]
             isOneToOne: false
@@ -224,6 +231,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "student_progress_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "student_progress_topic_id_fkey"
             columns: ["topic_id"]
             isOneToOne: false
@@ -334,11 +348,74 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "user_badges_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
     Views: {
-      [_ in never]: never
+      user_profiles: {
+        Row: {
+          created_at: string | null
+          current_streak: number | null
+          daily_streak: number | null
+          first_name: string | null
+          grade_level: string | null
+          id: string | null
+          last_active_date: string | null
+          last_mission_date: string | null
+          missions_this_week: number | null
+          missions_today: number | null
+          onboarding_completed: boolean | null
+          subscription_tier: string | null
+          total_xp: number | null
+          updated_at: string | null
+          user_id: string | null
+          week_start_date: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          current_streak?: number | null
+          daily_streak?: number | null
+          first_name?: string | null
+          grade_level?: string | null
+          id?: string | null
+          last_active_date?: string | null
+          last_mission_date?: string | null
+          missions_this_week?: number | null
+          missions_today?: number | null
+          onboarding_completed?: boolean | null
+          subscription_tier?: string | null
+          total_xp?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          week_start_date?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          current_streak?: number | null
+          daily_streak?: number | null
+          first_name?: string | null
+          grade_level?: string | null
+          id?: string | null
+          last_active_date?: string | null
+          last_mission_date?: string | null
+          missions_this_week?: number | null
+          missions_today?: number | null
+          onboarding_completed?: boolean | null
+          subscription_tier?: string | null
+          total_xp?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          week_start_date?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never
