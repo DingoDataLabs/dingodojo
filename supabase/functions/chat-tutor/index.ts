@@ -113,6 +113,41 @@ const validateInput = (data: unknown): { valid: boolean; error?: string; data?: 
   };
 };
 
+// Validate subscription tier and daily limits
+const validateMissionAccess = async (
+  supabaseClient: any,
+  userId: string
+): Promise<{ allowed: boolean; error?: string }> => {
+  const { data: profile, error } = await supabaseClient
+    .from('profiles')
+    .select('subscription_tier, missions_today, last_mission_date')
+    .eq('user_id', userId)
+    .single();
+
+  if (error) {
+    console.error('Error fetching profile for mission access:', error);
+    return { allowed: false, error: 'Failed to verify subscription status' };
+  }
+
+  if (profile.subscription_tier === 'champion') {
+    return { allowed: true };
+  }
+
+  const today = new Date().toLocaleDateString('en-AU', { timeZone: 'Australia/Sydney' });
+  const lastMissionDate = profile.last_mission_date as string | null;
+  const isNewDay = !lastMissionDate || lastMissionDate !== today;
+  const effectiveMissionsToday: number = isNewDay ? 0 : (profile.missions_today || 0);
+
+  if (effectiveMissionsToday >= 2) {
+    return { 
+      allowed: false, 
+      error: 'Daily mission limit reached. Upgrade to Champion for unlimited access!' 
+    };
+  }
+
+  return { allowed: true };
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -130,7 +165,8 @@ serve(async (req) => {
 
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      { auth: { persistSession: false } }
     );
 
     const token = authHeader.replace('Bearer ', '');
@@ -145,6 +181,15 @@ serve(async (req) => {
     }
     
     console.log("Authenticated user:", user.id);
+
+    // Validate subscription tier and daily limits
+    const missionAccess = await validateMissionAccess(supabaseClient, user.id);
+    if (!missionAccess.allowed) {
+      return new Response(
+        JSON.stringify({ error: missionAccess.error, code: 'LIMIT_REACHED' }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Parse and validate input
     let rawBody: unknown;

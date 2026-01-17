@@ -10,6 +10,35 @@ const corsHeaders = {
 const CHAMPION_PRICE_ID = "price_1SoMeUK84hi74TCsFYwa6V1Y";
 const COUPON_3MFREE_ID = "fTfa8Xao";
 
+// Allowed origins for redirect URLs
+const ALLOWED_ORIGINS = [
+  "https://dingodojo.lovable.app",
+  "https://dingodojo.app",
+  "https://www.dingodojo.app",
+];
+
+// Add preview URLs in development
+const isDevOrigin = (origin: string) => 
+  origin.includes("localhost") || 
+  origin.includes("lovable.app") ||
+  origin.includes("127.0.0.1");
+
+const getValidatedOrigin = (requestOrigin: string | null): string => {
+  if (!requestOrigin) return ALLOWED_ORIGINS[0];
+  
+  if (ALLOWED_ORIGINS.includes(requestOrigin)) {
+    return requestOrigin;
+  }
+  
+  // Allow Lovable preview URLs and localhost for development
+  if (isDevOrigin(requestOrigin)) {
+    return requestOrigin;
+  }
+  
+  // Fallback to production
+  return ALLOWED_ORIGINS[0];
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -44,14 +73,17 @@ serve(async (req) => {
       customerId = customers.data[0].id;
     }
 
+    // Validate and get safe origin for redirects
+    const validatedOrigin = getValidatedOrigin(req.headers.get("origin"));
+
     // Build session options
     const sessionOptions: Stripe.Checkout.SessionCreateParams = {
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
       line_items: [{ price: CHAMPION_PRICE_ID, quantity: 1 }],
       mode: "subscription",
-      success_url: `${req.headers.get("origin")}/dashboard?subscription=success`,
-      cancel_url: `${req.headers.get("origin")}/dashboard?subscription=cancelled`,
+      success_url: `${validatedOrigin}/dashboard?subscription=success`,
+      cancel_url: `${validatedOrigin}/dashboard?subscription=cancelled`,
       allow_promotion_codes: true,
       payment_method_collection: "if_required",
     };

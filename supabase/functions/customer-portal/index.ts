@@ -7,6 +7,33 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Allowed origins for redirect URLs
+const ALLOWED_ORIGINS = [
+  "https://dingodojo.lovable.app",
+  "https://dingodojo.app",
+  "https://www.dingodojo.app",
+];
+
+// Allow dev/preview origins
+const isDevOrigin = (origin: string) => 
+  origin.includes("localhost") || 
+  origin.includes("lovable.app") ||
+  origin.includes("127.0.0.1");
+
+const getValidatedOrigin = (requestOrigin: string | null): string => {
+  if (!requestOrigin) return ALLOWED_ORIGINS[0];
+  
+  if (ALLOWED_ORIGINS.includes(requestOrigin)) {
+    return requestOrigin;
+  }
+  
+  if (isDevOrigin(requestOrigin)) {
+    return requestOrigin;
+  }
+  
+  return ALLOWED_ORIGINS[0];
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -40,11 +67,13 @@ serve(async (req) => {
     }
 
     const customerId = customers.data[0].id;
-    const origin = req.headers.get("origin") || "https://dingodojo.app";
+    
+    // Validate origin for safe redirect
+    const validatedOrigin = getValidatedOrigin(req.headers.get("origin"));
 
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: customerId,
-      return_url: `${origin}/dashboard`,
+      return_url: `${validatedOrigin}/dashboard`,
     });
 
     return new Response(JSON.stringify({ url: portalSession.url }), {
