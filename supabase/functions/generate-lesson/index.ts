@@ -87,6 +87,44 @@ const getDifficultyLevel = (topicXp: number): { level: string; description: stri
   return { level: "Mastering", description: "challenging problems requiring deeper reasoning", multiplier: 2 };
 };
 
+// Validate subscription tier and daily limits
+const validateMissionAccess = async (
+  supabaseClient: any,
+  userId: string
+): Promise<{ allowed: boolean; error?: string }> => {
+  const { data: profile, error } = await supabaseClient
+    .from('profiles')
+    .select('subscription_tier, missions_today, last_mission_date')
+    .eq('user_id', userId)
+    .single();
+
+  if (error) {
+    console.error('Error fetching profile for mission access:', error);
+    return { allowed: false, error: 'Failed to verify subscription status' };
+  }
+
+  // Champion tier has unlimited access
+  if (profile.subscription_tier === 'champion') {
+    return { allowed: true };
+  }
+
+  // Check if it's a new day (using Sydney timezone)
+  const today = new Date().toLocaleDateString('en-AU', { timeZone: 'Australia/Sydney' });
+  const lastMissionDate = profile.last_mission_date as string | null;
+  const isNewDay = !lastMissionDate || lastMissionDate !== today;
+  const effectiveMissionsToday: number = isNewDay ? 0 : (profile.missions_today || 0);
+
+  // Explorer tier: 2 missions per day
+  if (effectiveMissionsToday >= 2) {
+    return { 
+      allowed: false, 
+      error: 'Daily mission limit reached. Upgrade to Champion for unlimited access!' 
+    };
+  }
+
+  return { allowed: true };
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -104,12 +142,13 @@ serve(async (req) => {
 
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      { auth: { persistSession: false } }
     );
 
     // Verify the user with getUser
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser();
+    const token = authHeader.replace('Bearer ', '');
+    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
     
     if (userError) {
       console.error('Auth error:', userError.message, userError.status);
@@ -129,6 +168,15 @@ serve(async (req) => {
     
     const userId = userData.user.id;
     console.log('Authenticated user:', userId);
+
+    // Validate subscription tier and daily limits
+    const missionAccess = await validateMissionAccess(supabaseClient, userId);
+    if (!missionAccess.allowed) {
+      return new Response(
+        JSON.stringify({ error: missionAccess.error, code: 'LIMIT_REACHED' }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Parse and validate input
     let rawBody: unknown;
