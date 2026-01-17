@@ -11,6 +11,7 @@ import { getSydneyToday, isNewDay, getDailyStreakMessage, getDailyMissionsRemain
 import { SenseiSuggestion } from "@/components/SenseiSuggestion";
 import { useSenseiSuggestion } from "@/hooks/useSenseiSuggestion";
 import { useSmartMission } from "@/hooks/useSmartMission";
+import { StripeCheckoutModal } from "@/components/StripeCheckoutModal";
 
 interface Profile {
   id: string;
@@ -62,6 +63,7 @@ export default function Dashboard() {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [topicProgressData, setTopicProgressData] = useState<TopicProgress[]>([]);
   const [loading, setLoading] = useState(true);
+  const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -97,22 +99,14 @@ export default function Dashboard() {
     }
   };
 
-  const handleUpgrade = async () => {
-    const promoCode = sessionStorage.getItem("dingo_promo_code") || "";
-    
-    try {
-      const { data, error } = await supabase.functions.invoke("create-checkout", {
-        body: { promoCode },
-      });
-      
-      if (error) throw error;
-      if (data?.url) {
-        window.open(data.url, "_blank");
-      }
-    } catch (err) {
-      console.error("Checkout error:", err);
-      toast.error("Couldn't start checkout. Please try again!");
-    }
+  const handleUpgrade = () => {
+    setCheckoutModalOpen(true);
+  };
+
+  const handleCheckoutSuccess = () => {
+    toast.success("Welcome to Champion tier! 🏆 Unlimited learning awaits!");
+    fetchData();
+    checkSubscriptionStatus();
   };
 
   const fetchData = async () => {
@@ -635,6 +629,13 @@ export default function Dashboard() {
         <section className="mt-8 animate-slide-up stagger-7">
           <SenseiSuggestion message={senseiData.message} />
         </section>
+
+        {/* Stripe Checkout Modal */}
+        <StripeCheckoutModal
+          open={checkoutModalOpen}
+          onOpenChange={setCheckoutModalOpen}
+          onSuccess={handleCheckoutSuccess}
+        />
       </div>
     </div>
   );
