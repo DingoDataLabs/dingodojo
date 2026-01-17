@@ -53,6 +53,7 @@ serve(async (req) => {
       success_url: `${req.headers.get("origin")}/dashboard?subscription=success`,
       cancel_url: `${req.headers.get("origin")}/dashboard?subscription=cancelled`,
       allow_promotion_codes: true,
+      payment_method_collection: "if_required",
     };
 
     // Apply promo code if provided
