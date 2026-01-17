@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 const CHAMPION_PRICE_ID = "price_1SoMeUK84hi74TCsFYwa6V1Y";
-const COUPON_3MFREE_ID = "fTfa8Xao";
+const COUPON_BETA3M_ID = "fTfa8Xao";
 
 // Allowed origins for redirect URLs
 const ALLOWED_ORIGINS = [
@@ -60,7 +60,7 @@ serve(async (req) => {
     const user = userData.user;
     if (!user?.email) throw new Error("User not authenticated");
 
-    const { promoCode } = await req.json();
+    const { promoCode, embedded } = await req.json();
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2025-08-27.basil",
@@ -82,19 +82,34 @@ serve(async (req) => {
       customer_email: customerId ? undefined : user.email,
       line_items: [{ price: CHAMPION_PRICE_ID, quantity: 1 }],
       mode: "subscription",
-      success_url: `${validatedOrigin}/dashboard?subscription=success`,
-      cancel_url: `${validatedOrigin}/dashboard?subscription=cancelled`,
       allow_promotion_codes: true,
       payment_method_collection: "if_required",
     };
 
     // Apply promo code if provided
-    if (promoCode && promoCode.toUpperCase() === "3MFREE") {
-      sessionOptions.discounts = [{ coupon: COUPON_3MFREE_ID }];
+    if (promoCode && promoCode.toUpperCase() === "BETA3M") {
+      sessionOptions.discounts = [{ coupon: COUPON_BETA3M_ID }];
       sessionOptions.allow_promotion_codes = false;
     }
 
+    // Use embedded mode for modal checkout
+    if (embedded) {
+      sessionOptions.ui_mode = "embedded";
+      sessionOptions.return_url = `${validatedOrigin}/dashboard?subscription=success`;
+    } else {
+      sessionOptions.success_url = `${validatedOrigin}/dashboard?subscription=success`;
+      sessionOptions.cancel_url = `${validatedOrigin}/dashboard?subscription=cancelled`;
+    }
+
     const session = await stripe.checkout.sessions.create(sessionOptions);
+
+    // Return client_secret for embedded mode, url for redirect mode
+    if (embedded) {
+      return new Response(JSON.stringify({ clientSecret: session.client_secret }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
 
     return new Response(JSON.stringify({ url: session.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
