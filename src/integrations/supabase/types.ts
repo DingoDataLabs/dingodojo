@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_feed: {
+        Row: {
+          activity_type: string
+          badge_emoji: string | null
+          badge_name: string | null
+          created_at: string
+          id: string
+          profile_id: string
+          subject_name: string | null
+          topic_name: string | null
+          xp_earned: number | null
+        }
+        Insert: {
+          activity_type: string
+          badge_emoji?: string | null
+          badge_name?: string | null
+          created_at?: string
+          id?: string
+          profile_id: string
+          subject_name?: string | null
+          topic_name?: string | null
+          xp_earned?: number | null
+        }
+        Update: {
+          activity_type?: string
+          badge_emoji?: string | null
+          badge_name?: string | null
+          created_at?: string
+          id?: string
+          profile_id?: string
+          subject_name?: string | null
+          topic_name?: string | null
+          xp_earned?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_feed_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_feed_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       badges: {
         Row: {
           badge_type: string
@@ -93,6 +144,59 @@ export type Database = {
           },
         ]
       }
+      friendships: {
+        Row: {
+          addressee_id: string
+          created_at: string
+          id: string
+          requester_id: string
+          status: string
+        }
+        Insert: {
+          addressee_id: string
+          created_at?: string
+          id?: string
+          requester_id: string
+          status?: string
+        }
+        Update: {
+          addressee_id?: string
+          created_at?: string
+          id?: string
+          requester_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "friendships_addressee_id_fkey"
+            columns: ["addressee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "friendships_addressee_id_fkey"
+            columns: ["addressee_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "friendships_requester_id_fkey"
+            columns: ["requester_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "friendships_requester_id_fkey"
+            columns: ["requester_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       generated_modules: {
         Row: {
           content_json: Json
@@ -143,6 +247,7 @@ export type Database = {
           total_xp: number | null
           updated_at: string
           user_id: string
+          username: string | null
           week_start_date: string | null
         }
         Insert: {
@@ -162,6 +267,7 @@ export type Database = {
           total_xp?: number | null
           updated_at?: string
           user_id: string
+          username?: string | null
           week_start_date?: string | null
         }
         Update: {
@@ -181,6 +287,7 @@ export type Database = {
           total_xp?: number | null
           updated_at?: string
           user_id?: string
+          username?: string | null
           week_start_date?: string | null
         }
         Relationships: []
@@ -376,6 +483,7 @@ export type Database = {
           total_xp: number | null
           updated_at: string | null
           user_id: string | null
+          username: string | null
           week_start_date: string | null
         }
         Insert: {
@@ -394,6 +502,7 @@ export type Database = {
           total_xp?: number | null
           updated_at?: string | null
           user_id?: string | null
+          username?: string | null
           week_start_date?: string | null
         }
         Update: {
@@ -412,13 +521,14 @@ export type Database = {
           total_xp?: number | null
           updated_at?: string | null
           user_id?: string | null
+          username?: string | null
           week_start_date?: string | null
         }
         Relationships: []
       }
     }
     Functions: {
-      [_ in never]: never
+      get_my_profile_id: { Args: never; Returns: string }
     }
     Enums: {
       [_ in never]: never

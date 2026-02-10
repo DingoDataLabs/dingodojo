@@ -8,9 +8,9 @@ import { toast } from "sonner";
 import { ProgressRing } from "@/components/ProgressRing";
 import { getSydneyWeekStart, isNewWeek, getStreakMessage, isStreakSecured } from "@/lib/weekUtils";
 import { getSydneyToday, isNewDay, getDailyStreakMessage, getDailyMissionsRemaining } from "@/lib/dailyUtils";
-import { SenseiSuggestion } from "@/components/SenseiSuggestion";
-import { useSenseiSuggestion } from "@/hooks/useSenseiSuggestion";
 import { useSmartMission } from "@/hooks/useSmartMission";
+import { MyBadges } from "@/components/MyBadges";
+import { DojoCrew } from "@/components/DojoCrew";
 import { StripeCheckoutModal } from "@/components/StripeCheckoutModal";
 
 interface Profile {
@@ -298,25 +298,6 @@ export default function Dashboard() {
   const streakSecured = isStreakSecured(missionsThisWeek);
   const isExplorer = profile?.subscription_tier !== "champion";
   const dailyMissionsRemaining = isExplorer ? getDailyMissionsRemaining(missionsToday) : null;
-
-  const subjectProgressData = useMemo(() => 
-    subjects.map(s => ({
-      subjectId: s.id,
-      subjectName: s.name,
-      totalXp: subjectXps[s.id] || 0,
-    })),
-    [subjects, subjectXps]
-  );
-
-  const senseiData = useSenseiSuggestion({
-    firstName: profile?.first_name,
-    missionsThisWeek,
-    missionsToday,
-    currentStreak: profile?.current_streak || 0,
-    dailyStreak,
-    subjectProgress: subjectProgressData,
-    totalXp: profile?.total_xp || 0,
-  });
 
   // Build topic progress for smart mission selection
   const smartMissionTopics = useMemo(() => {
@@ -625,9 +606,19 @@ export default function Dashboard() {
           </div>
         </section>
 
-        {/* Sensei Speech Bubble */}
-        <section className="mt-8 animate-slide-up stagger-7">
-          <SenseiSuggestion message={senseiData.message} />
+        {/* Badges & Dojo Crew */}
+        <section className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4 animate-slide-up stagger-7">
+          <MyBadges
+            profileId={profile?.id || null}
+            dailyStreak={dailyStreak}
+            totalXp={profile?.total_xp || 0}
+          />
+          <DojoCrew
+            profileId={profile?.id || null}
+            firstName={profile?.first_name || null}
+            totalXp={profile?.total_xp || 0}
+            dailyStreak={dailyStreak}
+          />
         </section>
 
         {/* Stripe Checkout Modal */}
