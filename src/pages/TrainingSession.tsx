@@ -28,6 +28,7 @@ interface Topic {
 interface Subject {
   id: string;
   slug: string;
+  name: string;
 }
 
 interface CheckQuestion {
@@ -228,7 +229,7 @@ export default function TrainingSession() {
       // Fetch topic with subject
       const { data: topicData, error: topicError } = await supabase
         .from("topics")
-        .select("*, subjects!inner(id, slug)")
+        .select("*, subjects!inner(id, slug, name)")
         .eq("slug", topicSlug)
         .maybeSingle();
 
@@ -595,6 +596,16 @@ export default function TrainingSession() {
         missions_this_week: existingMissions + 1,
       }, {
         onConflict: "student_id,topic_id",
+      });
+
+      // Log to activity feed
+      const subjectName = subject ? (subject as any).name || subjectSlug : subjectSlug;
+      await supabase.from("activity_feed").insert({
+        profile_id: profile.id,
+        activity_type: "mission_complete",
+        subject_name: subjectName,
+        topic_name: topic.name,
+        xp_earned: totalXp,
       });
 
       setMissionComplete(true);
