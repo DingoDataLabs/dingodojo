@@ -153,7 +153,7 @@ export function DojoCrew({ profileId, firstName, totalXp, dailyStreak }: DojoCre
       const { data } = await supabase
         .from("user_profiles")
         .select("id, first_name, total_xp, grade_level")
-        .ilike("first_name", `%${query}%`)
+        .ilike("username", `%${query}%`)
         .neq("id", profileId)
         .limit(5);
 
