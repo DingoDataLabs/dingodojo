@@ -32,6 +32,7 @@ interface Profile {
   grade_level: string | null;
   subscription_tier: string;
   total_xp: number;
+  username: string | null;
 }
 
 export default function ProfilePage() {
@@ -46,6 +47,8 @@ export default function ProfilePage() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [username, setUsername] = useState("");
+  const [usernameError, setUsernameError] = useState("");
   const [saving, setSaving] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -72,6 +75,7 @@ export default function ProfilePage() {
       setProfile(data);
       setFirstName(data.first_name || "");
       setGradeLevel(data.grade_level || "Year 5");
+      setUsername(data.username || "");
     }
     setLoading(false);
   };
@@ -79,19 +83,38 @@ export default function ProfilePage() {
   const handleSaveProfile = async () => {
     if (!profile) return;
     setSaving(true);
+    setUsernameError("");
+
+    const trimmedUsername = username.trim() || null;
+
+    if (trimmedUsername) {
+      const { data: existing } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("username", trimmedUsername)
+        .neq("id", profile.id)
+        .maybeSingle();
+
+      if (existing) {
+        setUsernameError("That Dojo Name is already taken — try another!");
+        setSaving(false);
+        return;
+      }
+    }
 
     const { error } = await supabase
       .from("profiles")
       .update({
         first_name: firstName.trim(),
         grade_level: gradeLevel,
+        username: trimmedUsername,
       })
       .eq("id", profile.id);
 
     if (error) {
       toast.error("Failed to save profile");
     } else {
-      toast.success("Profile updated! 🎉");
+      toast.success(trimmedUsername ? `Profile updated! Your Dojo Name is set to ${trimmedUsername} 🥷` : "Profile updated! 🎉");
     }
     setSaving(false);
   };
@@ -235,7 +258,7 @@ export default function ProfilePage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="firstName" className="font-semibold">Display Name</Label>
+                <Label htmlFor="firstName" className="font-semibold">First Name</Label>
                 <Input
                   id="firstName"
                   value={firstName}
@@ -243,6 +266,37 @@ export default function ProfilePage() {
                   placeholder="Your name"
                   className="h-12 rounded-xl"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="username" className="font-semibold">Dojo Name</Label>
+                  <span title="Your unique name in the Dojo — this is how friends find you and what other students see" className="cursor-help text-muted-foreground">
+                    ⓘ
+                  </span>
+                </div>
+                <Input
+                  id="username"
+                  value={username}
+                  onChange={(e) => {
+                    setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""));
+                    setUsernameError("");
+                  }}
+                  placeholder="e.g. ninja_chris"
+                  className="h-12 rounded-xl"
+                  maxLength={30}
+                />
+                {username && (
+                  <p className="text-xs text-muted-foreground">
+                    Friends will find you by searching: <span className="font-semibold text-foreground">{username}</span>
+                  </p>
+                )}
+                {usernameError && (
+                  <p className="text-xs text-destructive">{usernameError}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Lowercase letters, numbers and underscores only. You can change this at any time — friends stay connected.
+                </p>
               </div>
 
               <div className="space-y-2">
