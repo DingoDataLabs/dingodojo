@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Send, Sparkles, CheckCircle, Loader2, ChevronRight, HelpCircle } from "lucide-react";
+import { ArrowLeft, Send, Sparkles, CheckCircle, Loader2, ChevronRight, HelpCircle, Camera, PenTool, Crown } from "lucide-react";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
 import { getSydneyWeekStart, isNewWeek } from "@/lib/weekUtils";
@@ -60,6 +60,17 @@ interface FreeTextFeedback {
   improvements: string[];
   overallRating: string;
   annotations?: WritingAnnotation[];
+}
+
+interface HandwritingResult {
+  letter_formation: number;
+  letter_formation_comment: string;
+  spacing_sizing: number;
+  spacing_sizing_comment: string;
+  presentation: number;
+  presentation_comment: string;
+  composite_score: number;
+  transcribed_text: string;
 }
 
 interface LessonSection {
@@ -155,6 +166,13 @@ export default function TrainingSession() {
   const [assessingFreeText, setAssessingFreeText] = useState<Record<string, boolean>>({});
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [pendingFeedbackKey, setPendingFeedbackKey] = useState<string | null>(null);
+  const [handwritingResults, setHandwritingResults] = useState<Record<string, HandwritingResult>>({});
+
+  // Handwriting upload state
+  const [answerMode, setAnswerMode] = useState<Record<string, "type" | "photo">>({});
+  const [photoFiles, setPhotoFiles] = useState<Record<string, File | null>>({});
+  const [photoPreviews, setPhotoPreviews] = useState<Record<string, string>>({});
+  const [photoRejectionMsg, setPhotoRejectionMsg] = useState<Record<string, string>>({});
 
   // Chat state
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -497,6 +515,80 @@ export default function TrainingSession() {
 
   const handleFreeTextChange = (key: string, value: string) => {
     setFreeTextAnswers(prev => ({ ...prev, [key]: value }));
+  };
+
+  const submitHandwritingAnswer = async (questionIdx: number) => {
+    const question = lessonContent?.final_challenge.questions[questionIdx];
+    if (!question) return;
+
+    const key = `challenge_${questionIdx}`;
+    const file = photoFiles[key];
+    if (!file) {
+      toast.error("Please upload a photo first!");
+      return;
+    }
+
+    setAssessingFreeText(prev => ({ ...prev, [key]: true }));
+    setPhotoRejectionMsg(prev => ({ ...prev, [key]: "" }));
+
+    try {
+      // Convert to base64
+      const buffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      let binary = "";
+      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+      const imageBase64 = btoa(binary);
+
+      const subjectName = subject ? (subject as any).name || subjectSlug : subjectSlug;
+
+      const { data, error } = await supabase.functions.invoke("assess-handwriting", {
+        body: {
+          imageBase64,
+          question: question.question,
+          assessmentCriteria: question.assessment_criteria,
+          exampleElements: question.example_elements,
+          minWords: question.min_words || 50,
+          maxWords: question.max_words || 200,
+          maxPoints: question.points || 50,
+          topicName: topic?.name,
+          subjectName,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.rejected && data?.reason === "upload_not_handwriting") {
+        setPhotoRejectionMsg(prev => ({ ...prev, [key]: "That doesn't look like handwritten work — please take a photo of your written answer on paper 🖊️" }));
+        setAssessingFreeText(prev => ({ ...prev, [key]: false }));
+        return;
+      }
+
+      if (data?.success && data?.writing) {
+        setFreeTextFeedback(prev => ({ ...prev, [key]: data.writing }));
+        setHandwritingResults(prev => ({ ...prev, [key]: data.handwriting }));
+        setChallengeCompleted(prev => ({ ...prev, [questionIdx]: true }));
+        setEarnedXp(prev => prev + (data.writing.score || 0));
+        
+        // Store transcribed text as the student response for display
+        setFreeTextAnswers(prev => ({ ...prev, [key]: data.handwriting.transcribed_text || "" }));
+
+        setPendingFeedbackKey(key);
+        setShowFeedbackModal(true);
+      }
+    } catch (err) {
+      console.error("Handwriting assessment error:", err);
+      toast.error("Couldn't assess your handwriting. Please try again!");
+    } finally {
+      setAssessingFreeText(prev => ({ ...prev, [key]: false }));
+    }
+  };
+
+  const handlePhotoSelect = (key: string, file: File | null) => {
+    if (!file) return;
+    setPhotoFiles(prev => ({ ...prev, [key]: file }));
+    setPhotoRejectionMsg(prev => ({ ...prev, [key]: "" }));
+    const url = URL.createObjectURL(file);
+    setPhotoPreviews(prev => ({ ...prev, [key]: url }));
   };
 
   const handleFeedbackModalClose = () => {
@@ -895,18 +987,146 @@ export default function TrainingSession() {
                   </div>
                 )}
 
-                <div className="relative">
-                  <Textarea
-                    value={freeTextAnswers[`challenge_${currentChallengeIndex}`] || ""}
-                    onChange={(e) => handleFreeTextChange(`challenge_${currentChallengeIndex}`, e.target.value)}
-                    placeholder="Write your response here..."
-                    className="min-h-[200px] resize-none"
-                    disabled={isCompleted || assessingFreeText[`challenge_${currentChallengeIndex}`]}
-                  />
-                  <div className="absolute bottom-2 right-2 text-xs text-muted-foreground">
-                    {getWordCount(freeTextAnswers[`challenge_${currentChallengeIndex}`] || "")} / {question.min_words || 50}-{question.max_words || 200} words
+                {/* Type / Photo toggle */}
+                {!isCompleted && (
+                  <div className="flex items-center gap-2 bg-muted/50 rounded-xl p-1">
+                    <button
+                      onClick={() => setAnswerMode(prev => ({ ...prev, [`challenge_${currentChallengeIndex}`]: "type" }))}
+                      className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-semibold transition-all ${
+                        (answerMode[`challenge_${currentChallengeIndex}`] || "type") === "type"
+                          ? "bg-card shadow-sm text-foreground"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      <PenTool className="w-4 h-4" /> Type answer
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (profile?.subscription_tier !== "champion") {
+                          toast("📷 Photo upload is a Champion feature!", { icon: "👑", description: "Upgrade to submit handwritten answers." });
+                          return;
+                        }
+                        setAnswerMode(prev => ({ ...prev, [`challenge_${currentChallengeIndex}`]: "photo" }));
+                      }}
+                      className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-semibold transition-all ${
+                        answerMode[`challenge_${currentChallengeIndex}`] === "photo"
+                          ? "bg-card shadow-sm text-foreground"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      <Camera className="w-4 h-4" /> Upload photo
+                      {profile?.subscription_tier !== "champion" && <Crown className="w-3 h-3 text-primary" />}
+                    </button>
                   </div>
-                </div>
+                )}
+
+                {/* Type mode */}
+                {(answerMode[`challenge_${currentChallengeIndex}`] || "type") === "type" && (
+                  <>
+                    <div className="relative">
+                      <Textarea
+                        value={freeTextAnswers[`challenge_${currentChallengeIndex}`] || ""}
+                        onChange={(e) => handleFreeTextChange(`challenge_${currentChallengeIndex}`, e.target.value)}
+                        placeholder="Write your response here..."
+                        className="min-h-[200px] resize-none"
+                        disabled={isCompleted || assessingFreeText[`challenge_${currentChallengeIndex}`]}
+                      />
+                      <div className="absolute bottom-2 right-2 text-xs text-muted-foreground">
+                        {getWordCount(freeTextAnswers[`challenge_${currentChallengeIndex}`] || "")} / {question.min_words || 50}-{question.max_words || 200} words
+                      </div>
+                    </div>
+
+                    {!isCompleted && (
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => setShowChallengeHint(prev => ({ ...prev, [currentChallengeIndex]: true }))}
+                          className="flex-shrink-0"
+                          disabled={showHint}
+                        >
+                          <HelpCircle className="w-4 h-4 mr-2" />
+                          Get a Tip
+                        </Button>
+                        <Button
+                          onClick={() => submitFreeTextAnswer(currentChallengeIndex)}
+                          className="flex-1 h-12 text-lg font-bold rounded-xl"
+                          disabled={assessingFreeText[`challenge_${currentChallengeIndex}`] || !freeTextAnswers[`challenge_${currentChallengeIndex}`]}
+                        >
+                          {assessingFreeText[`challenge_${currentChallengeIndex}`] ? (
+                            <>
+                              <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                              Mirri is reading...
+                            </>
+                          ) : (
+                            "Submit Writing ✍️"
+                          )}
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Photo mode */}
+                {answerMode[`challenge_${currentChallengeIndex}`] === "photo" && !isCompleted && (
+                  <div className="space-y-3">
+                    {photoPreviews[`challenge_${currentChallengeIndex}`] ? (
+                      <div className="relative">
+                        <img
+                          src={photoPreviews[`challenge_${currentChallengeIndex}`]}
+                          alt="Your handwriting"
+                          className="w-full rounded-xl border border-border max-h-[300px] object-contain bg-muted/30"
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="absolute top-2 right-2 rounded-lg"
+                          onClick={() => {
+                            setPhotoFiles(prev => ({ ...prev, [`challenge_${currentChallengeIndex}`]: null }));
+                            setPhotoPreviews(prev => ({ ...prev, [`challenge_${currentChallengeIndex}`]: "" }));
+                            setPhotoRejectionMsg(prev => ({ ...prev, [`challenge_${currentChallengeIndex}`]: "" }));
+                          }}
+                        >
+                          Change photo
+                        </Button>
+                      </div>
+                    ) : (
+                      <label className="flex flex-col items-center justify-center gap-3 border-2 border-dashed border-border rounded-xl p-8 cursor-pointer hover:border-primary/40 transition-colors bg-muted/20">
+                        <Camera className="w-10 h-10 text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground font-medium">Tap to take a photo or choose from gallery</p>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          className="hidden"
+                          onChange={(e) => handlePhotoSelect(`challenge_${currentChallengeIndex}`, e.target.files?.[0] || null)}
+                        />
+                      </label>
+                    )}
+
+                    {photoRejectionMsg[`challenge_${currentChallengeIndex}`] && (
+                      <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-3 text-sm text-destructive">
+                        {photoRejectionMsg[`challenge_${currentChallengeIndex}`]}
+                      </div>
+                    )}
+
+                    {photoPreviews[`challenge_${currentChallengeIndex}`] && (
+                      <Button
+                        onClick={() => submitHandwritingAnswer(currentChallengeIndex)}
+                        className="w-full h-12 text-lg font-bold rounded-xl"
+                        disabled={assessingFreeText[`challenge_${currentChallengeIndex}`]}
+                      >
+                        {assessingFreeText[`challenge_${currentChallengeIndex}`] ? (
+                          <>
+                            <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                            Mirri is reading your handwriting... 🦮
+                          </>
+                        ) : (
+                          "Submit Handwriting ✍️"
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                )}
 
                 {showHint && !isCompleted && (
                   <div className="bg-ochre/10 border border-ochre/20 rounded-xl p-4 animate-slide-up">
@@ -917,34 +1137,6 @@ export default function TrainingSession() {
                         <p className="text-foreground/80">{question.hint}</p>
                       </div>
                     </div>
-                  </div>
-                )}
-
-                {!isCompleted && (
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowChallengeHint(prev => ({ ...prev, [currentChallengeIndex]: true }))}
-                      className="flex-shrink-0"
-                      disabled={showHint}
-                    >
-                      <HelpCircle className="w-4 h-4 mr-2" />
-                      Get a Tip
-                    </Button>
-                    <Button
-                      onClick={() => submitFreeTextAnswer(currentChallengeIndex)}
-                      className="flex-1 h-12 text-lg font-bold rounded-xl"
-                      disabled={assessingFreeText[`challenge_${currentChallengeIndex}`] || !freeTextAnswers[`challenge_${currentChallengeIndex}`]}
-                    >
-                      {assessingFreeText[`challenge_${currentChallengeIndex}`] ? (
-                        <>
-                          <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                          Mirri is reading...
-                        </>
-                      ) : (
-                        "Submit Writing ✍️"
-                      )}
-                    </Button>
                   </div>
                 )}
 
@@ -1074,6 +1266,7 @@ export default function TrainingSession() {
           onClose={handleFeedbackModalClose}
           feedback={freeTextFeedback[pendingFeedbackKey]}
           studentResponse={freeTextAnswers[pendingFeedbackKey] || ""}
+          handwritingResult={handwritingResults[pendingFeedbackKey]}
         />
       )}
     <div className="h-screen bg-background flex flex-col overflow-hidden">

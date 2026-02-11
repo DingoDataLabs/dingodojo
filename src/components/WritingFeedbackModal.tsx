@@ -20,18 +20,43 @@ interface FreeTextFeedback {
   annotations?: WritingAnnotation[];
 }
 
+interface HandwritingResult {
+  letter_formation: number;
+  letter_formation_comment: string;
+  spacing_sizing: number;
+  spacing_sizing_comment: string;
+  presentation: number;
+  presentation_comment: string;
+  composite_score: number;
+  transcribed_text: string;
+}
+
 interface WritingFeedbackModalProps {
   isOpen: boolean;
   onClose: () => void;
   feedback: FreeTextFeedback;
   studentResponse: string;
+  handwritingResult?: HandwritingResult;
+}
+
+function DotScore({ score, max = 5 }: { score: number; max?: number }) {
+  return (
+    <div className="flex items-center gap-0.5">
+      {Array.from({ length: max }).map((_, i) => (
+        <span key={i} className={`text-sm ${i < score ? "text-primary" : "text-muted-foreground/30"}`}>
+          {i < score ? "●" : "○"}
+        </span>
+      ))}
+    </div>
+  );
 }
 
 export function WritingFeedbackModal({ 
   isOpen, 
   onClose, 
   feedback, 
-  studentResponse 
+  studentResponse,
+  handwritingResult,
 }: WritingFeedbackModalProps) {
   const ratingEmoji = 
     feedback.overallRating === "Fantastic!" ? "🌟" :
@@ -52,6 +77,34 @@ export function WritingFeedbackModal({
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* Handwriting Section */}
+          {handwritingResult && (
+            <div className="bg-sky/10 border border-sky/20 rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="font-semibold text-sm text-foreground flex items-center gap-2">
+                  ✍️ Handwriting
+                </p>
+                <span className="text-sm font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                  {handwritingResult.composite_score.toFixed(1)}/5
+                </span>
+              </div>
+              
+              {[
+                { label: "Letter Formation", score: handwritingResult.letter_formation, comment: handwritingResult.letter_formation_comment },
+                { label: "Spacing & Sizing", score: handwritingResult.spacing_sizing, comment: handwritingResult.spacing_sizing_comment },
+                { label: "Presentation", score: handwritingResult.presentation, comment: handwritingResult.presentation_comment },
+              ].map((criterion) => (
+                <div key={criterion.label} className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-foreground">{criterion.label}</p>
+                    <p className="text-xs text-muted-foreground">{criterion.comment}</p>
+                  </div>
+                  <DotScore score={criterion.score} />
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Overall Feedback */}
           <div className="bg-eucalyptus/10 border border-eucalyptus/20 rounded-xl p-4">
             <p className="text-foreground">{feedback.feedback}</p>
@@ -83,7 +136,9 @@ export function WritingFeedbackModal({
 
           {/* Annotated Writing */}
           <div className="border-t border-border pt-4">
-            <p className="font-semibold text-sm text-foreground mb-3">Your Writing with Feedback:</p>
+            <p className="font-semibold text-sm text-foreground mb-3">
+              {handwritingResult ? "Transcribed Writing with Feedback:" : "Your Writing with Feedback:"}
+            </p>
             <AnnotatedWriting
               originalText={studentResponse}
               annotations={feedback.annotations || []}

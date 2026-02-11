@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.assess-writing]
 verify_jwt = false
+
+[functions.assess-handwriting]
+verify_jwt = false

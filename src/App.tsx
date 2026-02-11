@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
 import Profile from "./pages/Profile";
+import Progress from "./pages/Progress";
 import SubjectTopics from "./pages/SubjectTopics";
 import TrainingSession from "./pages/TrainingSession";
 import NotFound from "./pages/NotFound";
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/progress" element={<Progress />} />
             <Route path="/subject/:slug" element={<SubjectTopics />} />
             <Route path="/learn/:subjectSlug/:topicSlug" element={<TrainingSession />} />
             <Route path="*" element={<NotFound />} />
