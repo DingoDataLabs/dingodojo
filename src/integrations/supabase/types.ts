@@ -229,6 +229,78 @@ export type Database = {
           },
         ]
       }
+      handwriting_submissions: {
+        Row: {
+          composite_score: number | null
+          content_feedback: string | null
+          content_max_score: number | null
+          content_overall_rating: string | null
+          content_score: number | null
+          created_at: string
+          id: string
+          image_path: string | null
+          letter_formation: number | null
+          presentation: number | null
+          profile_id: string
+          question: string | null
+          spacing_sizing: number | null
+          subject_name: string | null
+          topic_name: string | null
+          transcribed_text: string | null
+        }
+        Insert: {
+          composite_score?: number | null
+          content_feedback?: string | null
+          content_max_score?: number | null
+          content_overall_rating?: string | null
+          content_score?: number | null
+          created_at?: string
+          id?: string
+          image_path?: string | null
+          letter_formation?: number | null
+          presentation?: number | null
+          profile_id: string
+          question?: string | null
+          spacing_sizing?: number | null
+          subject_name?: string | null
+          topic_name?: string | null
+          transcribed_text?: string | null
+        }
+        Update: {
+          composite_score?: number | null
+          content_feedback?: string | null
+          content_max_score?: number | null
+          content_overall_rating?: string | null
+          content_score?: number | null
+          created_at?: string
+          id?: string
+          image_path?: string | null
+          letter_formation?: number | null
+          presentation?: number | null
+          profile_id?: string
+          question?: string | null
+          spacing_sizing?: number | null
+          subject_name?: string | null
+          topic_name?: string | null
+          transcribed_text?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "handwriting_submissions_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "handwriting_submissions_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string

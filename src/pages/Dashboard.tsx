@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Flame, Trophy, LogOut, Zap, Settings, Compass, Crown, Star, Sparkles, Play } from "lucide-react";
+import { Flame, Trophy, LogOut, Zap, Settings, Compass, Crown, Star, Sparkles, Play, BarChart2, PenTool } from "lucide-react";
 import { toast } from "sonner";
 import { ProgressRing } from "@/components/ProgressRing";
 import { getSydneyWeekStart, isNewWeek, getStreakMessage, isStreakSecured } from "@/lib/weekUtils";
@@ -64,6 +64,7 @@ export default function Dashboard() {
   const [topicProgressData, setTopicProgressData] = useState<TopicProgress[]>([]);
   const [loading, setLoading] = useState(true);
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
+  const [avgHandwriting, setAvgHandwriting] = useState<number | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -221,6 +222,17 @@ export default function Dashboard() {
             }
           }
         }
+
+        // Fetch average handwriting score
+        const { data: hwData } = await supabase
+          .from("handwriting_submissions")
+          .select("composite_score")
+          .eq("profile_id", profileData.id);
+
+        if (hwData && hwData.length > 0) {
+          const avg = hwData.reduce((sum, h) => sum + (Number(h.composite_score) || 0), 0) / hwData.length;
+          setAvgHandwriting(avg);
+        }
       }
     } catch (err) {
       console.error("Error fetching data:", err);
@@ -356,6 +368,15 @@ export default function Dashboard() {
             <Button
               variant="ghost"
               size="icon"
+              onClick={() => navigate("/progress")}
+              className="rounded-xl"
+              title="Progress Report"
+            >
+              <BarChart2 className="w-5 h-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => navigate("/profile")}
               className="rounded-xl"
             >
@@ -406,38 +427,23 @@ export default function Dashboard() {
         )}
 
         {/* Stats Row */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-          {/* Daily Streak */}
+        <div className={`grid ${avgHandwriting !== null ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3'} gap-4 mb-8`}>
+          {/* Streaks (merged) */}
           <div className="stats-card flex items-center gap-3 animate-slide-up stagger-1">
-            <div className="w-12 h-12 rounded-2xl bg-orange-500/10 flex items-center justify-center">
-              <Sparkles className="w-6 h-6 text-orange-500" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground font-medium">Daily Streak</p>
-              <p className="text-2xl font-display font-bold text-foreground">
-                {dailyStreak}
-                <span className="text-sm ml-1">days</span>
-              </p>
-            </div>
-          </div>
-
-          {/* Weekly Streak */}
-          <div className="stats-card flex items-center gap-3 animate-slide-up stagger-2">
             <div className="w-12 h-12 rounded-2xl bg-destructive/10 flex items-center justify-center">
               <Flame className="w-6 h-6 text-destructive" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground font-medium">Weekly Streak</p>
-              <p className="text-2xl font-display font-bold text-foreground">
-                {profile?.current_streak || 0}
-                <span className="text-sm ml-1">weeks</span>
+              <p className="text-xs text-muted-foreground font-medium">Streaks</p>
+              <p className="text-lg font-display font-bold text-foreground">
+                🔥 {dailyStreak}d / 📅 {profile?.current_streak || 0}w
               </p>
             </div>
           </div>
 
           {/* Today's Missions (Explorer only) */}
           {isExplorer ? (
-            <div className="stats-card flex items-center gap-3 animate-slide-up stagger-3">
+            <div className="stats-card flex items-center gap-3 animate-slide-up stagger-2">
               <ProgressRing
                 progress={dailyProgress}
                 size={48}
@@ -454,7 +460,7 @@ export default function Dashboard() {
               </div>
             </div>
           ) : (
-            <div className="stats-card flex items-center gap-3 animate-slide-up stagger-3">
+            <div className="stats-card flex items-center gap-3 animate-slide-up stagger-2">
               <ProgressRing
                 progress={missionsProgress}
                 size={48}
@@ -473,7 +479,7 @@ export default function Dashboard() {
           )}
 
           {/* Total XP */}
-          <div className="stats-card flex items-center gap-3 animate-slide-up stagger-4">
+          <div className="stats-card flex items-center gap-3 animate-slide-up stagger-3">
             <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
               <Trophy className="w-6 h-6 text-primary" />
             </div>
@@ -484,6 +490,21 @@ export default function Dashboard() {
               </p>
             </div>
           </div>
+
+          {/* Handwriting card (only if submissions exist) */}
+          {avgHandwriting !== null && (
+            <div className="stats-card flex items-center gap-3 animate-slide-up stagger-4">
+              <div className="w-12 h-12 rounded-2xl bg-secondary/10 flex items-center justify-center">
+                <PenTool className="w-6 h-6 text-secondary" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground font-medium">Handwriting</p>
+                <p className="text-2xl font-display font-bold text-foreground">
+                  {avgHandwriting.toFixed(1)}<span className="text-sm ml-0.5">/5</span>
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Start Mission Button */}
