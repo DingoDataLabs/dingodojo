@@ -16,9 +16,8 @@ interface Profile {
   id: string;
   total_xp: number;
   current_streak: number;
-  daily_streak: number;
-  missions_today: number;
-  missions_this_week: number;
+  weekly_xp_earned: number;
+  weekly_xp_goal: number;
 }
 
 interface SubjectProgress {
@@ -201,9 +200,9 @@ export default function ProgressPage() {
               <div className="bg-muted/50 rounded-xl p-4 text-center">
                 <Flame className="w-6 h-6 text-destructive mx-auto mb-1" />
                 <p className="text-2xl font-display font-bold text-foreground">
-                  {profile?.daily_streak || 0}d / {profile?.current_streak || 0}w
+                  {profile?.current_streak || 0}w
                 </p>
-                <p className="text-xs text-muted-foreground">Streaks</p>
+                <p className="text-xs text-muted-foreground">Weekly Streak</p>
               </div>
             </div>
           </div>

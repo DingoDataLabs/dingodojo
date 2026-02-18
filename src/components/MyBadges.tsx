@@ -20,26 +20,22 @@ interface UserBadge {
 
 interface MyBadgesProps {
   profileId: string | null;
-  dailyStreak: number;
+  currentStreak: number;
   totalXp: number;
 }
 
-export function MyBadges({ profileId, dailyStreak, totalXp }: MyBadgesProps) {
+export function MyBadges({ profileId, currentStreak, totalXp }: MyBadgesProps) {
   const [allBadges, setAllBadges] = useState<Badge[]>([]);
   const [earnedBadges, setEarnedBadges] = useState<UserBadge[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (profileId) {
-      fetchBadges();
-    }
+    if (profileId) fetchBadges();
   }, [profileId]);
 
   useEffect(() => {
-    if (profileId && allBadges.length > 0) {
-      checkAndAwardBadges();
-    }
-  }, [profileId, allBadges, dailyStreak, totalXp]);
+    if (profileId && allBadges.length > 0) checkAndAwardBadges();
+  }, [profileId, allBadges, currentStreak, totalXp]);
 
   const fetchBadges = async () => {
     try {
@@ -59,7 +55,6 @@ export function MyBadges({ profileId, dailyStreak, totalXp }: MyBadgesProps) {
   const checkAndAwardBadges = async () => {
     if (!profileId) return;
 
-    // Get mastery count
     const { data: progressData } = await supabase
       .from("student_progress")
       .select("xp_earned")
@@ -71,26 +66,20 @@ export function MyBadges({ profileId, dailyStreak, totalXp }: MyBadgesProps) {
 
     for (const badge of allBadges) {
       if (earnedIds.has(badge.id)) continue;
-
       let crossed = false;
-      if (badge.badge_type === "streak") crossed = dailyStreak >= badge.threshold;
+      // Streak badges now use weekly streak (current_streak)
+      if (badge.badge_type === "streak") crossed = currentStreak >= badge.threshold;
       else if (badge.badge_type === "xp") crossed = totalXp >= badge.threshold;
       else if (badge.badge_type === "mastery") crossed = masteryCount >= badge.threshold;
-
       if (crossed) newlyEarned.push(badge);
     }
 
     if (newlyEarned.length === 0) return;
 
-    // Insert new badges and activity feed entries
     const inserts = newlyEarned.map(b => ({ profile_id: profileId, badge_id: b.id }));
     const { error } = await supabase.from("user_badges").insert(inserts);
-    if (error) {
-      console.error("Error awarding badges:", error);
-      return;
-    }
+    if (error) { console.error("Error awarding badges:", error); return; }
 
-    // Log to activity feed
     const activityInserts = newlyEarned.map(b => ({
       profile_id: profileId,
       activity_type: "badge_earned" as const,
@@ -100,12 +89,10 @@ export function MyBadges({ profileId, dailyStreak, totalXp }: MyBadgesProps) {
     }));
     await supabase.from("activity_feed").insert(activityInserts);
 
-    // Show toasts
     for (const badge of newlyEarned) {
       toast.success(`${badge.emoji} Badge Unlocked: ${badge.name}!`);
     }
 
-    // Refresh earned badges
     const { data: updated } = await supabase
       .from("user_badges")
       .select("badge_id, earned_at")
@@ -132,12 +119,8 @@ export function MyBadges({ profileId, dailyStreak, totalXp }: MyBadgesProps) {
   return (
     <div className="bento-card animate-slide-up h-full flex flex-col">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-display font-bold text-foreground flex items-center gap-2">
-          🏅 My Badges
-        </h3>
-        <span className="text-xs text-muted-foreground font-medium">
-          {earnedCount} / {allBadges.length} earned
-        </span>
+        <h3 className="font-display font-bold text-foreground flex items-center gap-2">🏅 My Badges</h3>
+        <span className="text-xs text-muted-foreground font-medium">{earnedCount} / {allBadges.length} earned</span>
       </div>
       <div className="overflow-y-auto flex-1 scrollbar-thin">
         <TooltipProvider>
@@ -147,21 +130,11 @@ export function MyBadges({ profileId, dailyStreak, totalXp }: MyBadgesProps) {
               return (
                 <Tooltip key={badge.id}>
                   <TooltipTrigger asChild>
-                    <div
-                      className={`flex flex-col items-center text-center p-2 rounded-xl transition-all ${
-                        earned
-                          ? "hover:bg-primary/5"
-                          : "opacity-40 grayscale"
-                      }`}
-                    >
+                    <div className={`flex flex-col items-center text-center p-2 rounded-xl transition-all ${earned ? "hover:bg-primary/5" : "opacity-40 grayscale"}`}>
                       <span className="text-3xl md:text-4xl mb-1">{badge.emoji}</span>
-                      <p className="text-[10px] md:text-xs font-medium text-foreground leading-tight line-clamp-2">
-                        {badge.name}
-                      </p>
+                      <p className="text-[10px] md:text-xs font-medium text-foreground leading-tight line-clamp-2">{badge.name}</p>
                       {!earned && (
-                        <p className="text-[9px] text-muted-foreground mt-0.5 leading-tight">
-                          {badge.description}
-                        </p>
+                        <p className="text-[9px] text-muted-foreground mt-0.5 leading-tight">{badge.description}</p>
                       )}
                     </div>
                   </TooltipTrigger>
