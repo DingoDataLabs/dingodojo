@@ -305,14 +305,12 @@ export type Database = {
         Row: {
           created_at: string
           current_streak: number | null
-          daily_streak: number | null
           first_name: string | null
           grade_level: string | null
           id: string
           last_active_date: string | null
           last_mission_date: string | null
-          missions_this_week: number | null
-          missions_today: number | null
+          last_term_replenish_date: string | null
           onboarding_completed: boolean
           stripe_customer_id: string | null
           subscription_tier: string
@@ -320,19 +318,20 @@ export type Database = {
           updated_at: string
           user_id: string
           username: string | null
+          vacation_passes: number | null
           week_start_date: string | null
+          weekly_xp_earned: number | null
+          weekly_xp_goal: number | null
         }
         Insert: {
           created_at?: string
           current_streak?: number | null
-          daily_streak?: number | null
           first_name?: string | null
           grade_level?: string | null
           id?: string
           last_active_date?: string | null
           last_mission_date?: string | null
-          missions_this_week?: number | null
-          missions_today?: number | null
+          last_term_replenish_date?: string | null
           onboarding_completed?: boolean
           stripe_customer_id?: string | null
           subscription_tier?: string
@@ -340,19 +339,20 @@ export type Database = {
           updated_at?: string
           user_id: string
           username?: string | null
+          vacation_passes?: number | null
           week_start_date?: string | null
+          weekly_xp_earned?: number | null
+          weekly_xp_goal?: number | null
         }
         Update: {
           created_at?: string
           current_streak?: number | null
-          daily_streak?: number | null
           first_name?: string | null
           grade_level?: string | null
           id?: string
           last_active_date?: string | null
           last_mission_date?: string | null
-          missions_this_week?: number | null
-          missions_today?: number | null
+          last_term_replenish_date?: string | null
           onboarding_completed?: boolean
           stripe_customer_id?: string | null
           subscription_tier?: string
@@ -360,7 +360,10 @@ export type Database = {
           updated_at?: string
           user_id?: string
           username?: string | null
+          vacation_passes?: number | null
           week_start_date?: string | null
+          weekly_xp_earned?: number | null
+          weekly_xp_goal?: number | null
         }
         Relationships: []
       }
@@ -542,59 +545,62 @@ export type Database = {
         Row: {
           created_at: string | null
           current_streak: number | null
-          daily_streak: number | null
           first_name: string | null
           grade_level: string | null
           id: string | null
           last_active_date: string | null
           last_mission_date: string | null
-          missions_this_week: number | null
-          missions_today: number | null
+          last_term_replenish_date: string | null
           onboarding_completed: boolean | null
           subscription_tier: string | null
           total_xp: number | null
           updated_at: string | null
           user_id: string | null
           username: string | null
+          vacation_passes: number | null
           week_start_date: string | null
+          weekly_xp_earned: number | null
+          weekly_xp_goal: number | null
         }
         Insert: {
           created_at?: string | null
           current_streak?: number | null
-          daily_streak?: number | null
           first_name?: string | null
           grade_level?: string | null
           id?: string | null
           last_active_date?: string | null
           last_mission_date?: string | null
-          missions_this_week?: number | null
-          missions_today?: number | null
+          last_term_replenish_date?: string | null
           onboarding_completed?: boolean | null
           subscription_tier?: string | null
           total_xp?: number | null
           updated_at?: string | null
           user_id?: string | null
           username?: string | null
+          vacation_passes?: number | null
           week_start_date?: string | null
+          weekly_xp_earned?: number | null
+          weekly_xp_goal?: number | null
         }
         Update: {
           created_at?: string | null
           current_streak?: number | null
-          daily_streak?: number | null
           first_name?: string | null
           grade_level?: string | null
           id?: string | null
           last_active_date?: string | null
           last_mission_date?: string | null
-          missions_this_week?: number | null
-          missions_today?: number | null
+          last_term_replenish_date?: string | null
           onboarding_completed?: boolean | null
           subscription_tier?: string | null
           total_xp?: number | null
           updated_at?: string | null
           user_id?: string | null
           username?: string | null
+          vacation_passes?: number | null
           week_start_date?: string | null
+          weekly_xp_earned?: number | null
+          weekly_xp_goal?: number | null
         }
         Relationships: []
       }

@@ -94,7 +94,7 @@ const validateMissionAccess = async (
 ): Promise<{ allowed: boolean; error?: string }> => {
   const { data: profile, error } = await supabaseClient
     .from('profiles')
-    .select('subscription_tier, missions_today, last_mission_date')
+    .select('subscription_tier, last_mission_date')
     .eq('user_id', userId)
     .single();
 
@@ -108,20 +108,8 @@ const validateMissionAccess = async (
     return { allowed: true };
   }
 
-  // Check if it's a new day (using Sydney timezone)
-  const today = new Date().toLocaleDateString('en-AU', { timeZone: 'Australia/Sydney' });
-  const lastMissionDate = profile.last_mission_date as string | null;
-  const isNewDay = !lastMissionDate || lastMissionDate !== today;
-  const effectiveMissionsToday: number = isNewDay ? 0 : (profile.missions_today || 0);
-
-  // Explorer tier: 2 missions per day
-  if (effectiveMissionsToday >= 2) {
-    return { 
-      allowed: false, 
-      error: 'Daily mission limit reached. Upgrade to Champion for unlimited access!' 
-    };
-  }
-
+  // Explorer tier: 2 missions per day — tracked client-side via dailyUtils
+  // The edge function just validates subscription; daily limit enforced on the client
   return { allowed: true };
 };
 

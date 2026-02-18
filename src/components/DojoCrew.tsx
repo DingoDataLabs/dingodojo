@@ -10,7 +10,7 @@ interface FriendProfile {
   id: string;
   first_name: string | null;
   total_xp: number;
-  daily_streak: number;
+  current_streak: number;
   grade_level: string | null;
 }
 
@@ -44,7 +44,7 @@ interface DojoCrewProps {
   profileId: string | null;
   firstName: string | null;
   totalXp: number;
-  dailyStreak: number;
+  currentStreak: number;
 }
 
 const AVATAR_COLORS = [
@@ -70,7 +70,7 @@ function AvatarInitial({ name, id }: { name: string | null; id: string }) {
   );
 }
 
-export function DojoCrew({ profileId, firstName, totalXp, dailyStreak }: DojoCrewProps) {
+export function DojoCrew({ profileId, firstName, totalXp, currentStreak }: DojoCrewProps) {
   const [view, setView] = useState<"leaderboard" | "activity">("leaderboard");
   const [friendships, setFriendships] = useState<Friendship[]>([]);
   const [friendProfiles, setFriendProfiles] = useState<FriendProfile[]>([]);
@@ -88,12 +88,8 @@ export function DojoCrew({ profileId, firstName, totalXp, dailyStreak }: DojoCre
     if (view === "activity" && profileId) fetchActivity();
   }, [view, profileId, friendships]);
 
-  // Debounced search
   useEffect(() => {
-    if (searchQuery.length < 2) {
-      setSearchResults([]);
-      return;
-    }
+    if (searchQuery.length < 2) { setSearchResults([]); return; }
     const timer = setTimeout(() => searchUsers(searchQuery), 400);
     return () => clearTimeout(timer);
   }, [searchQuery]);
@@ -115,9 +111,9 @@ export function DojoCrew({ profileId, firstName, totalXp, dailyStreak }: DojoCre
         if (friendIds.length > 0) {
           const { data: profiles } = await supabase
             .from("user_profiles")
-            .select("id, first_name, total_xp, daily_streak, grade_level")
+            .select("id, first_name, total_xp, current_streak, grade_level")
             .in("id", friendIds);
-          if (profiles) setFriendProfiles(profiles as FriendProfile[]);
+          if (profiles) setFriendProfiles(profiles as unknown as FriendProfile[]);
         } else {
           setFriendProfiles([]);
         }
@@ -158,13 +154,8 @@ export function DojoCrew({ profileId, firstName, totalXp, dailyStreak }: DojoCre
         .limit(5);
 
       if (data) {
-        // Filter out existing friends/pending
-        const existingIds = new Set(
-          friendships.flatMap(f => [f.requester_id, f.addressee_id])
-        );
-        setSearchResults(
-          (data as SearchResult[]).filter(u => !existingIds.has(u.id!))
-        );
+        const existingIds = new Set(friendships.flatMap(f => [f.requester_id, f.addressee_id]));
+        setSearchResults((data as SearchResult[]).filter(u => !existingIds.has(u.id!)));
       }
     } catch (err) {
       console.error("Search error:", err);
@@ -179,10 +170,7 @@ export function DojoCrew({ profileId, firstName, totalXp, dailyStreak }: DojoCre
       addressee_id: addresseeId,
       status: "pending",
     });
-    if (error) {
-      toast.error("Couldn't send request");
-      return;
-    }
+    if (error) { toast.error("Couldn't send request"); return; }
     toast.success("Friend request sent! 🤝");
     setSearchResults(prev => prev.filter(u => u.id !== addresseeId));
     fetchFriendships();
@@ -199,23 +187,15 @@ export function DojoCrew({ profileId, firstName, totalXp, dailyStreak }: DojoCre
     fetchFriendships();
   };
 
-  const pendingIncoming = friendships.filter(
-    f => f.status === "pending" && f.addressee_id === profileId
-  );
+  const pendingIncoming = friendships.filter(f => f.status === "pending" && f.addressee_id === profileId);
 
-  // Leaderboard: me + friends sorted by XP
   const leaderboard: FriendProfile[] = [
-    { id: profileId!, first_name: firstName, total_xp: totalXp, daily_streak: dailyStreak, grade_level: null },
+    { id: profileId!, first_name: firstName, total_xp: totalXp, current_streak: currentStreak, grade_level: null },
     ...friendProfiles,
   ].sort((a, b) => (b.total_xp || 0) - (a.total_xp || 0));
 
-  // Map profile id to name for activity feed
-  const profileNames: Record<string, string> = {
-    [profileId!]: firstName || "You",
-  };
-  friendProfiles.forEach(f => {
-    if (f.id) profileNames[f.id] = f.first_name || "Friend";
-  });
+  const profileNames: Record<string, string> = { [profileId!]: firstName || "You" };
+  friendProfiles.forEach(f => { if (f.id) profileNames[f.id] = f.first_name || "Friend"; });
 
   const formatActivity = (a: ActivityEntry) => {
     if (a.activity_type === "mission_complete") {
@@ -243,28 +223,12 @@ export function DojoCrew({ profileId, firstName, totalXp, dailyStreak }: DojoCre
   return (
     <div className="bento-card animate-slide-up h-full flex flex-col">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-display font-bold text-foreground flex items-center gap-2">
-          🏆 Dojo Crew
-        </h3>
+        <h3 className="font-display font-bold text-foreground flex items-center gap-2">🏆 Dojo Crew</h3>
         <div className="flex gap-1">
-          <button
-            onClick={() => setView("leaderboard")}
-            className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
-              view === "leaderboard"
-                ? "bg-primary/15 text-primary"
-                : "text-muted-foreground hover:bg-muted"
-            }`}
-          >
+          <button onClick={() => setView("leaderboard")} className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${view === "leaderboard" ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-muted"}`}>
             Leaderboard
           </button>
-          <button
-            onClick={() => setView("activity")}
-            className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
-              view === "activity"
-                ? "bg-primary/15 text-primary"
-                : "text-muted-foreground hover:bg-muted"
-            }`}
-          >
+          <button onClick={() => setView("activity")} className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${view === "activity" ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-muted"}`}>
             Activity
           </button>
         </div>
@@ -273,15 +237,9 @@ export function DojoCrew({ profileId, firstName, totalXp, dailyStreak }: DojoCre
       <div className="overflow-y-auto flex-1 scrollbar-thin">
         {view === "leaderboard" ? (
           <div className="space-y-3">
-            {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Find a friend by name..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="pl-9 h-9 text-sm rounded-xl"
-              />
+              <Input placeholder="Find a friend by name..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9 h-9 text-sm rounded-xl" />
               {searchResults.length > 0 && (
                 <div className="absolute z-10 top-full mt-1 w-full bg-card border border-border rounded-xl shadow-lg overflow-hidden">
                   {searchResults.map(user => (
@@ -291,12 +249,7 @@ export function DojoCrew({ profileId, firstName, totalXp, dailyStreak }: DojoCre
                         <p className="text-sm font-medium truncate">{user.first_name || "Unknown"}</p>
                         <p className="text-[10px] text-muted-foreground">{user.grade_level} · {(user.total_xp || 0).toLocaleString()} XP</p>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => sendFriendRequest(user.id!)}
-                        className="h-7 px-2 text-xs gap-1"
-                      >
+                      <Button size="sm" variant="ghost" onClick={() => sendFriendRequest(user.id!)} className="h-7 px-2 text-xs gap-1">
                         <UserPlus className="w-3 h-3" /> Add
                       </Button>
                     </div>
@@ -305,33 +258,19 @@ export function DojoCrew({ profileId, firstName, totalXp, dailyStreak }: DojoCre
               )}
             </div>
 
-            {/* Leaderboard */}
             {leaderboard.length <= 1 && friendProfiles.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-6">
-                No crew yet! Search above to add friends 👆
-              </p>
+              <p className="text-sm text-muted-foreground text-center py-6">No crew yet! Search above to add friends 👆</p>
             ) : (
               <div className="space-y-1">
                 {leaderboard.map((entry, idx) => {
                   const isMe = entry.id === profileId;
                   const friendship = !isMe
-                    ? friendships.find(
-                        f =>
-                          f.status === "accepted" &&
-                          (f.requester_id === entry.id || f.addressee_id === entry.id)
-                      )
+                    ? friendships.find(f => f.status === "accepted" && (f.requester_id === entry.id || f.addressee_id === entry.id))
                     : null;
 
                   return (
-                    <div
-                      key={entry.id}
-                      className={`flex items-center gap-2 p-2 rounded-xl transition-colors group ${
-                        isMe ? "bg-primary/5" : "hover:bg-muted/50"
-                      }`}
-                    >
-                      <span className="text-xs font-bold text-muted-foreground w-5 text-center">
-                        {idx + 1}
-                      </span>
+                    <div key={entry.id} className={`flex items-center gap-2 p-2 rounded-xl transition-colors group ${isMe ? "bg-primary/5" : "hover:bg-muted/50"}`}>
+                      <span className="text-xs font-bold text-muted-foreground w-5 text-center">{idx + 1}</span>
                       <AvatarInitial name={entry.first_name} id={entry.id!} />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">
@@ -340,18 +279,15 @@ export function DojoCrew({ profileId, firstName, totalXp, dailyStreak }: DojoCre
                       </div>
                       <div className="flex items-center gap-2 text-xs">
                         <span className="font-bold text-foreground">{(entry.total_xp || 0).toLocaleString()} XP</span>
-                        {(entry.daily_streak || 0) > 0 && (
+                        {(entry.current_streak || 0) > 0 && (
                           <span className="flex items-center gap-0.5 text-destructive">
                             <Flame className="w-3 h-3" />
-                            {entry.daily_streak}
+                            {entry.current_streak}w
                           </span>
                         )}
                       </div>
                       {friendship && (
-                        <button
-                          onClick={() => declineOrRemove(friendship.id)}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                        >
+                        <button onClick={() => declineOrRemove(friendship.id)} className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
                           <X className="w-3.5 h-3.5" />
                         </button>
                       )}
@@ -361,34 +297,19 @@ export function DojoCrew({ profileId, firstName, totalXp, dailyStreak }: DojoCre
               </div>
             )}
 
-            {/* Pending incoming */}
             {pendingIncoming.length > 0 && (
               <div className="pt-2 border-t border-border space-y-1">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium px-1">
-                  Pending Requests
-                </p>
-                {pendingIncoming.map(req => {
-                  const requesterProfile = friendProfiles.find(f => f.id === req.requester_id);
-                  return (
-                    <PendingRequestRow
-                      key={req.id}
-                      requesterId={req.requester_id}
-                      friendshipId={req.id}
-                      onAccept={acceptRequest}
-                      onDecline={declineOrRemove}
-                    />
-                  );
-                })}
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium px-1">Pending Requests</p>
+                {pendingIncoming.map(req => (
+                  <PendingRequestRow key={req.id} requesterId={req.requester_id} friendshipId={req.id} onAccept={acceptRequest} onDecline={declineOrRemove} />
+                ))}
               </div>
             )}
           </div>
         ) : (
-          /* Activity View */
           <div className="space-y-2">
             {activities.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-6">
-                No activity yet — complete a mission to get started! 🥋
-              </p>
+              <p className="text-sm text-muted-foreground text-center py-6">No activity yet — complete a mission to get started! 🥋</p>
             ) : (
               activities.map(a => (
                 <div key={a.id} className="flex items-start gap-2 p-2 rounded-xl hover:bg-muted/50 transition-colors">
@@ -412,13 +333,7 @@ export function DojoCrew({ profileId, firstName, totalXp, dailyStreak }: DojoCre
   );
 }
 
-// Sub-component for pending requests that fetches the requester's name
-function PendingRequestRow({
-  requesterId,
-  friendshipId,
-  onAccept,
-  onDecline,
-}: {
+function PendingRequestRow({ requesterId, friendshipId, onAccept, onDecline }: {
   requesterId: string;
   friendshipId: string;
   onAccept: (id: string) => void;
@@ -427,14 +342,8 @@ function PendingRequestRow({
   const [name, setName] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase
-      .from("user_profiles")
-      .select("first_name")
-      .eq("id", requesterId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data) setName((data as any).first_name);
-      });
+    supabase.from("user_profiles").select("first_name").eq("id", requesterId).maybeSingle()
+      .then(({ data }) => { if (data) setName((data as any).first_name); });
   }, [requesterId]);
 
   return (
@@ -442,20 +351,10 @@ function PendingRequestRow({
       <AvatarInitial name={name} id={requesterId} />
       <p className="flex-1 text-sm font-medium truncate">{name || "Loading..."}</p>
       <div className="flex gap-1">
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => onAccept(friendshipId)}
-          className="h-7 w-7 p-0 text-eucalyptus hover:text-eucalyptus"
-        >
+        <Button size="sm" variant="ghost" onClick={() => onAccept(friendshipId)} className="h-7 w-7 p-0 text-eucalyptus hover:text-eucalyptus">
           <Check className="w-4 h-4" />
         </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => onDecline(friendshipId)}
-          className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-        >
+        <Button size="sm" variant="ghost" onClick={() => onDecline(friendshipId)} className="h-7 w-7 p-0 text-destructive hover:text-destructive">
           <X className="w-4 h-4" />
         </Button>
       </div>

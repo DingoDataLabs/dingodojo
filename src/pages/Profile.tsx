@@ -33,6 +33,7 @@ interface Profile {
   subscription_tier: string;
   total_xp: number;
   username: string | null;
+  vacation_passes: number;
 }
 
 export default function ProfilePage() {
@@ -256,6 +257,17 @@ export default function ProfilePage() {
                 </div>
                 <span className="text-2xl">🏆</span>
               </div>
+
+              <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl">
+                <div>
+                  <p className="text-sm text-muted-foreground">Vacation Passes</p>
+                  <p className="font-semibold text-foreground">{profile?.vacation_passes ?? 2} / 2 remaining</p>
+                </div>
+                <span className="text-2xl">🏖️</span>
+              </div>
+              <p className="text-xs text-muted-foreground px-1">
+                Vacation passes protect your streak if you miss a week. You get 2 per term and they replenish at the start of each term. School holidays don't count against your streak!
+              </p>
 
               <div className="space-y-2">
                 <Label htmlFor="firstName" className="font-semibold">First Name</Label>
