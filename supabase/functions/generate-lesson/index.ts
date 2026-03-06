@@ -1,12 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { evaluate } from "https://esm.sh/mathjs@13.2.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// NSW Stage 3 Mathematics Curriculum Structure
+// ── Curriculum & Config ──────────────────────────────────────────────
+
 const NSW_MATHS_CURRICULUM = `
 NSW Mathematics Stage 3 (Years 5 & 6) Curriculum Structure:
 
@@ -28,58 +30,7 @@ NSW Mathematics Stage 3 (Years 5 & 6) Curriculum Structure:
 - Chance: List outcomes, represent probability as fraction/decimal/percentage
 `;
 
-// Input validation
-const validateInput = (data: unknown): { valid: boolean; error?: string; data?: {
-  topicName: string;
-  topicEmoji?: string;
-  gradeLevel?: string;
-  topicXp?: number;
-  subjectSlug?: string;
-}} => {
-  if (!data || typeof data !== 'object') {
-    return { valid: false, error: 'Invalid request body' };
-  }
-
-  const body = data as Record<string, unknown>;
-
-  // Required: topicName
-  if (typeof body.topicName !== 'string' || body.topicName.length < 1) {
-    return { valid: false, error: 'topicName is required' };
-  }
-  if (body.topicName.length > 200) {
-    return { valid: false, error: 'topicName exceeds maximum length of 200 characters' };
-  }
-
-  // Optional string fields
-  if (body.topicEmoji !== undefined && (typeof body.topicEmoji !== 'string' || body.topicEmoji.length > 10)) {
-    return { valid: false, error: 'topicEmoji must be a string with max 10 characters' };
-  }
-  if (body.gradeLevel !== undefined && (typeof body.gradeLevel !== 'string' || body.gradeLevel.length > 50)) {
-    return { valid: false, error: 'gradeLevel must be a string with max 50 characters' };
-  }
-  if (body.subjectSlug !== undefined && (typeof body.subjectSlug !== 'string' || body.subjectSlug.length > 50)) {
-    return { valid: false, error: 'subjectSlug must be a string with max 50 characters' };
-  }
-
-  // Optional numeric field
-  if (body.topicXp !== undefined && (typeof body.topicXp !== 'number' || body.topicXp < 0 || body.topicXp > 100000)) {
-    return { valid: false, error: 'topicXp must be a number between 0 and 100000' };
-  }
-
-  return {
-    valid: true,
-    data: {
-      topicName: body.topicName as string,
-      topicEmoji: body.topicEmoji as string | undefined,
-      gradeLevel: body.gradeLevel as string | undefined,
-      topicXp: body.topicXp as number | undefined,
-      subjectSlug: body.subjectSlug as string | undefined,
-    }
-  };
-};
-
-// Difficulty progression based on XP
-const getDifficultyLevel = (topicXp: number): { level: string; description: string; multiplier: number } => {
+const getDifficultyLevel = (topicXp: number) => {
   if (topicXp < 50) return { level: "Beginning", description: "introducing core concepts with concrete examples", multiplier: 1 };
   if (topicXp < 150) return { level: "Developing", description: "building understanding with varied examples", multiplier: 1.2 };
   if (topicXp < 300) return { level: "Consolidating", description: "applying concepts to new situations", multiplier: 1.5 };
@@ -87,120 +38,346 @@ const getDifficultyLevel = (topicXp: number): { level: string; description: stri
   return { level: "Mastering", description: "challenging problems requiring deeper reasoning", multiplier: 2 };
 };
 
-// Validate subscription tier and daily limits
-const validateMissionAccess = async (
-  supabaseClient: any,
-  userId: string
-): Promise<{ allowed: boolean; error?: string }> => {
-  const { data: profile, error } = await supabaseClient
-    .from('profiles')
-    .select('subscription_tier, last_mission_date')
-    .eq('user_id', userId)
-    .single();
+// ── Input Validation ─────────────────────────────────────────────────
 
-  if (error) {
-    console.error('Error fetching profile for mission access:', error);
-    return { allowed: false, error: 'Failed to verify subscription status' };
-  }
-
-  // Champion tier has unlimited access
-  if (profile.subscription_tier === 'champion') {
-    return { allowed: true };
-  }
-
-  // Explorer tier: 2 missions per day — tracked client-side via dailyUtils
-  // The edge function just validates subscription; daily limit enforced on the client
-  return { allowed: true };
+const validateInput = (data: unknown): { valid: boolean; error?: string; data?: {
+  topicName: string; topicEmoji?: string; gradeLevel?: string; topicXp?: number; subjectSlug?: string;
+}} => {
+  if (!data || typeof data !== 'object') return { valid: false, error: 'Invalid request body' };
+  const body = data as Record<string, unknown>;
+  if (typeof body.topicName !== 'string' || body.topicName.length < 1) return { valid: false, error: 'topicName is required' };
+  if (body.topicName.length > 200) return { valid: false, error: 'topicName exceeds maximum length' };
+  if (body.topicEmoji !== undefined && (typeof body.topicEmoji !== 'string' || body.topicEmoji.length > 10)) return { valid: false, error: 'Invalid topicEmoji' };
+  if (body.gradeLevel !== undefined && (typeof body.gradeLevel !== 'string' || body.gradeLevel.length > 50)) return { valid: false, error: 'Invalid gradeLevel' };
+  if (body.subjectSlug !== undefined && (typeof body.subjectSlug !== 'string' || body.subjectSlug.length > 50)) return { valid: false, error: 'Invalid subjectSlug' };
+  if (body.topicXp !== undefined && (typeof body.topicXp !== 'number' || body.topicXp < 0 || body.topicXp > 100000)) return { valid: false, error: 'Invalid topicXp' };
+  return { valid: true, data: {
+    topicName: body.topicName as string, topicEmoji: body.topicEmoji as string | undefined,
+    gradeLevel: body.gradeLevel as string | undefined, topicXp: body.topicXp as number | undefined,
+    subjectSlug: body.subjectSlug as string | undefined,
+  }};
 };
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+// ── Calculator Tool ──────────────────────────────────────────────────
+
+function safeCalculate(expression: string): string {
+  try {
+    const result = evaluate(expression);
+    return String(result);
+  } catch (e) {
+    return `Error: ${e instanceof Error ? e.message : 'Invalid expression'}`;
+  }
+}
+
+const CALCULATE_TOOL = {
+  type: "function" as const,
+  function: {
+    name: "calculate",
+    description: "Evaluate a mathematical expression accurately. Use this for ALL arithmetic operations — never calculate mentally. Supports fractions (1/3 + 1/6), decimals, percentages, and complex expressions.",
+    parameters: {
+      type: "object",
+      properties: {
+        expression: {
+          type: "string",
+          description: "The mathematical expression to evaluate, e.g. '3/4 + 1/8', '15 * 24', '250 / 1000'"
+        }
+      },
+      required: ["expression"],
+      additionalProperties: false,
+    }
+  }
+};
+
+// ── LLM Call with Tool Loop ──────────────────────────────────────────
+
+async function callWithTools(
+  apiKey: string,
+  messages: { role: string; content: string }[],
+  useTools: boolean,
+  maxToolRounds = 10,
+): Promise<string> {
+  let currentMessages = [...messages];
+  
+  for (let round = 0; round < maxToolRounds; round++) {
+    const body: Record<string, unknown> = {
+      model: "google/gemini-2.5-flash",
+      messages: currentMessages,
+      temperature: 0.7,
+      max_tokens: 5000,
+    };
+    if (useTools) {
+      body.tools = [CALCULATE_TOOL];
+    }
+
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      if (response.status === 429) throw new Error("RATE_LIMIT");
+      if (response.status === 402) throw new Error("CREDITS_EXHAUSTED");
+      throw new Error(`AI gateway error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const choice = data.choices?.[0];
+    if (!choice) throw new Error("No response from AI");
+
+    const msg = choice.message;
+
+    // If the model wants to call tools
+    if (msg.tool_calls && msg.tool_calls.length > 0) {
+      // Add the assistant message with tool calls
+      currentMessages.push(msg);
+      
+      // Execute each tool call and add results
+      for (const toolCall of msg.tool_calls) {
+        if (toolCall.function?.name === "calculate") {
+          const args = JSON.parse(toolCall.function.arguments);
+          const result = safeCalculate(args.expression);
+          console.log(`calculate("${args.expression}") = ${result}`);
+          currentMessages.push({
+            role: "tool",
+            content: result,
+            // @ts-ignore - tool_call_id needed for API
+            tool_call_id: toolCall.id,
+          });
+        }
+      }
+      continue; // Loop back to let the model use the results
+    }
+
+    // Final text response
+    return msg.content || "";
   }
 
+  throw new Error("Tool calling loop exceeded maximum rounds");
+}
+
+// ── Subscription Check ───────────────────────────────────────────────
+
+async function validateMissionAccess(supabaseClient: any, userId: string): Promise<{ allowed: boolean; error?: string }> {
+  const { data: profile, error } = await supabaseClient
+    .from('profiles').select('subscription_tier').eq('user_id', userId).single();
+  if (error) return { allowed: false, error: 'Failed to verify subscription status' };
+  return { allowed: true };
+}
+
+// ── Math Question Detection ──────────────────────────────────────────
+
+function isMathQuestion(question: any): boolean {
+  if (!question || typeof question !== 'object') return false;
+  const text = `${question.question || ''} ${(question.options || []).join(' ')}`.toLowerCase();
+  // Look for numbers, math operators, math keywords
+  const mathPatterns = [
+    /\d+\s*[\+\-\*\/×÷]\s*\d+/,       // arithmetic expressions
+    /\d+\/\d+/,                          // fractions
+    /\d+\.\d+/,                          // decimals
+    /\d+\s*%/,                           // percentages
+    /how many|how much|total|sum|difference|product|quotient|remainder/,
+    /area|perimeter|volume|length|width|height|distance/,
+    /calculate|solve|work out|find the|what is/,
+    /greater|less|equal|compare/,
+    /multiply|divide|add|subtract/,
+    /fraction|decimal|percentage|ratio/,
+    /average|mean|median/,
+    /angle|degree/,
+    /convert|conversion/,
+  ];
+  return mathPatterns.some(p => p.test(text));
+}
+
+// ── Agent 2: Math Verification ───────────────────────────────────────
+
+interface QuestionToVerify {
+  question: string;
+  options: string[];
+  correct_answer: number;
+  type?: string;
+}
+
+async function verifyMathQuestion(apiKey: string, q: QuestionToVerify): Promise<{ correct: boolean; suggestedAnswer?: number }> {
+  const prompt = `You are a math verification agent. Your ONLY job is to independently solve this question and check if the given answer is correct.
+
+QUESTION: ${q.question}
+OPTIONS:
+${q.options.map((o: string, i: number) => `${i}: ${o}`).join('\n')}
+CLAIMED CORRECT ANSWER INDEX: ${q.correct_answer} (which is "${q.options[q.correct_answer]}")
+
+Instructions:
+1. Re-read the question carefully — pay attention to what operation is actually being asked for
+2. Extract the mathematical expression from the word problem
+3. Use the calculate() tool to compute the answer — NEVER calculate mentally
+4. Compare your calculated answer to each option
+5. Respond with ONLY valid JSON: {"correct": true} if the claimed answer matches your calculation, or {"correct": false, "suggested_answer": <correct_index>} if it doesn't.`;
+
   try {
-    // Authentication check
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    const result = await callWithTools(apiKey, [
+      { role: "system", content: "You are a precise math verification agent. Use the calculate() tool for ALL arithmetic. Reply ONLY with JSON." },
+      { role: "user", content: prompt },
+    ], true);
 
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      { auth: { persistSession: false } }
-    );
-
-    // Verify the user with getUser
-    const token = authHeader.replace('Bearer ', '');
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+    let jsonStr = result.trim();
+    // Extract JSON from potential markdown
+    const jsonMatch = jsonStr.match(/\{[^}]+\}/);
+    if (jsonMatch) jsonStr = jsonMatch[0];
     
-    if (userError) {
-      console.error('Auth error:', userError.message, userError.status);
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized', details: userError.message }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    const parsed = JSON.parse(jsonStr);
+    return { correct: parsed.correct !== false, suggestedAnswer: parsed.suggested_answer };
+  } catch (e) {
+    console.error("Verification agent error:", e);
+    return { correct: true }; // On error, trust Agent 1
+  }
+}
+
+// ── Question Regeneration ────────────────────────────────────────────
+
+async function regenerateMathQuestion(
+  apiKey: string,
+  original: QuestionToVerify,
+  context: string,
+): Promise<QuestionToVerify | null> {
+  const prompt = `The following math question had an incorrect answer. Generate a REPLACEMENT question on the same topic with a verified correct answer.
+
+ORIGINAL (INCORRECT) QUESTION: ${original.question}
+TOPIC CONTEXT: ${context}
+
+Generate a new multiple-choice question. Use the calculate() tool to verify your answer is correct.
+
+Return ONLY valid JSON:
+{
+  "question": "...",
+  "options": ["A", "B", "C", "D"],
+  "correct_answer": 0,
+  "hint": "...",
+  "explanation": "..."
+}`;
+
+  try {
+    const result = await callWithTools(apiKey, [
+      { role: "system", content: "You are a math question generator. Use the calculate() tool for ALL arithmetic. Return ONLY JSON." },
+      { role: "user", content: prompt },
+    ], true);
+
+    let jsonStr = result.trim();
+    if (jsonStr.startsWith("```json")) jsonStr = jsonStr.slice(7);
+    if (jsonStr.startsWith("```")) jsonStr = jsonStr.slice(3);
+    if (jsonStr.endsWith("```")) jsonStr = jsonStr.slice(0, -3);
+    const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
+    if (jsonMatch) jsonStr = jsonMatch[0];
+
+    return JSON.parse(jsonStr.trim());
+  } catch (e) {
+    console.error("Regeneration error:", e);
+    return null;
+  }
+}
+
+// ── Validate & Fix All Math in Lesson ────────────────────────────────
+
+async function validateAndFixLesson(apiKey: string, lesson: any, topicName: string): Promise<any> {
+  const validatedLesson = { ...lesson };
+
+  // Validate check questions in sections
+  if (validatedLesson.sections) {
+    for (let i = 0; i < validatedLesson.sections.length; i++) {
+      const section = validatedLesson.sections[i];
+      if (section.type !== 'check') continue;
+      if (!isMathQuestion(section)) continue;
+
+      console.log(`Verifying section check ${i}: "${section.question?.substring(0, 60)}..."`);
+      const result = await verifyMathQuestion(apiKey, section);
+
+      if (!result.correct) {
+        console.log(`❌ Section check ${i} failed verification. Regenerating...`);
+        for (let attempt = 0; attempt < 2; attempt++) {
+          const replacement = await regenerateMathQuestion(apiKey, section, topicName);
+          if (!replacement) continue;
+
+          const recheck = await verifyMathQuestion(apiKey, replacement);
+          if (recheck.correct) {
+            console.log(`✅ Replacement verified on attempt ${attempt + 1}`);
+            validatedLesson.sections[i] = { ...section, ...replacement };
+            break;
+          }
+          if (attempt === 1) {
+            console.log(`⚠️ Dropping unverifiable check question at section ${i}`);
+            // Convert to a learn section instead of removing it
+            validatedLesson.sections[i] = {
+              type: "learn",
+              title: "Quick Note",
+              content: section.explanation || "Let's continue to the next part!",
+            };
+          }
+        }
+      } else {
+        console.log(`✅ Section check ${i} verified`);
+      }
     }
-    
-    if (!userData?.user) {
-      console.error('No user found in session');
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized', details: 'No user in session' }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+  }
+
+  // Validate final challenge questions
+  if (validatedLesson.final_challenge?.questions) {
+    const validQuestions: any[] = [];
+    for (let i = 0; i < validatedLesson.final_challenge.questions.length; i++) {
+      const q = validatedLesson.final_challenge.questions[i];
+      if (q.type === 'free_text' || !isMathQuestion(q)) {
+        validQuestions.push(q);
+        continue;
+      }
+
+      console.log(`Verifying challenge Q${i}: "${q.question?.substring(0, 60)}..."`);
+      const result = await verifyMathQuestion(apiKey, q);
+
+      if (!result.correct) {
+        console.log(`❌ Challenge Q${i} failed. Regenerating...`);
+        let fixed = false;
+        for (let attempt = 0; attempt < 2; attempt++) {
+          const replacement = await regenerateMathQuestion(apiKey, q, topicName);
+          if (!replacement) continue;
+
+          const recheck = await verifyMathQuestion(apiKey, replacement);
+          if (recheck.correct) {
+            console.log(`✅ Challenge replacement verified on attempt ${attempt + 1}`);
+            validQuestions.push({ ...q, ...replacement });
+            fixed = true;
+            break;
+          }
+        }
+        if (!fixed) {
+          console.log(`⚠️ Dropping unverifiable challenge question ${i}`);
+          // Skip this question entirely
+        }
+      } else {
+        console.log(`✅ Challenge Q${i} verified`);
+        validQuestions.push(q);
+      }
     }
-    
-    const userId = userData.user.id;
-    console.log('Authenticated user:', userId);
+    validatedLesson.final_challenge.questions = validQuestions;
+  }
 
-    // Validate subscription tier and daily limits
-    const missionAccess = await validateMissionAccess(supabaseClient, userId);
-    if (!missionAccess.allowed) {
-      return new Response(
-        JSON.stringify({ error: missionAccess.error, code: 'LIMIT_REACHED' }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+  return validatedLesson;
+}
 
-    // Parse and validate input
-    let rawBody: unknown;
-    try {
-      rawBody = await req.json();
-    } catch {
-      return new Response(
-        JSON.stringify({ error: 'Invalid JSON in request body' }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+// ── Build Prompts ────────────────────────────────────────────────────
 
-    const validation = validateInput(rawBody);
-    if (!validation.valid || !validation.data) {
-      return new Response(
-        JSON.stringify({ error: validation.error }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+function buildPrompts(topicName: string, topicEmoji: string, yearLevel: string, difficulty: any, topicXp: number, subjectSlug?: string) {
+  const isMaths = subjectSlug === "maths" || subjectSlug === "mathematics";
+  const isEnglish = subjectSlug === "english";
 
-    const { topicName, topicEmoji, gradeLevel, topicXp, subjectSlug } = validation.data;
+  const wordLimits: Record<string, { min: number; max: number }> = {
+    "Beginning": { min: 50, max: 100 }, "Developing": { min: 100, max: 150 },
+    "Consolidating": { min: 150, max: 200 }, "Extending": { min: 200, max: 250 },
+    "Mastering": { min: 250, max: 300 },
+  };
+  const wl = wordLimits[difficulty.level] || { min: 100, max: 150 };
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
-
-    const difficulty = getDifficultyLevel(topicXp || 0);
-    const yearLevel = gradeLevel || "Year 5";
-    const isMaths = subjectSlug === "maths" || subjectSlug === "mathematics";
-    const isEnglish = subjectSlug === "english";
-
-    const systemPrompt = `You are an expert educational content creator for Australian primary school students (NSW ${yearLevel}, Stage 3). 
+  const systemPrompt = `You are an expert educational content creator for Australian primary school students (NSW ${yearLevel}, Stage 3).
 Create engaging, age-appropriate educational content that builds understanding progressively.
 Use Australian English spelling (e.g., "colour" not "color", "favourite" not "favorite").
-Include Australian references and examples where appropriate (Australian animals, places, sports like cricket/AFL).
+Include Australian references and examples where appropriate.
 Keep language simple but not condescending.
 
 ${isMaths ? NSW_MATHS_CURRICULUM : ""}
@@ -208,175 +385,140 @@ ${isMaths ? NSW_MATHS_CURRICULUM : ""}
 CURRENT STUDENT PERFORMANCE LEVEL: ${difficulty.level}
 This means you should be ${difficulty.description}.
 
-${isEnglish ? `IMPORTANT FOR ENGLISH LESSONS: Include at least one FREE-TEXT writing question in the final challenge where students must write a creative response. This is essential for developing writing skills.` : ''}`;
+${isMaths ? "CRITICAL: Use the calculate() tool for ALL arithmetic operations. NEVER calculate mentally. Always verify your answers with the tool before including them." : ""}
+${isEnglish ? "IMPORTANT: Include at least one FREE-TEXT writing question in the final challenge." : ""}`;
 
-    // Determine free-text word limits based on difficulty level
-    const freeTextWordLimits: Record<string, { min: number; max: number }> = {
-      "Beginning": { min: 50, max: 100 },
-      "Developing": { min: 100, max: 150 },
-      "Consolidating": { min: 150, max: 200 },
-      "Extending": { min: 200, max: 250 },
-      "Mastering": { min: 250, max: 300 },
-    };
-    const wordLimits = freeTextWordLimits[difficulty.level] || { min: 100, max: 150 };
-
-    const freeTextInstructions = isEnglish ? `
-
+  const freeTextBlock = isEnglish ? `
 FOR ENGLISH LESSONS - FREE-TEXT WRITING QUESTIONS:
-Include at least ONE free-text question in the final_challenge where students write a creative response.
-Free-text questions should use this structure:
+Include at least ONE free-text question:
 {
   "type": "free_text",
-  "question": "Write a short ${wordLimits.min}-${wordLimits.max} word story/paragraph about [creative prompt related to the lesson topic]",
-  "assessment_criteria": [
-    "Clear structure (beginning, middle, end)",
-    "Use of descriptive language",
-    "Correct spelling and punctuation",
-    "Creative and original ideas"
-  ],
+  "question": "Write a short ${wl.min}-${wl.max} word story/paragraph about [prompt]",
+  "assessment_criteria": ["Clear structure", "Descriptive language", "Correct spelling", "Creative ideas"],
   "example_elements": ["setting description", "character feelings", "dialogue", "sensory details"],
-  "min_words": ${wordLimits.min},
-  "max_words": ${wordLimits.max},
-  "hint": "Think about [guidance for the writing task]",
-  "explanation": "This writing task helps you practise [skill being developed]",
+  "min_words": ${wl.min}, "max_words": ${wl.max},
+  "hint": "Think about [guidance]",
+  "explanation": "This writing task helps you practise [skill]",
   "points": 50
-}
-` : '';
+}` : '';
 
-    const userPrompt = `Create an interactive lesson module for "${topicName}" for a ${yearLevel} Australian student (NSW Stage 3).
+  const userPrompt = `Create an interactive lesson for "${topicName}" for a ${yearLevel} Australian student (NSW Stage 3).
+Student XP: ${topicXp}, Level: "${difficulty.level}" — ${difficulty.description}.
 
-The student's current XP on this topic is ${topicXp || 0}, placing them at the "${difficulty.level}" level.
-Adjust the complexity and challenge accordingly - ${difficulty.description}.
-
-IMPORTANT: This lesson must be INTERACTIVE with multiple checkpoints to verify understanding before progressing.
-${freeTextInstructions}
-Return ONLY a valid JSON object with this exact structure (no markdown, no code blocks, just the JSON):
+IMPORTANT: This lesson must be INTERACTIVE with checkpoints to verify understanding.
+${isMaths ? "CRITICAL: Use the calculate() tool for EVERY arithmetic operation. Never do mental math." : ""}
+${freeTextBlock}
+Return ONLY valid JSON (no markdown, no code blocks):
 {
-  "title": "An engaging title for the lesson",
-  "emoji": "${topicEmoji || '📚'}",
+  "title": "Engaging title",
+  "emoji": "${topicEmoji}",
   "difficulty_level": "${difficulty.level}",
-  "fun_fact": "An interesting and surprising fact related to the topic that Australian kids would love",
+  "fun_fact": "Surprising fact related to topic",
   "sections": [
-    {
-      "type": "learn",
-      "title": "Section title",
-      "content": "First chunk of learning content (2-3 paragraphs max). Use simple language, real-world Australian examples, and build understanding step by step."
-    },
-    {
-      "type": "check",
-      "question_type": "multiple_choice",
-      "question": "A quick comprehension check question about what was just taught",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "correct_answer": 0,
-      "hint": "A gentle hint to guide students toward the right answer without giving it away",
-      "explanation": "Brief explanation of why this is correct"
-    },
-    {
-      "type": "learn",
-      "title": "Building on that...",
-      "content": "Second chunk of learning content that builds on the first section and introduces slightly more complexity."
-    },
-    {
-      "type": "check",
-      "question_type": "multiple_choice",
-      "question": "Another comprehension check",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "correct_answer": 0,
-      "hint": "A helpful hint",
-      "explanation": "Why this answer is correct"
-    }
+    { "type": "learn", "title": "Section title", "content": "Learning content (2-3 paragraphs)" },
+    { "type": "check", "question_type": "multiple_choice", "question": "Comprehension check", "options": ["A", "B", "C", "D"], "correct_answer": 0, "hint": "Guiding hint", "explanation": "Why correct" },
+    { "type": "learn", "title": "Building on that...", "content": "More content" },
+    { "type": "check", "question_type": "multiple_choice", "question": "Another check", "options": ["A", "B", "C", "D"], "correct_answer": 0, "hint": "Hint", "explanation": "Explanation" }
   ],
   "final_challenge": {
     "title": "Challenge Time!",
-    "description": "A brief intro to the final challenge",
+    "description": "Brief intro",
     "questions": [
-      {
-        "type": "multiple_choice",
-        "question": "A more challenging question that requires applying what was learned",
-        "options": ["Option A", "Option B", "Option C", "Option D"],
-        "correct_answer": 0,
-        "hint": "A hint that guides thinking without revealing the answer",
-        "explanation": "Detailed explanation of the correct answer",
-        "points": 20
-      },
-      {
-        "type": "multiple_choice",
-        "question": "Another challenging question, possibly multi-step or requiring reasoning",
-        "options": ["Option A", "Option B", "Option C", "Option D"],
-        "correct_answer": 0,
-        "hint": "Another guiding hint",
-        "explanation": "Detailed explanation",
-        "points": 30
-      }
+      { "type": "multiple_choice", "question": "Challenging question", "options": ["A", "B", "C", "D"], "correct_answer": 0, "hint": "Hint", "explanation": "Explanation", "points": 20 },
+      { "type": "multiple_choice", "question": "Another challenge", "options": ["A", "B", "C", "D"], "correct_answer": 0, "hint": "Hint", "explanation": "Explanation", "points": 30 }
     ]
   },
   "total_xp": 50
 }
 
 Guidelines:
-- Include exactly 2-3 learning sections, each followed by a comprehension check
-- The final challenge should have 2-3 questions that are MORE difficult than the checks
-- Hints should guide thinking, not reveal answers (e.g., "Think about what happens when..." not "The answer is...")
-- For "${difficulty.level}" level, ${difficulty.description}
-- Use Australian contexts: kilometres not miles, dollars not pounds, local wildlife, sports like cricket or AFL
-- Make questions progressively harder within the module
-${isEnglish ? '- IMPORTANT: Include at least one free-text writing question in the final_challenge with type: "free_text"' : ''}`;
+- 2-3 learning sections, each followed by a comprehension check
+- Final challenge: 2-3 harder questions
+- Hints guide thinking, don't reveal answers
+- Use Australian contexts: km not miles, dollars not pounds, cricket/AFL
+- Progressive difficulty within the module
+${isEnglish ? '- Include at least one free-text writing question in final_challenge' : ''}`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        temperature: 0.7,
-        max_tokens: 4000,
-      }),
-    });
+  return { systemPrompt, userPrompt, isMaths };
+}
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "AI credits exhausted. Please add credits to continue." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      
-      throw new Error(`AI gateway error: ${response.status}`);
+// ── Main Handler ─────────────────────────────────────────────────────
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const aiResponse = await response.json();
-    const content = aiResponse.choices?.[0]?.message?.content;
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      { auth: { persistSession: false } }
+    );
 
-    if (!content) {
-      throw new Error("No content received from AI");
+    const token = authHeader.replace('Bearer ', '');
+    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+    if (userError || !userData?.user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+
+    const userId = userData.user.id;
+    const missionAccess = await validateMissionAccess(supabaseClient, userId);
+    if (!missionAccess.allowed) {
+      return new Response(JSON.stringify({ error: missionAccess.error, code: 'LIMIT_REACHED' }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    let rawBody: unknown;
+    try { rawBody = await req.json(); } catch {
+      return new Response(JSON.stringify({ error: 'Invalid JSON' }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const validation = validateInput(rawBody);
+    if (!validation.valid || !validation.data) {
+      return new Response(JSON.stringify({ error: validation.error }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const { topicName, topicEmoji, gradeLevel, topicXp, subjectSlug } = validation.data;
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+    const difficulty = getDifficultyLevel(topicXp || 0);
+    const yearLevel = gradeLevel || "Year 5";
+    const { systemPrompt, userPrompt, isMaths } = buildPrompts(
+      topicName, topicEmoji || '📚', yearLevel, difficulty, topicXp || 0, subjectSlug
+    );
+
+    // ── Agent 1: Generate lesson (with calculator tool for math) ──
+    console.log(`Agent 1: Generating lesson for "${topicName}" (math tools: ${isMaths})`);
+    const content = await callWithTools(LOVABLE_API_KEY, [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ], isMaths);
 
     let lessonContent;
     try {
       let jsonStr = content.trim();
-      if (jsonStr.startsWith("```json")) {
-        jsonStr = jsonStr.slice(7);
-      } else if (jsonStr.startsWith("```")) {
-        jsonStr = jsonStr.slice(3);
-      }
-      if (jsonStr.endsWith("```")) {
-        jsonStr = jsonStr.slice(0, -3);
-      }
+      if (jsonStr.startsWith("```json")) jsonStr = jsonStr.slice(7);
+      else if (jsonStr.startsWith("```")) jsonStr = jsonStr.slice(3);
+      if (jsonStr.endsWith("```")) jsonStr = jsonStr.slice(0, -3);
       lessonContent = JSON.parse(jsonStr.trim());
     } catch {
       throw new Error("Failed to parse lesson content");
+    }
+
+    // ── Agent 2: Validate math answers ──
+    if (isMaths) {
+      console.log("Agent 2: Validating math answers...");
+      lessonContent = await validateAndFixLesson(LOVABLE_API_KEY, lessonContent, topicName);
     }
 
     return new Response(
@@ -385,12 +527,16 @@ ${isEnglish ? '- IMPORTANT: Include at least one free-text writing question in t
     );
   } catch (error) {
     console.error("Error generating lesson:", error);
-    return new Response(
-      JSON.stringify({ 
-        error: "An error occurred while processing your request",
-        success: false 
-      }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    const msg = error instanceof Error ? error.message : "";
+    if (msg === "RATE_LIMIT") {
+      return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    if (msg === "CREDITS_EXHAUSTED") {
+      return new Response(JSON.stringify({ error: "AI credits exhausted." }),
+        { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    return new Response(JSON.stringify({ error: "An error occurred while processing your request", success: false }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
