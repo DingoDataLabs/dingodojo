@@ -448,7 +448,9 @@ Guidelines:
 - Use Australian contexts: km not miles, dollars not pounds, cricket/AFL
 - Progressive difficulty within the module
 ${isEnglish ? '- Include at least one free-text writing question in final_challenge' : ''}
-${isMaths ? '- Double-check all math: make sure correct_answer index matches the right option' : ''}`;
+${isMaths ? `- Double-check all math: make sure correct_answer index matches the right option
+- Include "calculation_expression" for every question involving arithmetic (the pure math expression, e.g. "3/4 + 1/2")
+- For conceptual questions (e.g. "what is a fraction?"), omit calculation_expression` : ''}`;
 
   return { systemPrompt, userPrompt, isMaths };
 }
