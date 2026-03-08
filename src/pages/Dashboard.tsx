@@ -393,32 +393,43 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <header className="flex items-center justify-between mb-8 animate-slide-up">
-          <div className="flex items-center gap-4">
-            <div className="text-5xl animate-float">🦊</div>
-            <div>
-              <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground">
-                G'day, {profile?.first_name || "Ninja"}!
-              </h1>
-              <p className="text-muted-foreground">{profile?.grade_level || "Year 5"} • The Dojo</p>
+    <div className="min-h-screen bg-background">
+      {/* Wavy Header Background */}
+      <div className="relative bg-gradient-to-br from-primary/15 via-ochre-light/10 to-sand">
+        <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 pt-4 md:pt-6 lg:pt-8 pb-12">
+          <header className="flex items-center justify-between animate-slide-up">
+            <div className="flex items-center gap-4">
+              <div className="text-5xl animate-float">🦊</div>
+              <div>
+                <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground">
+                  G'day, {profile?.first_name || "Ninja"}!
+                </h1>
+                <p className="text-muted-foreground">{profile?.grade_level || "Year 5"} • The Dojo</p>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/progress")} className="rounded-xl" title="Progress Report">
-              <BarChart2 className="w-5 h-5" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={() => navigate("/profile")} className="rounded-xl">
-              <Settings className="w-5 h-5" />
-            </Button>
-            <Button variant="outline" onClick={handleLogout} className="rounded-xl gap-2">
-              <LogOut className="w-4 h-4" />
-              <span className="hidden sm:inline">Logout</span>
-            </Button>
-          </div>
-        </header>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={() => navigate("/progress")} className="rounded-xl" title="Progress Report">
+                <BarChart2 className="w-5 h-5" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => navigate("/profile")} className="rounded-xl">
+                <Settings className="w-5 h-5" />
+              </Button>
+              <Button variant="outline" onClick={handleLogout} className="rounded-xl gap-2 bg-card/50 backdrop-blur-sm">
+                <LogOut className="w-4 h-4" />
+                <span className="hidden sm:inline">Logout</span>
+              </Button>
+            </div>
+          </header>
+        </div>
+        {/* Wavy bottom edge */}
+        <div className="absolute bottom-0 left-0 right-0 overflow-hidden leading-[0]">
+          <svg viewBox="0 0 1200 60" preserveAspectRatio="none" className="w-full h-[30px] md:h-[40px]">
+            <path d="M0,30 C200,55 400,5 600,30 C800,55 1000,5 1200,30 L1200,60 L0,60 Z" className="fill-background" />
+          </svg>
+        </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 -mt-4 pb-8">
 
         {/* School Holiday Banner */}
         {inHoliday && (
