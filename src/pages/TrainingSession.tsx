@@ -893,6 +893,10 @@ export default function TrainingSession() {
     if (!section) return null;
 
     if (section.type === "learn") {
+      // Check if next section would be a check that hasn't loaded yet
+      const nextSection = lessonContent.sections[currentSectionIndex + 1];
+      const nextIsPlaceholderCheck = questionsLoading && (!nextSection || nextSection.type !== "check") && currentSectionIndex === lessonContent.sections.length - 1;
+
       return (
         <div className="space-y-4 animate-slide-up">
           <h3 className="font-display font-bold text-xl text-foreground">{section.title}</h3>
@@ -902,6 +906,27 @@ export default function TrainingSession() {
           <Button onClick={proceedToNext} className="w-full h-12 text-lg font-bold rounded-xl gap-2">
             Continue <ChevronRight className="w-5 h-5" />
           </Button>
+        </div>
+      );
+    }
+
+    if (section.type === "check" && !section.question && questionsLoading) {
+      // Skeleton placeholder while check questions load
+      return (
+        <div className="space-y-4 animate-slide-up">
+          <div className="bg-card rounded-2xl p-5 border-2 border-sky/20">
+            <div className="flex items-center gap-2 mb-4">
+              <Loader2 className="w-5 h-5 animate-spin text-primary" />
+              <span className="font-display font-bold text-lg text-muted-foreground">Loading question...</span>
+            </div>
+            <Skeleton className="h-6 w-3/4 mb-4" />
+            <div className="space-y-2">
+              <Skeleton className="h-14 w-full rounded-xl" />
+              <Skeleton className="h-14 w-full rounded-xl" />
+              <Skeleton className="h-14 w-full rounded-xl" />
+              <Skeleton className="h-14 w-full rounded-xl" />
+            </div>
+          </div>
         </div>
       );
     }
