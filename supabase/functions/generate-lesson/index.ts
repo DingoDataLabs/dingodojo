@@ -392,7 +392,11 @@ ${isMaths ? NSW_MATHS_CURRICULUM : ""}
 CURRENT STUDENT PERFORMANCE LEVEL: ${difficulty.level}
 This means you should be ${difficulty.description}.
 
-${isMaths ? "CRITICAL: Double-check all arithmetic carefully. Make sure the correct_answer index corresponds to the actually correct option. Show your working in the explanation field." : ""}
+${isMaths ? `CRITICAL: For EVERY question that involves a calculation:
+1. Double-check all arithmetic carefully
+2. Include a "calculation_expression" field with the pure math expression needed to solve the question (e.g. "3/4 + 1/2", "12 * 1/3", "5/6 - 1/3")
+3. Make sure the correct_answer index corresponds to the actually correct option
+4. Show your working in the explanation field` : ""}
 ${isEnglish ? "IMPORTANT: Include at least one FREE-TEXT writing question in the final challenge." : ""}`;
 
   const freeTextBlock = isEnglish ? `
