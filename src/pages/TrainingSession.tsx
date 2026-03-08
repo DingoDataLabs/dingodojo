@@ -141,6 +141,7 @@ export default function TrainingSession() {
   const [lessonContent, setLessonContent] = useState<LessonContent | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [questionsLoading, setQuestionsLoading] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [topicXp, setTopicXp] = useState(0);
 
