@@ -109,263 +109,67 @@ async function validateMissionAccess(supabaseClient: any, userId: string): Promi
   return { allowed: true };
 }
 
-// ── Math Question Detection ──────────────────────────────────────────
+// ── Server-side Math Correction (no LLM calls) ──────────────────────
 
-function isMathQuestion(question: any): boolean {
-  if (!question || typeof question !== 'object') return false;
-  const text = `${question.question || ''} ${(question.options || []).join(' ')}`.toLowerCase();
-  const mathPatterns = [
-    /\d+\s*[\+\-\*\/×÷]\s*\d+/,
-    /\d+\/\d+/,
-    /\d+\.\d+/,
-    /\d+\s*%/,
-    /how many|how much|total|sum|difference|product|quotient|remainder/,
-    /area|perimeter|volume|length|width|height|distance/,
-    /calculate|solve|work out|find the|what is/,
-    /greater|less|equal|compare/,
-    /multiply|divide|add|subtract/,
-    /fraction|decimal|percentage|ratio/,
-    /average|mean|median/,
-    /angle|degree/,
-    /convert|conversion/,
-  ];
-  return mathPatterns.some(p => p.test(text));
-}
-
-// ── Agent 2: Two-expression comparison verification ──────────────────
-
-async function verifyMathQuestion(apiKey: string, q: any): Promise<{ correct: boolean; suggestedAnswer?: number }> {
-  // Agent 1 should have included calculation_expression. If not, skip.
-  const agent1Expr = q.calculation_expression;
-  if (!agent1Expr) {
-    return { correct: true }; // No expression provided, skip verification
-  }
-
-  // Agent 2: independently extract the expression from the question text
-  const extractPrompt = `You are a math verification agent. Read this question carefully and determine the mathematical expression needed to solve it.
-
-QUESTION: ${q.question}
-OPTIONS:
-${q.options.map((o: string, i: number) => `${i}: ${o}`).join('\n')}
-
-Think step by step about what the question is ACTUALLY asking. For example:
-- "eats half of his pizza" means multiply by 1/2
-- "shared equally among 5 friends" means divide by 5
-- "ran 2 laps then 3 more" means 2 + 3
-
-Respond with ONLY valid JSON:
-{"expression": "the math expression, e.g. 3/4 + 1/2"}
-
-If the question is conceptual (no calculation needed), respond: {"expression": null}`;
-
-  try {
-    const extractResult = await callLLM(apiKey, [
-      { role: "system", content: "Extract math expressions from word problems. Reply ONLY with JSON, no markdown." },
-      { role: "user", content: extractPrompt },
-    ]);
-
-    let jsonStr = extractResult.trim().replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/, '');
-    const jsonMatch = jsonStr.match(/\{[^}]+\}/);
-    if (jsonMatch) jsonStr = jsonMatch[0];
-    const extracted = JSON.parse(jsonStr);
-
-    if (!extracted.expression) {
-      return { correct: true }; // Agent 2 says conceptual, skip
-    }
-
-    const agent2Expr = extracted.expression;
-
-    // Evaluate both expressions with mathjs
-    const calc1 = safeCalculate(agent1Expr);
-    const calc2 = safeCalculate(agent2Expr);
-
-    if (!calc1.success) {
-      console.log(`Agent 1 expression "${agent1Expr}" failed to evaluate: ${calc1.error}`);
-      // Fall back: if Agent 2's expression works, use that
-      if (calc2.success) {
-        console.log(`Using Agent 2 expression "${agent2Expr}" = ${calc2.result}`);
-        return verifyAnswerAgainstOptions(q, calc2.result!);
-      }
-      return { correct: true }; // Neither evaluates, trust Agent 1
-    }
-
-    if (!calc2.success) {
-      console.log(`Agent 2 expression "${agent2Expr}" failed to evaluate: ${calc2.error}. Using Agent 1's.`);
-      return verifyAnswerAgainstOptions(q, calc1.result!);
-    }
-
-    // Both expressions evaluated — compare results
-    const match = Math.abs(calc1.result! - calc2.result!) < 0.001;
-    if (match) {
-      console.log(`Expressions agree: "${agent1Expr}" = "${agent2Expr}" = ${calc1.result}`);
-      return verifyAnswerAgainstOptions(q, calc1.result!);
-    }
-
-    // DISAGREEMENT: agents interpreted the word problem differently
-    console.log(`❌ Expression mismatch! Agent1: "${agent1Expr}"=${calc1.result}, Agent2: "${agent2Expr}"=${calc2.result}`);
-    return { correct: false };
-  } catch (e) {
-    console.error("Verification agent error:", e);
-    return { correct: true };
-  }
-}
-
-// Check if the correct_answer option matches the calculated value
-function verifyAnswerAgainstOptions(q: any, calcValue: number): { correct: boolean; suggestedAnswer?: number } {
-  const correctOption = q.options[q.correct_answer];
-  
-  // Try numeric comparison on the marked correct option
-  const optionNum = parseFloat(correctOption.replace(/[^0-9.\-\/]/g, ''));
-  if (!isNaN(optionNum) && Math.abs(optionNum - calcValue) < 0.001) {
-    return { correct: true };
-  }
-
-  // Check if option text contains the result
-  const resultStr = String(calcValue);
-  if (correctOption.includes(resultStr)) {
-    return { correct: true };
-  }
-
-  // Try fraction representation: e.g. calcValue=0.75 → check for "3/4"
-  // Search all options for a match
-  for (let i = 0; i < q.options.length; i++) {
-    const oNum = parseFloat(q.options[i].replace(/[^0-9.\-\/]/g, ''));
-    if (!isNaN(oNum) && Math.abs(oNum - calcValue) < 0.001) {
-      if (i !== q.correct_answer) {
-        console.log(`Answer fix: calculated ${calcValue}, matches option ${i}, not ${q.correct_answer}`);
-        return { correct: false, suggestedAnswer: i };
-      }
-      return { correct: true };
-    }
-    // Try evaluating option as expression (e.g. "3/4")
-    const optCalc = safeCalculate(q.options[i].trim());
+function findMatchingOption(options: string[], calcValue: number): number | null {
+  for (let i = 0; i < options.length; i++) {
+    const opt = options[i].trim();
+    // Try evaluating option as math expression (handles "3/4", "7/3", etc.)
+    const optCalc = safeCalculate(opt);
     if (optCalc.success && Math.abs(optCalc.result! - calcValue) < 0.001) {
-      if (i !== q.correct_answer) {
-        console.log(`Answer fix: calculated ${calcValue}, option "${q.options[i]}" evaluates to match, not option ${q.correct_answer}`);
-        return { correct: false, suggestedAnswer: i };
-      }
-      return { correct: true };
+      return i;
     }
-  }
-
-  return { correct: true }; // Can't match to options, trust Agent 1
-}
-
-// ── Question Regeneration ────────────────────────────────────────────
-
-async function regenerateMathQuestion(apiKey: string, original: any, context: string): Promise<any | null> {
-  const prompt = `Generate a replacement multiple-choice math question about "${context}". The previous question had an incorrect answer.
-
-Previous question (DO NOT reuse): ${original.question}
-
-Return ONLY valid JSON (no markdown):
-{
-  "question": "New question text",
-  "options": ["A", "B", "C", "D"],
-  "correct_answer": 0,
-  "calculation_expression": "the math expression needed to solve this, e.g. 3/4 + 1/2",
-  "hint": "Guiding hint",
-  "explanation": "Why the answer is correct"
-}
-
-CRITICAL: 
-- Include a "calculation_expression" field with the mathematical expression derived from your question.
-- Use the calculate tool mentally: make sure the expression evaluates to match the correct option.
-- Make sure the correct_answer index points to the actually correct option.`;
-
-  try {
-    const result = await callLLM(apiKey, [
-      { role: "system", content: "Generate math questions with calculation expressions. Reply ONLY with JSON, no markdown." },
-      { role: "user", content: prompt },
-    ]);
-
-    let jsonStr = result.trim().replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/, '');
-    const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
-    if (jsonMatch) jsonStr = jsonMatch[0];
-    return JSON.parse(jsonStr.trim());
-  } catch (e) {
-    console.error("Regeneration error:", e);
-    return null;
-  }
-}
-
-// ── Validate & Fix All Math in Lesson ────────────────────────────────
-
-async function validateAndFixLesson(apiKey: string, lesson: any, topicName: string): Promise<any> {
-  const validatedLesson = { ...lesson };
-
-  if (validatedLesson.sections) {
-    for (let i = 0; i < validatedLesson.sections.length; i++) {
-      const section = validatedLesson.sections[i];
-      if (section.type !== 'check') continue;
-      if (!isMathQuestion(section)) continue;
-
-      console.log(`Verifying section check ${i}: "${section.question?.substring(0, 60)}..."`);
-      const result = await verifyMathQuestion(apiKey, section);
-
-      if (!result.correct) {
-        console.log(`❌ Section check ${i} failed verification. Regenerating...`);
-        for (let attempt = 0; attempt < 2; attempt++) {
-          const replacement = await regenerateMathQuestion(apiKey, section, topicName);
-          if (!replacement) continue;
-          const recheck = await verifyMathQuestion(apiKey, replacement);
-          if (recheck.correct) {
-            console.log(`✅ Replacement verified on attempt ${attempt + 1}`);
-            validatedLesson.sections[i] = { ...section, ...replacement };
-            break;
-          }
-          if (attempt === 1) {
-            console.log(`⚠️ Dropping unverifiable check at section ${i}`);
-            validatedLesson.sections[i] = {
-              type: "learn", title: "Quick Note",
-              content: section.explanation || "Let's continue to the next part!",
-            };
-          }
-        }
-      } else {
-        console.log(`✅ Section check ${i} verified`);
+    // Try parsing as plain number
+    const numMatch = opt.match(/-?[\d.]+/);
+    if (numMatch) {
+      const oNum = parseFloat(numMatch[0]);
+      if (!isNaN(oNum) && Math.abs(oNum - calcValue) < 0.001) {
+        return i;
       }
     }
   }
+  return null;
+}
 
-  if (validatedLesson.final_challenge?.questions) {
-    const validQuestions: any[] = [];
-    for (let i = 0; i < validatedLesson.final_challenge.questions.length; i++) {
-      const q = validatedLesson.final_challenge.questions[i];
-      if (q.type === 'free_text' || !isMathQuestion(q)) {
-        validQuestions.push(q);
-        continue;
-      }
+function correctMathAnswers(lesson: any): any {
+  const corrected = { ...lesson };
+  let fixed = 0;
 
-      console.log(`Verifying challenge Q${i}: "${q.question?.substring(0, 60)}..."`);
-      const result = await verifyMathQuestion(apiKey, q);
-
-      if (!result.correct) {
-        console.log(`❌ Challenge Q${i} failed. Regenerating...`);
-        let fixed = false;
-        for (let attempt = 0; attempt < 2; attempt++) {
-          const replacement = await regenerateMathQuestion(apiKey, q, topicName);
-          if (!replacement) continue;
-          const recheck = await verifyMathQuestion(apiKey, replacement);
-          if (recheck.correct) {
-            console.log(`✅ Challenge replacement verified on attempt ${attempt + 1}`);
-            validQuestions.push({ ...q, ...replacement });
-            fixed = true;
-            break;
-          }
-        }
-        if (!fixed) {
-          console.log(`⚠️ Dropping unverifiable challenge question ${i}`);
-        }
-      } else {
-        console.log(`✅ Challenge Q${i} verified`);
-        validQuestions.push(q);
-      }
+  const correctQuestion = (q: any, label: string) => {
+    if (!q || !q.calculation_expression || !q.options) return;
+    const calc = safeCalculate(q.calculation_expression);
+    if (!calc.success) {
+      console.log(`⚠️ ${label}: couldn't evaluate "${q.calculation_expression}": ${calc.error}`);
+      return;
     }
-    validatedLesson.final_challenge.questions = validQuestions;
+    const matchIdx = findMatchingOption(q.options, calc.result!);
+    if (matchIdx !== null && matchIdx !== q.correct_answer) {
+      console.log(`🔧 ${label}: corrected answer from option ${q.correct_answer} to ${matchIdx} (calc=${calc.result})`);
+      q.correct_answer = matchIdx;
+      fixed++;
+    } else if (matchIdx !== null) {
+      console.log(`✅ ${label}: answer verified (option ${matchIdx}, calc=${calc.result})`);
+    } else {
+      console.log(`⚠️ ${label}: calc=${calc.result} but no matching option found`);
+    }
+  };
+
+  if (corrected.sections) {
+    for (let i = 0; i < corrected.sections.length; i++) {
+      const s = corrected.sections[i];
+      if (s.type === 'check') correctQuestion(s, `Section ${i}`);
+    }
   }
 
-  return validatedLesson;
+  if (corrected.final_challenge?.questions) {
+    for (let i = 0; i < corrected.final_challenge.questions.length; i++) {
+      const q = corrected.final_challenge.questions[i];
+      if (q.type !== 'free_text') correctQuestion(q, `Challenge Q${i}`);
+    }
+  }
+
+  console.log(`Math correction complete: ${fixed} answer(s) fixed`);
+  return corrected;
 }
 
 // ── Build Prompts ────────────────────────────────────────────────────
