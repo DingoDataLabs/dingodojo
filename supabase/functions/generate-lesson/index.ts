@@ -426,7 +426,7 @@ Return ONLY valid JSON (no markdown, no code blocks, no backticks):
   "fun_fact": "Surprising fact related to topic",
   "sections": [
     { "type": "learn", "title": "Section title", "content": "Learning content (2-3 paragraphs)" },
-    { "type": "check", "question_type": "multiple_choice", "question": "Comprehension check", "options": ["A", "B", "C", "D"], "correct_answer": 0, "hint": "Guiding hint", "explanation": "Why correct" },
+    { "type": "check", "question_type": "multiple_choice", "question": "Comprehension check", "options": ["A", "B", "C", "D"], "correct_answer": 0, "calculation_expression": "math expression if applicable", "hint": "Guiding hint", "explanation": "Why correct" },
     { "type": "learn", "title": "Building on that...", "content": "More content" },
     { "type": "check", "question_type": "multiple_choice", "question": "Another check", "options": ["A", "B", "C", "D"], "correct_answer": 0, "hint": "Hint", "explanation": "Explanation" }
   ],
