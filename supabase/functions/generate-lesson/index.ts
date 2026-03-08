@@ -434,8 +434,8 @@ Return ONLY valid JSON (no markdown, no code blocks, no backticks):
     "title": "Challenge Time!",
     "description": "Brief intro",
     "questions": [
-      { "type": "multiple_choice", "question": "Challenging question", "options": ["A", "B", "C", "D"], "correct_answer": 0, "hint": "Hint", "explanation": "Explanation", "points": 20 },
-      { "type": "multiple_choice", "question": "Another challenge", "options": ["A", "B", "C", "D"], "correct_answer": 0, "hint": "Hint", "explanation": "Explanation", "points": 30 }
+      { "type": "multiple_choice", "question": "Challenging question", "options": ["A", "B", "C", "D"], "correct_answer": 0, "calculation_expression": "math expression if applicable", "hint": "Hint", "explanation": "Explanation", "points": 20 },
+      { "type": "multiple_choice", "question": "Another challenge", "options": ["A", "B", "C", "D"], "correct_answer": 0, "calculation_expression": "math expression if applicable", "hint": "Hint", "explanation": "Explanation", "points": 30 }
     ]
   },
   "total_xp": 50
