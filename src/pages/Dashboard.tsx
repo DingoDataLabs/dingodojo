@@ -492,7 +492,12 @@ export default function Dashboard() {
                 </p>
               </div>
             </div>
-            <Progress value={weeklyProgress} className="h-2 mb-2" />
+            <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted mb-2">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${weeklyProgress >= 100 ? "bg-secondary" : "bg-primary"}`}
+                style={{ width: `${weeklyProgress}%` }}
+              />
+            </div>
             {weeklyBreakdown.length > 0 && (
               <div className="space-y-0.5 mb-1">
                 {weeklyBreakdown.map(wb => (
