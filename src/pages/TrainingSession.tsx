@@ -306,37 +306,118 @@ export default function TrainingSession() {
   const generateLesson = async (topicData: Topic, subjectData: Subject, gradeLevel?: string, xp?: number) => {
     setGenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke("generate-lesson", {
-        body: { 
-          topicName: topicData.name, 
-          topicEmoji: topicData.emoji,
-          gradeLevel: gradeLevel || "Year 5",
-          topicXp: xp || 0,
-          subjectSlug: subjectData.slug
-        },
+      const baseBody = {
+        topicName: topicData.name,
+        topicEmoji: topicData.emoji,
+        gradeLevel: gradeLevel || "Year 5",
+        topicXp: xp || 0,
+        subjectSlug: subjectData.slug,
+      };
+
+      // Phase 1: Scaffold — get learn sections immediately
+      const { data: scaffoldData, error: scaffoldError } = await supabase.functions.invoke("generate-lesson", {
+        body: { ...baseBody, phase: "scaffold" },
       });
 
-      if (error) throw error;
+      if (scaffoldError) throw scaffoldError;
+      if (!scaffoldData?.content) throw new Error("No scaffold content");
 
-      if (data?.content) {
-        setLessonContent(data.content);
+      const scaffold = scaffoldData.content;
+      
+      // Show scaffold immediately with placeholder check sections and empty challenge
+      const scaffoldLesson: LessonContent = {
+        title: scaffold.title,
+        emoji: scaffold.emoji,
+        difficulty_level: scaffold.difficulty_level,
+        fun_fact: scaffold.fun_fact,
+        sections: scaffold.sections || [],
+        final_challenge: { title: "Challenge Time!", description: "Loading...", questions: [] },
+        total_xp: scaffold.total_xp || 50,
+      };
+      setLessonContent(scaffoldLesson);
+      setGenerating(false);
+      setLoading(false);
+      setQuestionsLoading(true);
 
-        // Save to database with difficulty level for XP-based caching
-        const difficultyLevel = data.difficultyLevel || getMasteryLevel(xp || 0).name;
-        await supabase.from("generated_modules").upsert({
-          topic_id: topicData.id,
-          content_json: data.content,
-          difficulty_level: difficultyLevel,
-        }, {
-          onConflict: "topic_id,difficulty_level",
+      // Extract learn sections for context
+      const learnSections = (scaffold.sections || [])
+        .filter((s: any) => s.type === "learn")
+        .map((s: any) => ({ title: s.title, content: s.content }));
+
+      // Phase 2: Check questions — run in background
+      try {
+        const { data: checksData } = await supabase.functions.invoke("generate-lesson", {
+          body: { ...baseBody, phase: "checks", scaffoldSections: learnSections },
         });
+
+        if (checksData?.checks) {
+          // Interleave check sections after each learn section
+          setLessonContent(prev => {
+            if (!prev) return prev;
+            const newSections: LessonSection[] = [];
+            let checkIdx = 0;
+            for (const section of prev.sections) {
+              newSections.push(section);
+              if (section.type === "learn" && checkIdx < checksData.checks.length) {
+                const check = checksData.checks[checkIdx];
+                newSections.push({
+                  type: "check",
+                  question: check.question,
+                  options: check.options,
+                  correct_answer: check.correct_answer,
+                  hint: check.hint,
+                  explanation: check.explanation,
+                  question_type: check.question_type || "multiple_choice",
+                });
+                checkIdx++;
+              }
+            }
+            return { ...prev, sections: newSections };
+          });
+        }
+      } catch (checksErr) {
+        console.error("Phase 2 (checks) error:", checksErr);
       }
+
+      // Phase 3: Final challenge — run in background
+      try {
+        const { data: challengeData } = await supabase.functions.invoke("generate-lesson", {
+          body: { ...baseBody, phase: "challenge" },
+        });
+
+        if (challengeData?.final_challenge) {
+          setLessonContent(prev => {
+            if (!prev) return prev;
+            return { ...prev, final_challenge: challengeData.final_challenge };
+          });
+        }
+      } catch (challengeErr) {
+        console.error("Phase 3 (challenge) error:", challengeErr);
+      }
+
+      setQuestionsLoading(false);
+
+      // Cache full lesson after all phases complete
+      setLessonContent(prev => {
+        if (prev) {
+          const difficultyLevel = scaffoldData.difficultyLevel || getMasteryLevel(xp || 0).name;
+          supabase.from("generated_modules").upsert({
+            topic_id: topicData.id,
+            content_json: prev as any,
+            difficulty_level: difficultyLevel,
+          }, {
+            onConflict: "topic_id,difficulty_level",
+          });
+        }
+        return prev;
+      });
+
     } catch (err) {
       console.error("Generation error:", err);
       toast.error("Couldn't generate the lesson. Please try again!");
-    } finally {
       setGenerating(false);
       setLoading(false);
+      setQuestionsLoading(false);
     }
   };
 
