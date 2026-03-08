@@ -40,9 +40,19 @@ const getDifficultyLevel = (topicXp: number) => {
 
 // ── Input Validation ─────────────────────────────────────────────────
 
-const validateInput = (data: unknown): { valid: boolean; error?: string; data?: {
-  topicName: string; topicEmoji?: string; gradeLevel?: string; topicXp?: number; subjectSlug?: string;
-}} => {
+type Phase = "scaffold" | "checks" | "challenge";
+
+interface ValidatedInput {
+  topicName: string;
+  topicEmoji?: string;
+  gradeLevel?: string;
+  topicXp?: number;
+  subjectSlug?: string;
+  phase?: Phase;
+  scaffoldSections?: { title: string; content: string }[];
+}
+
+const validateInput = (data: unknown): { valid: boolean; error?: string; data?: ValidatedInput } => {
   if (!data || typeof data !== 'object') return { valid: false, error: 'Invalid request body' };
   const body = data as Record<string, unknown>;
   if (typeof body.topicName !== 'string' || body.topicName.length < 1) return { valid: false, error: 'topicName is required' };
@@ -51,11 +61,22 @@ const validateInput = (data: unknown): { valid: boolean; error?: string; data?: 
   if (body.gradeLevel !== undefined && (typeof body.gradeLevel !== 'string' || body.gradeLevel.length > 50)) return { valid: false, error: 'Invalid gradeLevel' };
   if (body.subjectSlug !== undefined && (typeof body.subjectSlug !== 'string' || body.subjectSlug.length > 50)) return { valid: false, error: 'Invalid subjectSlug' };
   if (body.topicXp !== undefined && (typeof body.topicXp !== 'number' || body.topicXp < 0 || body.topicXp > 100000)) return { valid: false, error: 'Invalid topicXp' };
-  return { valid: true, data: {
-    topicName: body.topicName as string, topicEmoji: body.topicEmoji as string | undefined,
-    gradeLevel: body.gradeLevel as string | undefined, topicXp: body.topicXp as number | undefined,
-    subjectSlug: body.subjectSlug as string | undefined,
-  }};
+  
+  const phase = (body.phase as string) || "scaffold";
+  if (!["scaffold", "checks", "challenge"].includes(phase)) return { valid: false, error: 'Invalid phase' };
+
+  return {
+    valid: true,
+    data: {
+      topicName: body.topicName as string,
+      topicEmoji: body.topicEmoji as string | undefined,
+      gradeLevel: body.gradeLevel as string | undefined,
+      topicXp: body.topicXp as number | undefined,
+      subjectSlug: body.subjectSlug as string | undefined,
+      phase: phase as Phase,
+      scaffoldSections: body.scaffoldSections as { title: string; content: string }[] | undefined,
+    },
+  };
 };
 
 // ── Calculator ───────────────────────────────────────────────────────
@@ -69,11 +90,12 @@ function safeCalculate(expression: string): { success: boolean; result?: number;
   }
 }
 
-// ── Simple LLM Call (no tool calling) ────────────────────────────────
+// ── Simple LLM Call ──────────────────────────────────────────────────
 
 async function callLLM(
   apiKey: string,
   messages: { role: string; content: string }[],
+  maxTokens = 3000,
 ): Promise<string> {
   const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
@@ -82,7 +104,8 @@ async function callLLM(
       model: "google/gemini-2.5-flash",
       messages,
       temperature: 0.7,
-      max_tokens: 5000,
+      max_tokens: maxTokens,
+      response_format: { type: "json_object" },
     }),
   });
 
@@ -109,72 +132,118 @@ async function validateMissionAccess(supabaseClient: any, userId: string): Promi
   return { allowed: true };
 }
 
-// ── Server-side Math Correction (no LLM calls) ──────────────────────
+// ── Server-side Math Correction ──────────────────────────────────────
 
 function findMatchingOption(options: string[], calcValue: number): number | null {
   for (let i = 0; i < options.length; i++) {
     const opt = options[i].trim();
-    // Try evaluating option as math expression (handles "3/4", "7/3", etc.)
     const optCalc = safeCalculate(opt);
-    if (optCalc.success && Math.abs(optCalc.result! - calcValue) < 0.001) {
-      return i;
-    }
-    // Try parsing as plain number
+    if (optCalc.success && Math.abs(optCalc.result! - calcValue) < 0.001) return i;
     const numMatch = opt.match(/-?[\d.]+/);
     if (numMatch) {
       const oNum = parseFloat(numMatch[0]);
-      if (!isNaN(oNum) && Math.abs(oNum - calcValue) < 0.001) {
-        return i;
-      }
+      if (!isNaN(oNum) && Math.abs(oNum - calcValue) < 0.001) return i;
     }
   }
   return null;
 }
 
-function correctMathAnswers(lesson: any): any {
-  const corrected = { ...lesson };
+function correctMathQuestions(questions: any[]): any[] {
   let fixed = 0;
-
-  const correctQuestion = (q: any, label: string) => {
-    if (!q || !q.calculation_expression || !q.options) return;
+  for (let i = 0; i < questions.length; i++) {
+    const q = questions[i];
+    if (!q || !q.calculation_expression || !q.options) continue;
     const calc = safeCalculate(q.calculation_expression);
-    if (!calc.success) {
-      console.log(`⚠️ ${label}: couldn't evaluate "${q.calculation_expression}": ${calc.error}`);
-      return;
-    }
+    if (!calc.success) { console.log(`⚠️ Q${i}: couldn't evaluate "${q.calculation_expression}"`); continue; }
     const matchIdx = findMatchingOption(q.options, calc.result!);
     if (matchIdx !== null && matchIdx !== q.correct_answer) {
-      console.log(`🔧 ${label}: corrected answer from option ${q.correct_answer} to ${matchIdx} (calc=${calc.result})`);
+      console.log(`🔧 Q${i}: corrected answer from ${q.correct_answer} to ${matchIdx} (calc=${calc.result})`);
       q.correct_answer = matchIdx;
       fixed++;
-    } else if (matchIdx !== null) {
-      console.log(`✅ ${label}: answer verified (option ${matchIdx}, calc=${calc.result})`);
-    } else {
-      console.log(`⚠️ ${label}: calc=${calc.result} but no matching option found`);
-    }
-  };
-
-  if (corrected.sections) {
-    for (let i = 0; i < corrected.sections.length; i++) {
-      const s = corrected.sections[i];
-      if (s.type === 'check') correctQuestion(s, `Section ${i}`);
     }
   }
-
-  if (corrected.final_challenge?.questions) {
-    for (let i = 0; i < corrected.final_challenge.questions.length; i++) {
-      const q = corrected.final_challenge.questions[i];
-      if (q.type !== 'free_text') correctQuestion(q, `Challenge Q${i}`);
-    }
-  }
-
-  console.log(`Math correction complete: ${fixed} answer(s) fixed`);
-  return corrected;
+  console.log(`Math correction: ${fixed} answer(s) fixed`);
+  return questions;
 }
 
-// ── Build Prompts ────────────────────────────────────────────────────
+// ── Phase-specific Prompt Builders ───────────────────────────────────
 
-function buildPrompts(topicName: string, topicEmoji: string, yearLevel: string, difficulty: any, topicXp: number, subjectSlug?: string) {
+function buildScaffoldPrompt(topicName: string, topicEmoji: string, yearLevel: string, difficulty: any, subjectSlug?: string) {
+  const isMaths = subjectSlug === "maths" || subjectSlug === "mathematics";
+
+  const system = `You are an expert educational content creator for Australian primary school students (NSW ${yearLevel}, Stage 3).
+Use Australian English spelling. Include Australian references where appropriate.
+${isMaths ? NSW_MATHS_CURRICULUM : ""}
+CURRENT STUDENT LEVEL: ${difficulty.level} — ${difficulty.description}.`;
+
+  const user = `Create a lesson SCAFFOLD for "${topicName}" (${topicEmoji}) for ${yearLevel}.
+Student level: "${difficulty.level}".
+
+Return ONLY valid JSON:
+{
+  "title": "Engaging lesson title",
+  "emoji": "${topicEmoji}",
+  "difficulty_level": "${difficulty.level}",
+  "fun_fact": "A surprising fact about the topic",
+  "sections": [
+    { "type": "learn", "title": "Section 1 title", "content": "2-3 paragraphs of learning content" },
+    { "type": "learn", "title": "Section 2 title", "content": "2-3 paragraphs building on section 1" },
+    { "type": "learn", "title": "Section 3 title", "content": "2-3 paragraphs with deeper concepts" }
+  ],
+  "total_xp": 50
+}
+
+Guidelines:
+- Create 2-3 learn sections that build progressively
+- Use Australian contexts: km not miles, dollars not pounds, cricket/AFL
+- Content should be engaging, age-appropriate, and accurate
+- Do NOT include any check questions — only learning sections`;
+
+  return { system, user };
+}
+
+function buildChecksPrompt(topicName: string, yearLevel: string, difficulty: any, scaffoldSections: { title: string; content: string }[], subjectSlug?: string) {
+  const isMaths = subjectSlug === "maths" || subjectSlug === "mathematics";
+
+  const system = `You are an expert educational content creator for Australian primary school students (NSW ${yearLevel}, Stage 3).
+Use Australian English spelling.
+${isMaths ? NSW_MATHS_CURRICULUM : ""}
+STUDENT LEVEL: ${difficulty.level} — ${difficulty.description}.
+${isMaths ? `CRITICAL: For EVERY question involving a calculation, include a "calculation_expression" field with the pure math expression (e.g. "3/4 + 1/2"). Double-check all arithmetic.` : ""}`;
+
+  const sectionsContext = scaffoldSections.map((s, i) => `Section ${i + 1}: "${s.title}"\n${s.content}`).join("\n\n");
+
+  const user = `Based on these learning sections for "${topicName}":
+
+${sectionsContext}
+
+Create ONE comprehension check question for EACH learning section.
+
+Return ONLY valid JSON:
+{
+  "checks": [
+    {
+      "question_type": "multiple_choice",
+      "question": "Question testing section 1 understanding",
+      "options": ["A", "B", "C", "D"],
+      "correct_answer": 0,
+      ${isMaths ? '"calculation_expression": "math expression if applicable",' : ''}
+      "hint": "Guiding hint (don't reveal answer)",
+      "explanation": "Why the correct answer is right"
+    }
+  ]
+}
+
+Guidelines:
+- One check per learning section, in order
+- Hints should guide thinking, not reveal answers
+- ${isMaths ? 'Include "calculation_expression" for arithmetic questions, omit for conceptual ones' : 'Test comprehension of the section content'}
+- Use Australian English`;
+
+  return { system, user };
+}
+
+function buildChallengePrompt(topicName: string, yearLevel: string, difficulty: any, subjectSlug?: string) {
   const isMaths = subjectSlug === "maths" || subjectSlug === "mathematics";
   const isEnglish = subjectSlug === "english";
 
@@ -185,26 +254,14 @@ function buildPrompts(topicName: string, topicEmoji: string, yearLevel: string, 
   };
   const wl = wordLimits[difficulty.level] || { min: 100, max: 150 };
 
-  const systemPrompt = `You are an expert educational content creator for Australian primary school students (NSW ${yearLevel}, Stage 3).
-Create engaging, age-appropriate educational content that builds understanding progressively.
-Use Australian English spelling (e.g., "colour" not "color", "favourite" not "favorite").
-Include Australian references and examples where appropriate.
-Keep language simple but not condescending.
-
+  const system = `You are an expert educational content creator for Australian primary school students (NSW ${yearLevel}, Stage 3).
+Use Australian English spelling.
 ${isMaths ? NSW_MATHS_CURRICULUM : ""}
-
-CURRENT STUDENT PERFORMANCE LEVEL: ${difficulty.level}
-This means you should be ${difficulty.description}.
-
-${isMaths ? `CRITICAL: For EVERY question that involves a calculation:
-1. Double-check all arithmetic carefully
-2. Include a "calculation_expression" field with the pure math expression needed to solve the question (e.g. "3/4 + 1/2", "12 * 1/3", "5/6 - 1/3")
-3. Make sure the correct_answer index corresponds to the actually correct option
-4. Show your working in the explanation field` : ""}
-${isEnglish ? "IMPORTANT: Include at least one FREE-TEXT writing question in the final challenge." : ""}`;
+STUDENT LEVEL: ${difficulty.level} — ${difficulty.description}.
+${isMaths ? `CRITICAL: For EVERY question involving a calculation, include a "calculation_expression" field. Double-check all arithmetic.` : ""}
+${isEnglish ? "IMPORTANT: Include at least one FREE-TEXT writing question." : ""}`;
 
   const freeTextBlock = isEnglish ? `
-FOR ENGLISH LESSONS - FREE-TEXT WRITING QUESTIONS:
 Include at least ONE free-text question:
 {
   "type": "free_text",
@@ -217,46 +274,57 @@ Include at least ONE free-text question:
   "points": 50
 }` : '';
 
-  const userPrompt = `Create an interactive lesson for "${topicName}" for a ${yearLevel} Australian student (NSW Stage 3).
-Student XP: ${topicXp}, Level: "${difficulty.level}" — ${difficulty.description}.
-
-IMPORTANT: This lesson must be INTERACTIVE with checkpoints to verify understanding.
+  const user = `Create a FINAL CHALLENGE for "${topicName}" (${yearLevel}, level: ${difficulty.level}).
 ${freeTextBlock}
-Return ONLY valid JSON (no markdown, no code blocks, no backticks):
+
+Return ONLY valid JSON:
 {
-  "title": "Engaging title",
-  "emoji": "${topicEmoji}",
-  "difficulty_level": "${difficulty.level}",
-  "fun_fact": "Surprising fact related to topic",
-  "sections": [
-    { "type": "learn", "title": "Section title", "content": "Learning content (2-3 paragraphs)" },
-    { "type": "check", "question_type": "multiple_choice", "question": "Comprehension check", "options": ["A", "B", "C", "D"], "correct_answer": 0, "calculation_expression": "math expression if applicable", "hint": "Guiding hint", "explanation": "Why correct" },
-    { "type": "learn", "title": "Building on that...", "content": "More content" },
-    { "type": "check", "question_type": "multiple_choice", "question": "Another check", "options": ["A", "B", "C", "D"], "correct_answer": 0, "hint": "Hint", "explanation": "Explanation" }
-  ],
   "final_challenge": {
     "title": "Challenge Time!",
-    "description": "Brief intro",
+    "description": "Brief motivational intro",
     "questions": [
-      { "type": "multiple_choice", "question": "Challenging question", "options": ["A", "B", "C", "D"], "correct_answer": 0, "calculation_expression": "math expression if applicable", "hint": "Hint", "explanation": "Explanation", "points": 20 },
-      { "type": "multiple_choice", "question": "Another challenge", "options": ["A", "B", "C", "D"], "correct_answer": 0, "calculation_expression": "math expression if applicable", "hint": "Hint", "explanation": "Explanation", "points": 30 }
+      {
+        "type": "multiple_choice",
+        "question": "Challenging question 1",
+        "options": ["A", "B", "C", "D"],
+        "correct_answer": 0,
+        ${isMaths ? '"calculation_expression": "math expression",' : ''}
+        "hint": "Hint",
+        "explanation": "Explanation",
+        "points": 20
+      },
+      {
+        "type": "multiple_choice",
+        "question": "Challenging question 2",
+        "options": ["A", "B", "C", "D"],
+        "correct_answer": 0,
+        ${isMaths ? '"calculation_expression": "math expression",' : ''}
+        "hint": "Hint",
+        "explanation": "Explanation",
+        "points": 30
+      }
     ]
-  },
-  "total_xp": 50
+  }
 }
 
 Guidelines:
-- 2-3 learning sections, each followed by a comprehension check
-- Final challenge: 2-3 harder questions
-- Hints guide thinking, don't reveal answers
-- Use Australian contexts: km not miles, dollars not pounds, cricket/AFL
-- Progressive difficulty within the module
-${isEnglish ? '- Include at least one free-text writing question in final_challenge' : ''}
-${isMaths ? `- Double-check all math: make sure correct_answer index matches the right option
-- Include "calculation_expression" for every question involving arithmetic (the pure math expression, e.g. "3/4 + 1/2")
-- For conceptual questions (e.g. "what is a fraction?"), omit calculation_expression` : ''}`;
+- 2-3 questions that are harder than the learning checks
+- Progressive difficulty within the challenge
+- ${isMaths ? 'Include "calculation_expression" for arithmetic questions' : ''}
+- ${isEnglish ? 'Include at least one free-text writing question' : ''}
+- Use Australian English and contexts`;
 
-  return { systemPrompt, userPrompt, isMaths };
+  return { system, user };
+}
+
+// ── Parse JSON from LLM response ─────────────────────────────────────
+
+function parseJSON(content: string): any {
+  let jsonStr = content.trim();
+  jsonStr = jsonStr.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/, '');
+  const objMatch = jsonStr.match(/\{[\s\S]*\}/);
+  if (objMatch) jsonStr = objMatch[0];
+  return JSON.parse(jsonStr.trim());
 }
 
 // ── Main Handler ─────────────────────────────────────────────────────
@@ -285,13 +353,6 @@ serve(async (req) => {
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const userId = userData.user.id;
-    const missionAccess = await validateMissionAccess(supabaseClient, userId);
-    if (!missionAccess.allowed) {
-      return new Response(JSON.stringify({ error: missionAccess.error, code: 'LIMIT_REACHED' }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-
     let rawBody: unknown;
     try { rawBody = await req.json(); } catch {
       return new Response(JSON.stringify({ error: 'Invalid JSON' }),
@@ -304,47 +365,92 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { topicName, topicEmoji, gradeLevel, topicXp, subjectSlug } = validation.data;
+    const { topicName, topicEmoji, gradeLevel, topicXp, subjectSlug, phase, scaffoldSections } = validation.data;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const difficulty = getDifficultyLevel(topicXp || 0);
     const yearLevel = gradeLevel || "Year 5";
-    const { systemPrompt, userPrompt, isMaths } = buildPrompts(
-      topicName, topicEmoji || '📚', yearLevel, difficulty, topicXp || 0, subjectSlug
-    );
+    const isMaths = subjectSlug === "maths" || subjectSlug === "mathematics";
 
-    // ── Agent 1: Generate lesson ──
-    console.log(`Agent 1: Generating lesson for "${topicName}" (math validation: ${isMaths})`);
-    const content = await callLLM(LOVABLE_API_KEY, [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ]);
-
-    let lessonContent;
-    try {
-      let jsonStr = content.trim();
-      // Strip markdown code fences
-      jsonStr = jsonStr.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/, '');
-      // Extract JSON object
-      const objMatch = jsonStr.match(/\{[\s\S]*\}/);
-      if (objMatch) jsonStr = objMatch[0];
-      lessonContent = JSON.parse(jsonStr.trim());
-    } catch (parseErr) {
-      console.error("Failed to parse lesson JSON. Raw (first 500):", content.substring(0, 500));
-      throw new Error("Failed to parse lesson content");
+    // Only validate subscription on scaffold phase
+    if (phase === "scaffold") {
+      const userId = userData.user.id;
+      const missionAccess = await validateMissionAccess(supabaseClient, userId);
+      if (!missionAccess.allowed) {
+        return new Response(JSON.stringify({ error: missionAccess.error, code: 'LIMIT_REACHED' }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
     }
 
-    // ── Server-side math correction (no extra LLM calls) ──
-    if (isMaths) {
-      console.log("Correcting math answers server-side with mathjs...");
-      lessonContent = correctMathAnswers(lessonContent);
+    // ── Phase: Scaffold ──
+    if (phase === "scaffold") {
+      console.log(`Phase 1 (scaffold): "${topicName}" [${difficulty.level}]`);
+      const { system, user } = buildScaffoldPrompt(topicName, topicEmoji || '📚', yearLevel, difficulty, subjectSlug);
+      const content = await callLLM(LOVABLE_API_KEY, [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ], 3000);
+
+      const scaffold = parseJSON(content);
+      return new Response(
+        JSON.stringify({ success: true, content: scaffold, difficultyLevel: difficulty.level, phase: "scaffold" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    return new Response(
-      JSON.stringify({ success: true, content: lessonContent, difficultyLevel: difficulty.level }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    // ── Phase: Checks ──
+    if (phase === "checks") {
+      if (!scaffoldSections || scaffoldSections.length === 0) {
+        return new Response(JSON.stringify({ error: 'scaffoldSections required for checks phase' }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      console.log(`Phase 2 (checks): "${topicName}" — ${scaffoldSections.length} sections`);
+      const { system, user } = buildChecksPrompt(topicName, yearLevel, difficulty, scaffoldSections, subjectSlug);
+      const content = await callLLM(LOVABLE_API_KEY, [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ], 3000);
+
+      const parsed = parseJSON(content);
+      let checks = parsed.checks || [];
+
+      if (isMaths) {
+        checks = correctMathQuestions(checks);
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, checks, phase: "checks" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ── Phase: Challenge ──
+    if (phase === "challenge") {
+      console.log(`Phase 3 (challenge): "${topicName}" [${difficulty.level}]`);
+      const { system, user } = buildChallengePrompt(topicName, yearLevel, difficulty, subjectSlug);
+      const content = await callLLM(LOVABLE_API_KEY, [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ], 3000);
+
+      const parsed = parseJSON(content);
+      const finalChallenge = parsed.final_challenge || parsed;
+
+      if (isMaths && finalChallenge.questions) {
+        finalChallenge.questions = correctMathQuestions(finalChallenge.questions);
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, final_challenge: finalChallenge, phase: "challenge" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    return new Response(JSON.stringify({ error: 'Invalid phase' }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
   } catch (error) {
     console.error("Error generating lesson:", error);
     const msg = error instanceof Error ? error.message : "";
