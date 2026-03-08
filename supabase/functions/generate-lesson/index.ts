@@ -132,23 +132,35 @@ function isMathQuestion(question: any): boolean {
   return mathPatterns.some(p => p.test(text));
 }
 
-// ── Agent 2: Math Verification (uses LLM to extract expression, mathjs to compute) ──
+// ── Agent 2: Two-expression comparison verification ──────────────────
 
 async function verifyMathQuestion(apiKey: string, q: any): Promise<{ correct: boolean; suggestedAnswer?: number }> {
-  const extractPrompt = `You are a math extraction agent. Given this question, extract the mathematical expression needed to find the answer.
+  // Agent 1 should have included calculation_expression. If not, skip.
+  const agent1Expr = q.calculation_expression;
+  if (!agent1Expr) {
+    return { correct: true }; // No expression provided, skip verification
+  }
+
+  // Agent 2: independently extract the expression from the question text
+  const extractPrompt = `You are a math verification agent. Read this question carefully and determine the mathematical expression needed to solve it.
 
 QUESTION: ${q.question}
 OPTIONS:
 ${q.options.map((o: string, i: number) => `${i}: ${o}`).join('\n')}
 
-Respond with ONLY valid JSON:
-{"expression": "the math expression to evaluate, e.g. 3/4 + 1/8", "expected_answer_description": "what the result represents"}
+Think step by step about what the question is ACTUALLY asking. For example:
+- "eats half of his pizza" means multiply by 1/2
+- "shared equally among 5 friends" means divide by 5
+- "ran 2 laps then 3 more" means 2 + 3
 
-If the question is conceptual (not a calculation), respond: {"expression": null}`;
+Respond with ONLY valid JSON:
+{"expression": "the math expression, e.g. 3/4 + 1/2"}
+
+If the question is conceptual (no calculation needed), respond: {"expression": null}`;
 
   try {
     const extractResult = await callLLM(apiKey, [
-      { role: "system", content: "Extract math expressions. Reply ONLY with JSON, no markdown." },
+      { role: "system", content: "Extract math expressions from word problems. Reply ONLY with JSON, no markdown." },
       { role: "user", content: extractPrompt },
     ]);
 
@@ -158,57 +170,85 @@ If the question is conceptual (not a calculation), respond: {"expression": null}
     const extracted = JSON.parse(jsonStr);
 
     if (!extracted.expression) {
-      return { correct: true }; // conceptual question, skip
+      return { correct: true }; // Agent 2 says conceptual, skip
     }
 
-    const calcResult = safeCalculate(extracted.expression);
-    if (!calcResult.success) {
-      console.log(`Math verification: couldn't evaluate "${extracted.expression}": ${calcResult.error}`);
-      return { correct: true }; // can't verify, trust Agent 1
-    }
+    const agent2Expr = extracted.expression;
 
-    // Check if the correct answer option matches the calculated result
-    const correctOption = q.options[q.correct_answer];
-    const calcValue = calcResult.result!;
-    
-    // Try to parse the correct option as a number for comparison
-    const optionNum = parseFloat(correctOption.replace(/[^0-9.\-\/]/g, ''));
-    if (isNaN(optionNum)) {
-      // Option isn't a plain number, check if any option contains the result
-      const resultStr = String(calcValue);
-      const matchesCorrect = correctOption.includes(resultStr);
-      if (!matchesCorrect) {
-        // Check all options to find the right one
-        for (let i = 0; i < q.options.length; i++) {
-          if (q.options[i].includes(resultStr)) {
-            console.log(`Verification: answer should be option ${i} ("${q.options[i]}"), not ${q.correct_answer} ("${correctOption}")`);
-            return { correct: false, suggestedAnswer: i };
-          }
-        }
+    // Evaluate both expressions with mathjs
+    const calc1 = safeCalculate(agent1Expr);
+    const calc2 = safeCalculate(agent2Expr);
+
+    if (!calc1.success) {
+      console.log(`Agent 1 expression "${agent1Expr}" failed to evaluate: ${calc1.error}`);
+      // Fall back: if Agent 2's expression works, use that
+      if (calc2.success) {
+        console.log(`Using Agent 2 expression "${agent2Expr}" = ${calc2.result}`);
+        return verifyAnswerAgainstOptions(q, calc2.result!);
       }
-      return { correct: true };
+      return { correct: true }; // Neither evaluates, trust Agent 1
     }
 
-    // Numeric comparison with tolerance
-    if (Math.abs(optionNum - calcValue) < 0.001) {
-      return { correct: true };
+    if (!calc2.success) {
+      console.log(`Agent 2 expression "${agent2Expr}" failed to evaluate: ${calc2.error}. Using Agent 1's.`);
+      return verifyAnswerAgainstOptions(q, calc1.result!);
     }
 
-    // Find the correct option
-    for (let i = 0; i < q.options.length; i++) {
-      const oNum = parseFloat(q.options[i].replace(/[^0-9.\-\/]/g, ''));
-      if (!isNaN(oNum) && Math.abs(oNum - calcValue) < 0.001) {
-        console.log(`Verification: calculated ${calcValue}, matches option ${i}, not ${q.correct_answer}`);
-        return { correct: false, suggestedAnswer: i };
-      }
+    // Both expressions evaluated — compare results
+    const match = Math.abs(calc1.result! - calc2.result!) < 0.001;
+    if (match) {
+      console.log(`Expressions agree: "${agent1Expr}" = "${agent2Expr}" = ${calc1.result}`);
+      return verifyAnswerAgainstOptions(q, calc1.result!);
     }
 
-    // No option matches calculation - could be interpretation issue, trust Agent 1
-    return { correct: true };
+    // DISAGREEMENT: agents interpreted the word problem differently
+    console.log(`❌ Expression mismatch! Agent1: "${agent1Expr}"=${calc1.result}, Agent2: "${agent2Expr}"=${calc2.result}`);
+    return { correct: false };
   } catch (e) {
     console.error("Verification agent error:", e);
     return { correct: true };
   }
+}
+
+// Check if the correct_answer option matches the calculated value
+function verifyAnswerAgainstOptions(q: any, calcValue: number): { correct: boolean; suggestedAnswer?: number } {
+  const correctOption = q.options[q.correct_answer];
+  
+  // Try numeric comparison on the marked correct option
+  const optionNum = parseFloat(correctOption.replace(/[^0-9.\-\/]/g, ''));
+  if (!isNaN(optionNum) && Math.abs(optionNum - calcValue) < 0.001) {
+    return { correct: true };
+  }
+
+  // Check if option text contains the result
+  const resultStr = String(calcValue);
+  if (correctOption.includes(resultStr)) {
+    return { correct: true };
+  }
+
+  // Try fraction representation: e.g. calcValue=0.75 → check for "3/4"
+  // Search all options for a match
+  for (let i = 0; i < q.options.length; i++) {
+    const oNum = parseFloat(q.options[i].replace(/[^0-9.\-\/]/g, ''));
+    if (!isNaN(oNum) && Math.abs(oNum - calcValue) < 0.001) {
+      if (i !== q.correct_answer) {
+        console.log(`Answer fix: calculated ${calcValue}, matches option ${i}, not ${q.correct_answer}`);
+        return { correct: false, suggestedAnswer: i };
+      }
+      return { correct: true };
+    }
+    // Try evaluating option as expression (e.g. "3/4")
+    const optCalc = safeCalculate(q.options[i].trim());
+    if (optCalc.success && Math.abs(optCalc.result! - calcValue) < 0.001) {
+      if (i !== q.correct_answer) {
+        console.log(`Answer fix: calculated ${calcValue}, option "${q.options[i]}" evaluates to match, not option ${q.correct_answer}`);
+        return { correct: false, suggestedAnswer: i };
+      }
+      return { correct: true };
+    }
+  }
+
+  return { correct: true }; // Can't match to options, trust Agent 1
 }
 
 // ── Question Regeneration ────────────────────────────────────────────
