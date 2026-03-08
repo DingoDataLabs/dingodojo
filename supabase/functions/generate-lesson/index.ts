@@ -132,23 +132,35 @@ function isMathQuestion(question: any): boolean {
   return mathPatterns.some(p => p.test(text));
 }
 
-// ── Agent 2: Math Verification (uses LLM to extract expression, mathjs to compute) ──
+// ── Agent 2: Two-expression comparison verification ──────────────────
 
 async function verifyMathQuestion(apiKey: string, q: any): Promise<{ correct: boolean; suggestedAnswer?: number }> {
-  const extractPrompt = `You are a math extraction agent. Given this question, extract the mathematical expression needed to find the answer.
+  // Agent 1 should have included calculation_expression. If not, skip.
+  const agent1Expr = q.calculation_expression;
+  if (!agent1Expr) {
+    return { correct: true }; // No expression provided, skip verification
+  }
+
+  // Agent 2: independently extract the expression from the question text
+  const extractPrompt = `You are a math verification agent. Read this question carefully and determine the mathematical expression needed to solve it.
 
 QUESTION: ${q.question}
 OPTIONS:
 ${q.options.map((o: string, i: number) => `${i}: ${o}`).join('\n')}
 
-Respond with ONLY valid JSON:
-{"expression": "the math expression to evaluate, e.g. 3/4 + 1/8", "expected_answer_description": "what the result represents"}
+Think step by step about what the question is ACTUALLY asking. For example:
+- "eats half of his pizza" means multiply by 1/2
+- "shared equally among 5 friends" means divide by 5
+- "ran 2 laps then 3 more" means 2 + 3
 
-If the question is conceptual (not a calculation), respond: {"expression": null}`;
+Respond with ONLY valid JSON:
+{"expression": "the math expression, e.g. 3/4 + 1/2"}
+
+If the question is conceptual (no calculation needed), respond: {"expression": null}`;
 
   try {
     const extractResult = await callLLM(apiKey, [
-      { role: "system", content: "Extract math expressions. Reply ONLY with JSON, no markdown." },
+      { role: "system", content: "Extract math expressions from word problems. Reply ONLY with JSON, no markdown." },
       { role: "user", content: extractPrompt },
     ]);
 
@@ -158,57 +170,85 @@ If the question is conceptual (not a calculation), respond: {"expression": null}
     const extracted = JSON.parse(jsonStr);
 
     if (!extracted.expression) {
-      return { correct: true }; // conceptual question, skip
+      return { correct: true }; // Agent 2 says conceptual, skip
     }
 
-    const calcResult = safeCalculate(extracted.expression);
-    if (!calcResult.success) {
-      console.log(`Math verification: couldn't evaluate "${extracted.expression}": ${calcResult.error}`);
-      return { correct: true }; // can't verify, trust Agent 1
-    }
+    const agent2Expr = extracted.expression;
 
-    // Check if the correct answer option matches the calculated result
-    const correctOption = q.options[q.correct_answer];
-    const calcValue = calcResult.result!;
-    
-    // Try to parse the correct option as a number for comparison
-    const optionNum = parseFloat(correctOption.replace(/[^0-9.\-\/]/g, ''));
-    if (isNaN(optionNum)) {
-      // Option isn't a plain number, check if any option contains the result
-      const resultStr = String(calcValue);
-      const matchesCorrect = correctOption.includes(resultStr);
-      if (!matchesCorrect) {
-        // Check all options to find the right one
-        for (let i = 0; i < q.options.length; i++) {
-          if (q.options[i].includes(resultStr)) {
-            console.log(`Verification: answer should be option ${i} ("${q.options[i]}"), not ${q.correct_answer} ("${correctOption}")`);
-            return { correct: false, suggestedAnswer: i };
-          }
-        }
+    // Evaluate both expressions with mathjs
+    const calc1 = safeCalculate(agent1Expr);
+    const calc2 = safeCalculate(agent2Expr);
+
+    if (!calc1.success) {
+      console.log(`Agent 1 expression "${agent1Expr}" failed to evaluate: ${calc1.error}`);
+      // Fall back: if Agent 2's expression works, use that
+      if (calc2.success) {
+        console.log(`Using Agent 2 expression "${agent2Expr}" = ${calc2.result}`);
+        return verifyAnswerAgainstOptions(q, calc2.result!);
       }
-      return { correct: true };
+      return { correct: true }; // Neither evaluates, trust Agent 1
     }
 
-    // Numeric comparison with tolerance
-    if (Math.abs(optionNum - calcValue) < 0.001) {
-      return { correct: true };
+    if (!calc2.success) {
+      console.log(`Agent 2 expression "${agent2Expr}" failed to evaluate: ${calc2.error}. Using Agent 1's.`);
+      return verifyAnswerAgainstOptions(q, calc1.result!);
     }
 
-    // Find the correct option
-    for (let i = 0; i < q.options.length; i++) {
-      const oNum = parseFloat(q.options[i].replace(/[^0-9.\-\/]/g, ''));
-      if (!isNaN(oNum) && Math.abs(oNum - calcValue) < 0.001) {
-        console.log(`Verification: calculated ${calcValue}, matches option ${i}, not ${q.correct_answer}`);
-        return { correct: false, suggestedAnswer: i };
-      }
+    // Both expressions evaluated — compare results
+    const match = Math.abs(calc1.result! - calc2.result!) < 0.001;
+    if (match) {
+      console.log(`Expressions agree: "${agent1Expr}" = "${agent2Expr}" = ${calc1.result}`);
+      return verifyAnswerAgainstOptions(q, calc1.result!);
     }
 
-    // No option matches calculation - could be interpretation issue, trust Agent 1
-    return { correct: true };
+    // DISAGREEMENT: agents interpreted the word problem differently
+    console.log(`❌ Expression mismatch! Agent1: "${agent1Expr}"=${calc1.result}, Agent2: "${agent2Expr}"=${calc2.result}`);
+    return { correct: false };
   } catch (e) {
     console.error("Verification agent error:", e);
     return { correct: true };
   }
+}
+
+// Check if the correct_answer option matches the calculated value
+function verifyAnswerAgainstOptions(q: any, calcValue: number): { correct: boolean; suggestedAnswer?: number } {
+  const correctOption = q.options[q.correct_answer];
+  
+  // Try numeric comparison on the marked correct option
+  const optionNum = parseFloat(correctOption.replace(/[^0-9.\-\/]/g, ''));
+  if (!isNaN(optionNum) && Math.abs(optionNum - calcValue) < 0.001) {
+    return { correct: true };
+  }
+
+  // Check if option text contains the result
+  const resultStr = String(calcValue);
+  if (correctOption.includes(resultStr)) {
+    return { correct: true };
+  }
+
+  // Try fraction representation: e.g. calcValue=0.75 → check for "3/4"
+  // Search all options for a match
+  for (let i = 0; i < q.options.length; i++) {
+    const oNum = parseFloat(q.options[i].replace(/[^0-9.\-\/]/g, ''));
+    if (!isNaN(oNum) && Math.abs(oNum - calcValue) < 0.001) {
+      if (i !== q.correct_answer) {
+        console.log(`Answer fix: calculated ${calcValue}, matches option ${i}, not ${q.correct_answer}`);
+        return { correct: false, suggestedAnswer: i };
+      }
+      return { correct: true };
+    }
+    // Try evaluating option as expression (e.g. "3/4")
+    const optCalc = safeCalculate(q.options[i].trim());
+    if (optCalc.success && Math.abs(optCalc.result! - calcValue) < 0.001) {
+      if (i !== q.correct_answer) {
+        console.log(`Answer fix: calculated ${calcValue}, option "${q.options[i]}" evaluates to match, not option ${q.correct_answer}`);
+        return { correct: false, suggestedAnswer: i };
+      }
+      return { correct: true };
+    }
+  }
+
+  return { correct: true }; // Can't match to options, trust Agent 1
 }
 
 // ── Question Regeneration ────────────────────────────────────────────
@@ -223,15 +263,19 @@ Return ONLY valid JSON (no markdown):
   "question": "New question text",
   "options": ["A", "B", "C", "D"],
   "correct_answer": 0,
+  "calculation_expression": "the math expression needed to solve this, e.g. 3/4 + 1/2",
   "hint": "Guiding hint",
   "explanation": "Why the answer is correct"
 }
 
-IMPORTANT: Make sure the correct_answer index points to the actually correct option.`;
+CRITICAL: 
+- Include a "calculation_expression" field with the mathematical expression derived from your question.
+- Use the calculate tool mentally: make sure the expression evaluates to match the correct option.
+- Make sure the correct_answer index points to the actually correct option.`;
 
   try {
     const result = await callLLM(apiKey, [
-      { role: "system", content: "Generate math questions. Reply ONLY with JSON, no markdown." },
+      { role: "system", content: "Generate math questions with calculation expressions. Reply ONLY with JSON, no markdown." },
       { role: "user", content: prompt },
     ]);
 
@@ -348,7 +392,11 @@ ${isMaths ? NSW_MATHS_CURRICULUM : ""}
 CURRENT STUDENT PERFORMANCE LEVEL: ${difficulty.level}
 This means you should be ${difficulty.description}.
 
-${isMaths ? "CRITICAL: Double-check all arithmetic carefully. Make sure the correct_answer index corresponds to the actually correct option. Show your working in the explanation field." : ""}
+${isMaths ? `CRITICAL: For EVERY question that involves a calculation:
+1. Double-check all arithmetic carefully
+2. Include a "calculation_expression" field with the pure math expression needed to solve the question (e.g. "3/4 + 1/2", "12 * 1/3", "5/6 - 1/3")
+3. Make sure the correct_answer index corresponds to the actually correct option
+4. Show your working in the explanation field` : ""}
 ${isEnglish ? "IMPORTANT: Include at least one FREE-TEXT writing question in the final challenge." : ""}`;
 
   const freeTextBlock = isEnglish ? `
@@ -378,7 +426,7 @@ Return ONLY valid JSON (no markdown, no code blocks, no backticks):
   "fun_fact": "Surprising fact related to topic",
   "sections": [
     { "type": "learn", "title": "Section title", "content": "Learning content (2-3 paragraphs)" },
-    { "type": "check", "question_type": "multiple_choice", "question": "Comprehension check", "options": ["A", "B", "C", "D"], "correct_answer": 0, "hint": "Guiding hint", "explanation": "Why correct" },
+    { "type": "check", "question_type": "multiple_choice", "question": "Comprehension check", "options": ["A", "B", "C", "D"], "correct_answer": 0, "calculation_expression": "math expression if applicable", "hint": "Guiding hint", "explanation": "Why correct" },
     { "type": "learn", "title": "Building on that...", "content": "More content" },
     { "type": "check", "question_type": "multiple_choice", "question": "Another check", "options": ["A", "B", "C", "D"], "correct_answer": 0, "hint": "Hint", "explanation": "Explanation" }
   ],
@@ -386,8 +434,8 @@ Return ONLY valid JSON (no markdown, no code blocks, no backticks):
     "title": "Challenge Time!",
     "description": "Brief intro",
     "questions": [
-      { "type": "multiple_choice", "question": "Challenging question", "options": ["A", "B", "C", "D"], "correct_answer": 0, "hint": "Hint", "explanation": "Explanation", "points": 20 },
-      { "type": "multiple_choice", "question": "Another challenge", "options": ["A", "B", "C", "D"], "correct_answer": 0, "hint": "Hint", "explanation": "Explanation", "points": 30 }
+      { "type": "multiple_choice", "question": "Challenging question", "options": ["A", "B", "C", "D"], "correct_answer": 0, "calculation_expression": "math expression if applicable", "hint": "Hint", "explanation": "Explanation", "points": 20 },
+      { "type": "multiple_choice", "question": "Another challenge", "options": ["A", "B", "C", "D"], "correct_answer": 0, "calculation_expression": "math expression if applicable", "hint": "Hint", "explanation": "Explanation", "points": 30 }
     ]
   },
   "total_xp": 50
@@ -400,7 +448,9 @@ Guidelines:
 - Use Australian contexts: km not miles, dollars not pounds, cricket/AFL
 - Progressive difficulty within the module
 ${isEnglish ? '- Include at least one free-text writing question in final_challenge' : ''}
-${isMaths ? '- Double-check all math: make sure correct_answer index matches the right option' : ''}`;
+${isMaths ? `- Double-check all math: make sure correct_answer index matches the right option
+- Include "calculation_expression" for every question involving arithmetic (the pure math expression, e.g. "3/4 + 1/2")
+- For conceptual questions (e.g. "what is a fraction?"), omit calculation_expression` : ''}`;
 
   return { systemPrompt, userPrompt, isMaths };
 }
