@@ -335,10 +335,10 @@ serve(async (req) => {
       throw new Error("Failed to parse lesson content");
     }
 
-    // ── Agent 2: Validate math answers using mathjs ──
+    // ── Server-side math correction (no extra LLM calls) ──
     if (isMaths) {
-      console.log("Agent 2: Validating math answers with mathjs...");
-      lessonContent = await validateAndFixLesson(LOVABLE_API_KEY, lessonContent, topicName);
+      console.log("Correcting math answers server-side with mathjs...");
+      lessonContent = correctMathAnswers(lessonContent);
     }
 
     return new Response(
