@@ -263,15 +263,19 @@ Return ONLY valid JSON (no markdown):
   "question": "New question text",
   "options": ["A", "B", "C", "D"],
   "correct_answer": 0,
+  "calculation_expression": "the math expression needed to solve this, e.g. 3/4 + 1/2",
   "hint": "Guiding hint",
   "explanation": "Why the answer is correct"
 }
 
-IMPORTANT: Make sure the correct_answer index points to the actually correct option.`;
+CRITICAL: 
+- Include a "calculation_expression" field with the mathematical expression derived from your question.
+- Use the calculate tool mentally: make sure the expression evaluates to match the correct option.
+- Make sure the correct_answer index points to the actually correct option.`;
 
   try {
     const result = await callLLM(apiKey, [
-      { role: "system", content: "Generate math questions. Reply ONLY with JSON, no markdown." },
+      { role: "system", content: "Generate math questions with calculation expressions. Reply ONLY with JSON, no markdown." },
       { role: "user", content: prompt },
     ]);
 
