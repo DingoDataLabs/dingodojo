@@ -507,11 +507,15 @@ serve(async (req) => {
     let lessonContent;
     try {
       let jsonStr = content.trim();
-      if (jsonStr.startsWith("```json")) jsonStr = jsonStr.slice(7);
-      else if (jsonStr.startsWith("```")) jsonStr = jsonStr.slice(3);
-      if (jsonStr.endsWith("```")) jsonStr = jsonStr.slice(0, -3);
+      // Strip markdown code fences
+      jsonStr = jsonStr.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/, '');
+      // Try to extract JSON object if there's surrounding text
+      const objMatch = jsonStr.match(/\{[\s\S]*\}/);
+      if (objMatch) jsonStr = objMatch[0];
       lessonContent = JSON.parse(jsonStr.trim());
-    } catch {
+    } catch (parseErr) {
+      console.error("Failed to parse lesson JSON. Raw content (first 500 chars):", content.substring(0, 500));
+      console.error("Parse error:", parseErr);
       throw new Error("Failed to parse lesson content");
     }
 
