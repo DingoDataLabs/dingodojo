@@ -1014,6 +1014,33 @@ export default function TrainingSession() {
   const renderFinalChallenge = () => {
     if (!lessonContent) return null;
     const { final_challenge } = lessonContent;
+
+    // Show skeleton if challenge hasn't loaded yet
+    if (questionsLoading || !final_challenge.questions || final_challenge.questions.length === 0) {
+      return (
+        <div className="space-y-6 animate-slide-up">
+          <div className="text-center">
+            <span className="text-4xl block mb-2">🎯</span>
+            <h2 className="text-2xl font-display font-bold text-foreground">Challenge Time!</h2>
+            <div className="flex items-center justify-center gap-2 mt-4">
+              <Loader2 className="w-5 h-5 animate-spin text-primary" />
+              <span className="text-muted-foreground">Preparing your challenge...</span>
+            </div>
+          </div>
+          <div className="bg-card rounded-2xl p-5 border-2 border-primary/20">
+            <Skeleton className="h-6 w-1/2 mb-4" />
+            <Skeleton className="h-6 w-3/4 mb-4" />
+            <div className="space-y-2">
+              <Skeleton className="h-14 w-full rounded-xl" />
+              <Skeleton className="h-14 w-full rounded-xl" />
+              <Skeleton className="h-14 w-full rounded-xl" />
+              <Skeleton className="h-14 w-full rounded-xl" />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     const question = final_challenge.questions[currentChallengeIndex];
     const isCompleted = challengeCompleted[currentChallengeIndex];
     const selectedAnswer = challengeAnswers[currentChallengeIndex];
