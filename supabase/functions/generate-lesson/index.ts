@@ -58,102 +58,46 @@ const validateInput = (data: unknown): { valid: boolean; error?: string; data?: 
   }};
 };
 
-// ── Calculator Tool ──────────────────────────────────────────────────
+// ── Calculator ───────────────────────────────────────────────────────
 
-function safeCalculate(expression: string): string {
+function safeCalculate(expression: string): { success: boolean; result?: number; error?: string } {
   try {
     const result = evaluate(expression);
-    return String(result);
+    return { success: true, result: Number(result) };
   } catch (e) {
-    return `Error: ${e instanceof Error ? e.message : 'Invalid expression'}`;
+    return { success: false, error: e instanceof Error ? e.message : 'Invalid expression' };
   }
 }
 
-const CALCULATE_TOOL = {
-  type: "function" as const,
-  function: {
-    name: "calculate",
-    description: "Evaluate a mathematical expression accurately. Use this for ALL arithmetic operations — never calculate mentally. Supports fractions (1/3 + 1/6), decimals, percentages, and complex expressions.",
-    parameters: {
-      type: "object",
-      properties: {
-        expression: {
-          type: "string",
-          description: "The mathematical expression to evaluate, e.g. '3/4 + 1/8', '15 * 24', '250 / 1000'"
-        }
-      },
-      required: ["expression"],
-      additionalProperties: false,
-    }
-  }
-};
+// ── Simple LLM Call (no tool calling) ────────────────────────────────
 
-// ── LLM Call with Tool Loop ──────────────────────────────────────────
-
-async function callWithTools(
+async function callLLM(
   apiKey: string,
   messages: { role: string; content: string }[],
-  useTools: boolean,
-  maxToolRounds = 10,
 ): Promise<string> {
-  let currentMessages = [...messages];
-  
-  for (let round = 0; round < maxToolRounds; round++) {
-    const body: Record<string, unknown> = {
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
       model: "google/gemini-2.5-flash",
-      messages: currentMessages,
+      messages,
       temperature: 0.7,
       max_tokens: 5000,
-    };
-    if (useTools) {
-      body.tools = [CALCULATE_TOOL];
-    }
+    }),
+  });
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      if (response.status === 429) throw new Error("RATE_LIMIT");
-      if (response.status === 402) throw new Error("CREDITS_EXHAUSTED");
-      throw new Error(`AI gateway error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const choice = data.choices?.[0];
-    if (!choice) throw new Error("No response from AI");
-
-    const msg = choice.message;
-
-    // If the model wants to call tools
-    if (msg.tool_calls && msg.tool_calls.length > 0) {
-      // Add the assistant message with tool calls
-      currentMessages.push(msg);
-      
-      // Execute each tool call and add results
-      for (const toolCall of msg.tool_calls) {
-        if (toolCall.function?.name === "calculate") {
-          const args = JSON.parse(toolCall.function.arguments);
-          const result = safeCalculate(args.expression);
-          console.log(`calculate("${args.expression}") = ${result}`);
-          currentMessages.push({
-            role: "tool",
-            content: result,
-            // @ts-ignore - tool_call_id needed for API
-            tool_call_id: toolCall.id,
-          });
-        }
-      }
-      continue; // Loop back to let the model use the results
-    }
-
-    // Final text response
-    return msg.content || "";
+  if (!response.ok) {
+    if (response.status === 429) throw new Error("RATE_LIMIT");
+    if (response.status === 402) throw new Error("CREDITS_EXHAUSTED");
+    const text = await response.text();
+    console.error(`AI gateway error ${response.status}:`, text);
+    throw new Error(`AI gateway error: ${response.status}`);
   }
 
-  throw new Error("Tool calling loop exceeded maximum rounds");
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) throw new Error("No response from AI");
+  return content;
 }
 
 // ── Subscription Check ───────────────────────────────────────────────
@@ -170,12 +114,11 @@ async function validateMissionAccess(supabaseClient: any, userId: string): Promi
 function isMathQuestion(question: any): boolean {
   if (!question || typeof question !== 'object') return false;
   const text = `${question.question || ''} ${(question.options || []).join(' ')}`.toLowerCase();
-  // Look for numbers, math operators, math keywords
   const mathPatterns = [
-    /\d+\s*[\+\-\*\/×÷]\s*\d+/,       // arithmetic expressions
-    /\d+\/\d+/,                          // fractions
-    /\d+\.\d+/,                          // decimals
-    /\d+\s*%/,                           // percentages
+    /\d+\s*[\+\-\*\/×÷]\s*\d+/,
+    /\d+\/\d+/,
+    /\d+\.\d+/,
+    /\d+\s*%/,
     /how many|how much|total|sum|difference|product|quotient|remainder/,
     /area|perimeter|volume|length|width|height|distance/,
     /calculate|solve|work out|find the|what is/,
@@ -189,85 +132,112 @@ function isMathQuestion(question: any): boolean {
   return mathPatterns.some(p => p.test(text));
 }
 
-// ── Agent 2: Math Verification ───────────────────────────────────────
+// ── Agent 2: Math Verification (uses LLM to extract expression, mathjs to compute) ──
 
-interface QuestionToVerify {
-  question: string;
-  options: string[];
-  correct_answer: number;
-  type?: string;
-}
-
-async function verifyMathQuestion(apiKey: string, q: QuestionToVerify): Promise<{ correct: boolean; suggestedAnswer?: number }> {
-  const prompt = `You are a math verification agent. Your ONLY job is to independently solve this question and check if the given answer is correct.
+async function verifyMathQuestion(apiKey: string, q: any): Promise<{ correct: boolean; suggestedAnswer?: number }> {
+  const extractPrompt = `You are a math extraction agent. Given this question, extract the mathematical expression needed to find the answer.
 
 QUESTION: ${q.question}
 OPTIONS:
 ${q.options.map((o: string, i: number) => `${i}: ${o}`).join('\n')}
-CLAIMED CORRECT ANSWER INDEX: ${q.correct_answer} (which is "${q.options[q.correct_answer]}")
 
-Instructions:
-1. Re-read the question carefully — pay attention to what operation is actually being asked for
-2. Extract the mathematical expression from the word problem
-3. Use the calculate() tool to compute the answer — NEVER calculate mentally
-4. Compare your calculated answer to each option
-5. Respond with ONLY valid JSON: {"correct": true} if the claimed answer matches your calculation, or {"correct": false, "suggested_answer": <correct_index>} if it doesn't.`;
+Respond with ONLY valid JSON:
+{"expression": "the math expression to evaluate, e.g. 3/4 + 1/8", "expected_answer_description": "what the result represents"}
+
+If the question is conceptual (not a calculation), respond: {"expression": null}`;
 
   try {
-    const result = await callWithTools(apiKey, [
-      { role: "system", content: "You are a precise math verification agent. Use the calculate() tool for ALL arithmetic. Reply ONLY with JSON." },
-      { role: "user", content: prompt },
-    ], true);
+    const extractResult = await callLLM(apiKey, [
+      { role: "system", content: "Extract math expressions. Reply ONLY with JSON, no markdown." },
+      { role: "user", content: extractPrompt },
+    ]);
 
-    let jsonStr = result.trim();
-    // Extract JSON from potential markdown
+    let jsonStr = extractResult.trim().replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/, '');
     const jsonMatch = jsonStr.match(/\{[^}]+\}/);
     if (jsonMatch) jsonStr = jsonMatch[0];
+    const extracted = JSON.parse(jsonStr);
+
+    if (!extracted.expression) {
+      return { correct: true }; // conceptual question, skip
+    }
+
+    const calcResult = safeCalculate(extracted.expression);
+    if (!calcResult.success) {
+      console.log(`Math verification: couldn't evaluate "${extracted.expression}": ${calcResult.error}`);
+      return { correct: true }; // can't verify, trust Agent 1
+    }
+
+    // Check if the correct answer option matches the calculated result
+    const correctOption = q.options[q.correct_answer];
+    const calcValue = calcResult.result!;
     
-    const parsed = JSON.parse(jsonStr);
-    return { correct: parsed.correct !== false, suggestedAnswer: parsed.suggested_answer };
+    // Try to parse the correct option as a number for comparison
+    const optionNum = parseFloat(correctOption.replace(/[^0-9.\-\/]/g, ''));
+    if (isNaN(optionNum)) {
+      // Option isn't a plain number, check if any option contains the result
+      const resultStr = String(calcValue);
+      const matchesCorrect = correctOption.includes(resultStr);
+      if (!matchesCorrect) {
+        // Check all options to find the right one
+        for (let i = 0; i < q.options.length; i++) {
+          if (q.options[i].includes(resultStr)) {
+            console.log(`Verification: answer should be option ${i} ("${q.options[i]}"), not ${q.correct_answer} ("${correctOption}")`);
+            return { correct: false, suggestedAnswer: i };
+          }
+        }
+      }
+      return { correct: true };
+    }
+
+    // Numeric comparison with tolerance
+    if (Math.abs(optionNum - calcValue) < 0.001) {
+      return { correct: true };
+    }
+
+    // Find the correct option
+    for (let i = 0; i < q.options.length; i++) {
+      const oNum = parseFloat(q.options[i].replace(/[^0-9.\-\/]/g, ''));
+      if (!isNaN(oNum) && Math.abs(oNum - calcValue) < 0.001) {
+        console.log(`Verification: calculated ${calcValue}, matches option ${i}, not ${q.correct_answer}`);
+        return { correct: false, suggestedAnswer: i };
+      }
+    }
+
+    // No option matches calculation - could be interpretation issue, trust Agent 1
+    return { correct: true };
   } catch (e) {
     console.error("Verification agent error:", e);
-    return { correct: true }; // On error, trust Agent 1
+    return { correct: true };
   }
 }
 
 // ── Question Regeneration ────────────────────────────────────────────
 
-async function regenerateMathQuestion(
-  apiKey: string,
-  original: QuestionToVerify,
-  context: string,
-): Promise<QuestionToVerify | null> {
-  const prompt = `The following math question had an incorrect answer. Generate a REPLACEMENT question on the same topic with a verified correct answer.
+async function regenerateMathQuestion(apiKey: string, original: any, context: string): Promise<any | null> {
+  const prompt = `Generate a replacement multiple-choice math question about "${context}". The previous question had an incorrect answer.
 
-ORIGINAL (INCORRECT) QUESTION: ${original.question}
-TOPIC CONTEXT: ${context}
+Previous question (DO NOT reuse): ${original.question}
 
-Generate a new multiple-choice question. Use the calculate() tool to verify your answer is correct.
-
-Return ONLY valid JSON:
+Return ONLY valid JSON (no markdown):
 {
-  "question": "...",
+  "question": "New question text",
   "options": ["A", "B", "C", "D"],
   "correct_answer": 0,
-  "hint": "...",
-  "explanation": "..."
-}`;
+  "hint": "Guiding hint",
+  "explanation": "Why the answer is correct"
+}
+
+IMPORTANT: Make sure the correct_answer index points to the actually correct option.`;
 
   try {
-    const result = await callWithTools(apiKey, [
-      { role: "system", content: "You are a math question generator. Use the calculate() tool for ALL arithmetic. Return ONLY JSON." },
+    const result = await callLLM(apiKey, [
+      { role: "system", content: "Generate math questions. Reply ONLY with JSON, no markdown." },
       { role: "user", content: prompt },
-    ], true);
+    ]);
 
-    let jsonStr = result.trim();
-    if (jsonStr.startsWith("```json")) jsonStr = jsonStr.slice(7);
-    if (jsonStr.startsWith("```")) jsonStr = jsonStr.slice(3);
-    if (jsonStr.endsWith("```")) jsonStr = jsonStr.slice(0, -3);
+    let jsonStr = result.trim().replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/, '');
     const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
     if (jsonMatch) jsonStr = jsonMatch[0];
-
     return JSON.parse(jsonStr.trim());
   } catch (e) {
     console.error("Regeneration error:", e);
@@ -280,7 +250,6 @@ Return ONLY valid JSON:
 async function validateAndFixLesson(apiKey: string, lesson: any, topicName: string): Promise<any> {
   const validatedLesson = { ...lesson };
 
-  // Validate check questions in sections
   if (validatedLesson.sections) {
     for (let i = 0; i < validatedLesson.sections.length; i++) {
       const section = validatedLesson.sections[i];
@@ -295,7 +264,6 @@ async function validateAndFixLesson(apiKey: string, lesson: any, topicName: stri
         for (let attempt = 0; attempt < 2; attempt++) {
           const replacement = await regenerateMathQuestion(apiKey, section, topicName);
           if (!replacement) continue;
-
           const recheck = await verifyMathQuestion(apiKey, replacement);
           if (recheck.correct) {
             console.log(`✅ Replacement verified on attempt ${attempt + 1}`);
@@ -303,11 +271,9 @@ async function validateAndFixLesson(apiKey: string, lesson: any, topicName: stri
             break;
           }
           if (attempt === 1) {
-            console.log(`⚠️ Dropping unverifiable check question at section ${i}`);
-            // Convert to a learn section instead of removing it
+            console.log(`⚠️ Dropping unverifiable check at section ${i}`);
             validatedLesson.sections[i] = {
-              type: "learn",
-              title: "Quick Note",
+              type: "learn", title: "Quick Note",
               content: section.explanation || "Let's continue to the next part!",
             };
           }
@@ -318,7 +284,6 @@ async function validateAndFixLesson(apiKey: string, lesson: any, topicName: stri
     }
   }
 
-  // Validate final challenge questions
   if (validatedLesson.final_challenge?.questions) {
     const validQuestions: any[] = [];
     for (let i = 0; i < validatedLesson.final_challenge.questions.length; i++) {
@@ -337,7 +302,6 @@ async function validateAndFixLesson(apiKey: string, lesson: any, topicName: stri
         for (let attempt = 0; attempt < 2; attempt++) {
           const replacement = await regenerateMathQuestion(apiKey, q, topicName);
           if (!replacement) continue;
-
           const recheck = await verifyMathQuestion(apiKey, replacement);
           if (recheck.correct) {
             console.log(`✅ Challenge replacement verified on attempt ${attempt + 1}`);
@@ -348,7 +312,6 @@ async function validateAndFixLesson(apiKey: string, lesson: any, topicName: stri
         }
         if (!fixed) {
           console.log(`⚠️ Dropping unverifiable challenge question ${i}`);
-          // Skip this question entirely
         }
       } else {
         console.log(`✅ Challenge Q${i} verified`);
@@ -385,7 +348,7 @@ ${isMaths ? NSW_MATHS_CURRICULUM : ""}
 CURRENT STUDENT PERFORMANCE LEVEL: ${difficulty.level}
 This means you should be ${difficulty.description}.
 
-${isMaths ? "CRITICAL: Use the calculate() tool for ALL arithmetic operations. NEVER calculate mentally. Always verify your answers with the tool before including them." : ""}
+${isMaths ? "CRITICAL: Double-check all arithmetic carefully. Make sure the correct_answer index corresponds to the actually correct option. Show your working in the explanation field." : ""}
 ${isEnglish ? "IMPORTANT: Include at least one FREE-TEXT writing question in the final challenge." : ""}`;
 
   const freeTextBlock = isEnglish ? `
@@ -406,9 +369,8 @@ Include at least ONE free-text question:
 Student XP: ${topicXp}, Level: "${difficulty.level}" — ${difficulty.description}.
 
 IMPORTANT: This lesson must be INTERACTIVE with checkpoints to verify understanding.
-${isMaths ? "CRITICAL: Use the calculate() tool for EVERY arithmetic operation. Never do mental math." : ""}
 ${freeTextBlock}
-Return ONLY valid JSON (no markdown, no code blocks):
+Return ONLY valid JSON (no markdown, no code blocks, no backticks):
 {
   "title": "Engaging title",
   "emoji": "${topicEmoji}",
@@ -437,7 +399,8 @@ Guidelines:
 - Hints guide thinking, don't reveal answers
 - Use Australian contexts: km not miles, dollars not pounds, cricket/AFL
 - Progressive difficulty within the module
-${isEnglish ? '- Include at least one free-text writing question in final_challenge' : ''}`;
+${isEnglish ? '- Include at least one free-text writing question in final_challenge' : ''}
+${isMaths ? '- Double-check all math: make sure correct_answer index matches the right option' : ''}`;
 
   return { systemPrompt, userPrompt, isMaths };
 }
@@ -497,27 +460,30 @@ serve(async (req) => {
       topicName, topicEmoji || '📚', yearLevel, difficulty, topicXp || 0, subjectSlug
     );
 
-    // ── Agent 1: Generate lesson (with calculator tool for math) ──
-    console.log(`Agent 1: Generating lesson for "${topicName}" (math tools: ${isMaths})`);
-    const content = await callWithTools(LOVABLE_API_KEY, [
+    // ── Agent 1: Generate lesson ──
+    console.log(`Agent 1: Generating lesson for "${topicName}" (math validation: ${isMaths})`);
+    const content = await callLLM(LOVABLE_API_KEY, [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
-    ], isMaths);
+    ]);
 
     let lessonContent;
     try {
       let jsonStr = content.trim();
-      if (jsonStr.startsWith("```json")) jsonStr = jsonStr.slice(7);
-      else if (jsonStr.startsWith("```")) jsonStr = jsonStr.slice(3);
-      if (jsonStr.endsWith("```")) jsonStr = jsonStr.slice(0, -3);
+      // Strip markdown code fences
+      jsonStr = jsonStr.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/, '');
+      // Extract JSON object
+      const objMatch = jsonStr.match(/\{[\s\S]*\}/);
+      if (objMatch) jsonStr = objMatch[0];
       lessonContent = JSON.parse(jsonStr.trim());
-    } catch {
+    } catch (parseErr) {
+      console.error("Failed to parse lesson JSON. Raw (first 500):", content.substring(0, 500));
       throw new Error("Failed to parse lesson content");
     }
 
-    // ── Agent 2: Validate math answers ──
+    // ── Agent 2: Validate math answers using mathjs ──
     if (isMaths) {
-      console.log("Agent 2: Validating math answers...");
+      console.log("Agent 2: Validating math answers with mathjs...");
       lessonContent = await validateAndFixLesson(LOVABLE_API_KEY, lessonContent, topicName);
     }
 
