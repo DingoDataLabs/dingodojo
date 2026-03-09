@@ -24,7 +24,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { ArrowLeft, User, Key, RefreshCw, Crown, Trash2 } from "lucide-react";
+import { ArrowLeft, User, Key, RefreshCw, Crown, Trash2, CreditCard, ExternalLink, Loader2 } from "lucide-react";
 
 interface Profile {
   id: string;
