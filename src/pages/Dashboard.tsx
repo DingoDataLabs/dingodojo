@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Flame, Trophy, LogOut, Zap, Settings, Compass, Crown, Star, Sparkles, Play, BarChart2, PenTool, User } from "lucide-react";
+import { HomeworkHelpDrawer } from "@/components/HomeworkHelpDrawer";
 import { toast } from "sonner";
 import { ProgressRing } from "@/components/ProgressRing";
 import { getSydneyWeekStart, isNewWeek } from "@/lib/weekUtils";
@@ -426,27 +427,30 @@ export default function Dashboard() {
                   <p className="text-primary-foreground/75">{profile?.grade_level || "Year 5"} • The Dojo</p>
                 </div>
               </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-xl text-primary-foreground hover:bg-white/20 w-12 h-12">
-                    <Settings className="w-10 h-10" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48 rounded-xl">
-                  <DropdownMenuItem onClick={() => navigate("/progress")} className="gap-2 cursor-pointer">
-                    <BarChart2 className="w-4 h-4" />
-                    Progress Report
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate("/profile")} className="gap-2 cursor-pointer">
-                    <User className="w-4 h-4" />
-                    Profile
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleLogout} className="gap-2 cursor-pointer text-destructive">
-                    <LogOut className="w-4 h-4" />
-                    Logout
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <div className="flex items-center gap-1">
+                <HomeworkHelpDrawer gradeLevel={profile?.grade_level || "Year 5"} />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="rounded-xl text-primary-foreground hover:bg-white/20 w-12 h-12">
+                      <Settings className="w-10 h-10" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48 rounded-xl">
+                    <DropdownMenuItem onClick={() => navigate("/progress")} className="gap-2 cursor-pointer">
+                      <BarChart2 className="w-4 h-4" />
+                      Progress Report
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate("/profile")} className="gap-2 cursor-pointer">
+                      <User className="w-4 h-4" />
+                      Profile
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleLogout} className="gap-2 cursor-pointer text-destructive">
+                      <LogOut className="w-4 h-4" />
+                      Logout
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
             {/* Overall Dojo Belt - below greeting */}
             <div className="mt-4">
