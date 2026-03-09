@@ -369,6 +369,23 @@ export function DojoCrew({ profileId, firstName, totalXp, currentStreak }: DojoC
           </div>
         )}
       </div>
+
+      <AlertDialog open={!!removingFriend} onOpenChange={(open) => !open && setRemovingFriend(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove friend?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove <span className="font-medium">{removingFriend?.name}</span> from your Dojo Crew?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => removingFriend && declineOrRemove(removingFriend.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
