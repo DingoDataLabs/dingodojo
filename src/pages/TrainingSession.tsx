@@ -1449,7 +1449,7 @@ export default function TrainingSession() {
             <div className="bg-card rounded-3xl p-8 text-center" style={{ boxShadow: "0 30px 80px -15px hsl(var(--ochre-dark) / 0.5)" }}>
 
               {/* Mirri reaction */}
-              <div className="text-7xl animate-float mb-2 select-none">🦊</div>
+              <img src={dingoLogo} alt="Mirri" className="w-20 h-20 animate-float mb-2 select-none" />
               <p className="text-sm font-body text-muted-foreground mb-4 italic">
                 {celebrationData.xp >= 100
                   ? "You absolutely smashed it! 🔥"
