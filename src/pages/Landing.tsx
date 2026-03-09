@@ -19,7 +19,7 @@ export default function Landing() {
           {/* Nav */}
           <nav className="flex items-center justify-between mb-12 md:mb-16 relative z-10">
             <div className="flex items-center gap-3">
-              <img src={dingoLogo} alt="Dingo Dojo" className="w-10 h-10 md:w-12 md:h-12 animate-float" />
+              <img src={dingoLogo} alt="Dingo Dojo" className="w-20 h-20 md:w-24 md:h-24 animate-float" />
               <span className="text-2xl md:text-3xl font-display font-bold text-primary-foreground drop-shadow-sm">Dingo Dojo</span>
             </div>
             <div className="flex items-center gap-3">
