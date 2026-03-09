@@ -570,6 +570,11 @@ export default function Dashboard() {
           )}
         </div>
 
+        {/* Overall Dojo Belt */}
+        <div className="mb-8 animate-slide-up stagger-5">
+          <OverallBeltTile avgXp={overallBelt.avgXp} topicCount={overallBelt.topicCount} />
+        </div>
+
         {/* Start Mission Button */}
         {smartMission && (
           <section className="mb-8 animate-slide-up stagger-5">
