@@ -100,8 +100,8 @@ export function SenseiChatDrawer({
               ))}
               {isChatLoading && (
                 <div className="flex justify-start animate-slide-up">
-                  <div className="w-8 h-8 rounded-full bg-ochre flex items-center justify-center text-lg mr-2">
-                    🦊
+                  <div className="w-8 h-8 rounded-full bg-ochre flex items-center justify-center mr-2">
+                    <img src={dingoLogo} alt="Sensei" className="w-6 h-6" />
                   </div>
                   <div className="chat-bubble-assistant">
                     <Loader2 className="w-4 h-4 animate-spin" />
