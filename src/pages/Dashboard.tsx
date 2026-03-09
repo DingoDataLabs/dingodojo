@@ -355,6 +355,8 @@ export default function Dashboard() {
   const holidayLabel = inHoliday ? getHolidayLabel(getSydneyWeekStart()) : null;
 
   // Build topic progress for smart mission selection
+  const prioritySubjects = ["english", "maths"];
+
   const smartMissionTopics = useMemo(() => {
     return topics.map(topic => {
       const subject = subjects.find(s => s.id === topic.subject_id);
@@ -367,11 +369,8 @@ export default function Dashboard() {
         subjectName: subject?.name || '',
         xpEarned: progress?.xp_earned || 0,
       };
-    }).filter(t => {
-      const freeSubjects = ["english", "maths"];
-      return !isExplorer || freeSubjects.includes(t.subjectSlug);
-    });
-  }, [topics, subjects, topicProgressData, isExplorer]);
+    }).filter(t => prioritySubjects.includes(t.subjectSlug));
+  }, [topics, subjects, topicProgressData]);
 
   const smartMission = useSmartMission({ topicProgress: smartMissionTopics });
 
