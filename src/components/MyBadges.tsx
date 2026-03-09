@@ -133,9 +133,7 @@ export function MyBadges({ profileId, currentStreak, totalXp }: MyBadgesProps) {
                     <div className={`flex flex-col items-center text-center p-2 rounded-xl transition-all ${earned ? "hover:bg-primary/5" : "opacity-40 grayscale"}`}>
                       <span className="text-3xl md:text-4xl mb-1">{badge.emoji}</span>
                       <p className="text-[10px] md:text-xs font-medium text-foreground leading-tight line-clamp-2">{badge.name}</p>
-                      {!earned && (
-                        <p className="text-[9px] text-muted-foreground mt-0.5 leading-tight">{badge.description}</p>
-                      )}
+                      <p className="text-[9px] text-muted-foreground mt-0.5 leading-tight">{badge.description}</p>
                     </div>
                   </TooltipTrigger>
                   <TooltipContent>
