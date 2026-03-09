@@ -21,6 +21,9 @@ import { MyBadges } from "@/components/MyBadges";
 import { DojoCrew } from "@/components/DojoCrew";
 import { StripeCheckoutModal } from "@/components/StripeCheckoutModal";
 import { Progress } from "@/components/ui/progress";
+import { OverallBeltTile } from "@/components/OverallBeltTile";
+import { getOverallBelt, getSubjectBelt } from "@/lib/beltUtils";
+import { getMasteryLevel } from "@/lib/progressUtils";
 
 interface Profile {
   id: string;
