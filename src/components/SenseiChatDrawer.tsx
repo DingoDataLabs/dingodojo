@@ -48,7 +48,7 @@ export function SenseiChatDrawer({
         {!isOpen && (
           <div className="bg-card border border-border rounded-2xl rounded-tr-sm px-3 py-2 shadow-lg animate-slide-up max-w-[180px]">
             <p className="text-xs text-muted-foreground">
-              Need help? Ask Sensei! 🦊
+              Need help? Ask Sensei!
             </p>
           </div>
         )}

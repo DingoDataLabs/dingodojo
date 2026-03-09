@@ -87,7 +87,7 @@ export default function Auth() {
       <div className="w-full max-w-md">
         {/* Logo and Title */}
         <div className="text-center mb-8 animate-slide-up">
-          <div className="text-7xl mb-4 animate-float">🦊</div>
+          <img src={dingoLogo} alt="Dingo Dojo" className="w-20 h-20 mx-auto mb-4 animate-float" />
           <h1 className="text-4xl font-display font-bold gradient-text-ochre mb-2">
             Dingo Dojo
           </h1>

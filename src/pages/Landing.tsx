@@ -303,7 +303,7 @@ export default function Landing() {
       <footer className="py-10 px-4 border-t border-border">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <span className="text-2xl">🦊</span>
+            <img src={dingoLogo} alt="Dingo Dojo" className="w-8 h-8" />
             <span className="font-display font-bold text-foreground">Dingo Dojo</span>
           </div>
           <p className="text-muted-foreground text-sm">
