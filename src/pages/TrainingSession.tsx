@@ -1394,6 +1394,58 @@ export default function TrainingSession() {
           handwritingResult={handwritingResults[pendingFeedbackKey]}
         />
       )}
+
+      {/* Mission Complete Celebration Overlay */}
+      {missionComplete && celebrationData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "linear-gradient(135deg, hsl(var(--ochre-dark) / 0.92), hsl(var(--ochre) / 0.92), hsl(var(--ochre-light) / 0.88))", backdropFilter: "blur(8px)" }}>
+          <div className="relative max-w-sm w-full mx-4 animate-bounce-in">
+            {/* Card */}
+            <div className="bg-card rounded-3xl p-8 text-center" style={{ boxShadow: "0 30px 80px -15px hsl(var(--ochre-dark) / 0.5)" }}>
+
+              {/* Mirri reaction */}
+              <div className="text-7xl animate-float mb-2 select-none">🦊</div>
+              <p className="text-sm font-body text-muted-foreground mb-4 italic">
+                {celebrationData.xp >= 100
+                  ? "You absolutely smashed it! 🔥"
+                  : celebrationData.xp >= 60
+                  ? "Ripper work, legend! 🌟"
+                  : "Great effort, keep it up! 💪"}
+              </p>
+
+              {/* Headline */}
+              <h2 className="text-3xl font-display font-bold text-foreground mb-6">
+                Mission Complete! 🏆
+              </h2>
+
+              {/* Stats row */}
+              <div className="flex gap-3 justify-center mb-6">
+                {/* XP earned */}
+                <div className="flex-1 rounded-2xl p-4" style={{ background: "linear-gradient(135deg, hsl(var(--ochre) / 0.12), hsl(var(--ochre-light) / 0.08))", border: "1.5px solid hsl(var(--ochre) / 0.25)" }}>
+                  <div className="text-3xl font-display font-bold text-primary leading-none">+{celebrationData.xp}</div>
+                  <div className="text-xs text-muted-foreground mt-1 font-body">XP earned</div>
+                </div>
+
+                {/* Streak */}
+                <div className="flex-1 rounded-2xl p-4" style={{ background: "linear-gradient(135deg, hsl(0 72% 55% / 0.12), hsl(0 72% 55% / 0.06))", border: "1.5px solid hsl(0 72% 55% / 0.25)" }}>
+                  <div className="flex items-center justify-center gap-1">
+                    <span className="text-2xl">🔥</span>
+                    <span className="text-3xl font-display font-bold text-destructive leading-none">{celebrationData.streak}</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1 font-body">
+                    {celebrationData.isStreakDay ? "Streak day!" : "Day streak"}
+                  </div>
+                </div>
+              </div>
+
+              {/* Returning message */}
+              <p className="text-sm text-muted-foreground font-body animate-pulse-soft">
+                Heading back to the dojo…
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
     <div className="h-screen bg-background flex flex-col overflow-hidden">
       {/* Header */}
       <header className="flex-shrink-0 bg-card border-b border-border p-3 flex items-center justify-between">
