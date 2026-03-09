@@ -138,6 +138,10 @@ export default function TrainingSession() {
   const { user, session, loading: authLoading } = useAuth();
   const isMobile = useIsMobile();
 
+  // Keep screen awake during final challenge with free-text/photo submissions
+  const hasFreeTextChallenge = lessonContent?.final_challenge?.questions?.some(q => q.type === "free_text") ?? false;
+  useWakeLock(inFinalChallenge && hasFreeTextChallenge);
+
   const [topic, setTopic] = useState<Topic | null>(null);
   const [subject, setSubject] = useState<Subject | null>(null);
   const [lessonContent, setLessonContent] = useState<LessonContent | null>(null);
