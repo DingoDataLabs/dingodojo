@@ -70,7 +70,36 @@ export default function ProfilePage() {
       return;
     }
     fetchProfile();
+    fetchSubscription();
   }, [user, navigate]);
+
+  const fetchSubscription = async () => {
+    setSubLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("check-subscription");
+      if (!error && data) {
+        setSubInfo(data);
+      }
+    } catch (e) {
+      console.error("Error checking subscription:", e);
+    }
+    setSubLoading(false);
+  };
+
+  const openCustomerPortal = async () => {
+    setPortalLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("customer-portal");
+      if (error) throw error;
+      if (data?.url) {
+        window.open(data.url, "_blank");
+      }
+    } catch (e) {
+      toast.error("Couldn't open subscription management. Please try again.");
+      console.error("Portal error:", e);
+    }
+    setPortalLoading(false);
+  };
 
   const fetchProfile = async () => {
     // Use secure view to exclude stripe_customer_id
