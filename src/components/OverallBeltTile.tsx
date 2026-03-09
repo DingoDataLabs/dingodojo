@@ -45,7 +45,6 @@ export function OverallBeltTile({ avgXp, topicCount }: OverallBeltTileProps) {
             <span className="text-xl">{level.emoji}</span>
           </ProgressRing>
         </div>
-        </ProgressRing>
 
         <div className="flex-1 min-w-0">
           <p className="text-[11px] text-primary-foreground/60 font-medium uppercase tracking-wide">Dojo Rank</p>
