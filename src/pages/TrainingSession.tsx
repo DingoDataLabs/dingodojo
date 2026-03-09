@@ -1364,6 +1364,7 @@ export default function TrainingSession() {
             </p>
           </div>
         )}
+
       </div>
     );
   };
