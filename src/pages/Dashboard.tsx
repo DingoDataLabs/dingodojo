@@ -414,33 +414,33 @@ export default function Dashboard() {
       {/* Wavy Header Background */}
       <div className="relative" style={{ background: "linear-gradient(135deg, hsl(var(--ochre-light)) 0%, hsl(var(--ochre)) 50%, hsl(var(--ochre-dark)) 100%)" }}>
         <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 pt-4 md:pt-6 lg:pt-8 pb-14">
-          <header className="flex items-center justify-between animate-slide-up">
-            <div className="flex items-center gap-4">
-              <img src={dingoLogo} alt="Dingo Dojo" className="w-24 h-24 animate-float" />
-              <div>
-                <h1 className="text-2xl md:text-3xl font-display font-bold text-primary-foreground drop-shadow-sm">
-                  G'day, {profile?.first_name || "Ninja"}!
-                </h1>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold shadow-sm backdrop-blur-sm ${overallBelt.level.colorClass}`}>
-                    {overallBelt.level.emoji} {overallBelt.level.name}
-                  </span>
-                  <span className="text-primary-foreground/60 text-sm">•</span>
-                  <p className="text-primary-foreground/75 text-sm">{profile?.grade_level || "Year 5"}</p>
+          <header className="animate-slide-up">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <img src={dingoLogo} alt="Dingo Dojo" className="w-24 h-24 animate-float" />
+                <div>
+                  <h1 className="text-2xl md:text-3xl font-display font-bold text-primary-foreground drop-shadow-sm">
+                    G'day, {profile?.first_name || "Ninja"}!
+                  </h1>
+                  <p className="text-primary-foreground/75">{profile?.grade_level || "Year 5"} • The Dojo</p>
                 </div>
               </div>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon" onClick={() => navigate("/progress")} className="rounded-xl text-primary-foreground hover:bg-white/20" title="Progress Report">
+                  <BarChart2 className="w-5 h-5" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => navigate("/profile")} className="rounded-xl text-primary-foreground hover:bg-white/20">
+                  <Settings className="w-5 h-5" />
+                </Button>
+                <Button onClick={handleLogout} className="rounded-xl gap-2 bg-white/20 hover:bg-white/30 text-primary-foreground border-0 backdrop-blur-sm">
+                  <LogOut className="w-4 h-4" />
+                  <span className="hidden sm:inline">Logout</span>
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={() => navigate("/progress")} className="rounded-xl text-primary-foreground hover:bg-white/20" title="Progress Report">
-                <BarChart2 className="w-5 h-5" />
-              </Button>
-              <Button variant="ghost" size="icon" onClick={() => navigate("/profile")} className="rounded-xl text-primary-foreground hover:bg-white/20">
-                <Settings className="w-5 h-5" />
-              </Button>
-              <Button onClick={handleLogout} className="rounded-xl gap-2 bg-white/20 hover:bg-white/30 text-primary-foreground border-0 backdrop-blur-sm">
-                <LogOut className="w-4 h-4" />
-                <span className="hidden sm:inline">Logout</span>
-              </Button>
+            {/* Overall Dojo Belt - below greeting */}
+            <div className="mt-4">
+              <OverallBeltTile avgXp={overallBelt.avgXp} topicCount={overallBelt.topicCount} />
             </div>
           </header>
         </div>
