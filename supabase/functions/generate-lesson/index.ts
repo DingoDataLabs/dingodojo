@@ -260,7 +260,8 @@ Use Australian English spelling.
 ${isMaths ? NSW_MATHS_CURRICULUM : ""}
 STUDENT LEVEL: ${difficulty.level} — ${difficulty.description}.
 ${isMaths ? `CRITICAL: For EVERY question involving a calculation, include a "calculation_expression" field. Double-check all arithmetic.` : ""}
-${isEnglish ? "IMPORTANT: Include at least one FREE-TEXT writing question." : ""}`;
+${isEnglish ? "IMPORTANT: Include at least one FREE-TEXT writing question." : ""}
+CRITICAL: Multiple choice questions must always have a single correct positive answer. Do not use negatively-framed questions (e.g. 'which is NOT...', 'which does NOT...', 'except', 'which of these is false'). Each question should ask what IS correct, not what is incorrect.`;
 
   const freeTextBlock = isEnglish ? `
 Include at least ONE free-text question:
