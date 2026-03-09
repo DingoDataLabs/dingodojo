@@ -21,7 +21,8 @@ export function OverallBeltTile({ avgXp, topicCount }: OverallBeltTileProps) {
     brown: "stroke-amber-700",
     black: "stroke-gray-900",
   };
-  const ringColor = ringColorMap[level.color] || "stroke-muted-foreground";
+  const nextColor = nextLevel ? (ringColorMap[nextLevel.color] || "stroke-muted-foreground") : ringColorMap[level.color] || "stroke-muted-foreground";
+  const ringColor = nextColor;
 
   return (
     <div className="rounded-2xl bg-white/15 backdrop-blur-sm border border-white/20 px-4 py-3 shadow-sm">
