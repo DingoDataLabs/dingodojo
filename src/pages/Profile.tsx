@@ -284,9 +284,40 @@ export default function ProfilePage() {
               <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl">
                 <div>
                   <p className="text-sm text-muted-foreground">Subscription</p>
-                  <p className="font-semibold text-foreground">{profile?.subscription_tier === "champion" ? "Champion" : "Explorer"}</p>
+                  <p className="font-semibold text-foreground">
+                    {subInfo?.tier === "champion" ? "Champion" : "Explorer"}
+                    {subInfo?.subscribed && subInfo.subscriptionEnd && (
+                      <span className="text-xs font-normal text-muted-foreground ml-2">
+                        {subInfo.status === "trialing" ? "Trial ends" : "Renews"}{" "}
+                        {new Date(subInfo.subscriptionEnd).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}
+                      </span>
+                    )}
+                  </p>
                 </div>
-                {getTierBadge(profile?.subscription_tier || "explorer")}
+                <div className="flex items-center gap-2">
+                  {getTierBadge(profile?.subscription_tier || "explorer")}
+                  {subInfo?.subscribed ? (
+                    <Button
+                      onClick={openCustomerPortal}
+                      disabled={portalLoading}
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs gap-1 text-muted-foreground"
+                    >
+                      {portalLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <ExternalLink className="w-3 h-3" />}
+                      Manage
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => navigate("/dashboard?upgrade=true")}
+                      size="sm"
+                      className="text-xs gap-1 bg-gradient-to-r from-ochre to-ochre-light text-primary-foreground"
+                    >
+                      <Crown className="w-3 h-3" />
+                      Upgrade
+                    </Button>
+                  )}
+                </div>
               </div>
 
               <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl">
@@ -373,89 +404,8 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Subscription Management Card */}
-          <div className="bento-card bg-card p-6 animate-slide-up stagger-1">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-ochre/10 flex items-center justify-center">
-                <CreditCard className="w-5 h-5 text-ochre" />
-              </div>
-              <h2 className="text-xl font-display font-bold text-foreground">Subscription</h2>
-            </div>
-
-            {subLoading ? (
-              <div className="flex items-center gap-2 text-muted-foreground py-4">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Loading subscription info...</span>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Current Plan</p>
-                    <p className="font-semibold text-foreground">
-                      {subInfo?.tier === "champion" ? "Champion" : "Explorer (Free)"}
-                    </p>
-                  </div>
-                  {getTierBadge(subInfo?.tier || "explorer")}
-                </div>
-
-                {subInfo?.subscribed && subInfo.subscriptionEnd && (
-                  <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl">
-                    <div>
-                      <p className="text-sm text-muted-foreground">
-                        {subInfo.status === "trialing" ? "Trial ends" : "Renews on"}
-                      </p>
-                      <p className="font-semibold text-foreground">
-                        {new Date(subInfo.subscriptionEnd).toLocaleDateString("en-AU", {
-                          day: "numeric",
-                          month: "long",
-                          year: "numeric",
-                        })}
-                      </p>
-                    </div>
-                    <span className="text-2xl">{subInfo.status === "trialing" ? "⏳" : "📅"}</span>
-                  </div>
-                )}
-
-                {subInfo?.subscribed ? (
-                  <div className="space-y-2">
-                    <Button
-                      onClick={openCustomerPortal}
-                      disabled={portalLoading}
-                      variant="outline"
-                      className="w-full h-12 rounded-xl font-semibold gap-2"
-                    >
-                      {portalLoading ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <ExternalLink className="w-4 h-4" />
-                      )}
-                      {portalLoading ? "Opening..." : "Manage Subscription"}
-                    </Button>
-                    <p className="text-xs text-muted-foreground text-center">
-                      Update payment method, change plan, or cancel your subscription
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <Button
-                      onClick={() => navigate("/dashboard?upgrade=true")}
-                      className="w-full h-12 rounded-xl font-semibold gap-2 bg-gradient-to-r from-ochre to-ochre-light text-primary-foreground"
-                    >
-                      <Crown className="w-4 h-4" />
-                      Upgrade to Champion
-                    </Button>
-                    <p className="text-xs text-muted-foreground text-center">
-                      Unlimited missions, all subjects, and exclusive badges — $5/month
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
           {/* Password Card */}
-          <div className="bento-card bg-card p-6 animate-slide-up stagger-2">
+          <div className="bento-card bg-card p-6 animate-slide-up stagger-1">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-xl bg-sky/10 flex items-center justify-center">
                 <Key className="w-5 h-5 text-sky" />
@@ -500,7 +450,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Reset Progress Card */}
-          <div className="bento-card bg-card p-6 animate-slide-up stagger-3 border-destructive/20">
+          <div className="bento-card bg-card p-6 animate-slide-up stagger-2 border-destructive/20">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center">
                 <RefreshCw className="w-5 h-5 text-destructive" />
