@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import dingoLogo from "@/assets/dingo-logo.png";
 import { Check, Target, Clock, Star, Shield, ArrowRight, Compass, Crown, Zap, BookOpen, PenTool } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
