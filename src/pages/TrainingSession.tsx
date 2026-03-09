@@ -1348,26 +1348,59 @@ export default function TrainingSession() {
           </div>
         )}
 
-        {allDone && !missionComplete && (
-          <div className="text-center space-y-4">
-            <div className="bg-eucalyptus/10 border border-eucalyptus/20 rounded-2xl p-6">
-              <span className="text-5xl block mb-4">🎉</span>
-              <h3 className="text-xl font-display font-bold text-foreground mb-2">
-                All Challenges Complete!
-              </h3>
-              <p className="text-muted-foreground mb-4">
-                You've earned <span className="font-bold text-eucalyptus">{earnedXp} XP</span> in this lesson!
-              </p>
-              <Button
-                onClick={completeMission}
-                className="h-14 text-lg font-bold rounded-xl bg-eucalyptus hover:bg-eucalyptus-dark gap-2 px-8"
-              >
-                <CheckCircle className="w-5 h-5" />
-                Complete Mission! 🏆
-              </Button>
+        {allDone && !missionComplete && (() => {
+          // Kick off countdown the first time allDone becomes true
+          if (completionCountdown === null) {
+            setTimeout(() => setCompletionCountdown(3), 0);
+          }
+          const pct = completionCountdown !== null ? ((3 - completionCountdown) / 3) * 100 : 0;
+          const r = 28;
+          const circ = 2 * Math.PI * r;
+          const offset = circ - (pct / 100) * circ;
+          return (
+            <div className="text-center space-y-4 animate-bounce-in">
+              <div className="bg-eucalyptus/10 border-2 border-eucalyptus/30 rounded-2xl p-6">
+                <span className="text-5xl block mb-3">🎉</span>
+                <h3 className="text-xl font-display font-bold text-foreground mb-1">
+                  All Challenges Complete!
+                </h3>
+                <p className="text-muted-foreground mb-5">
+                  You've earned <span className="font-bold text-eucalyptus">{earnedXp} XP</span> this lesson!
+                </p>
+
+                {/* Countdown ring */}
+                <div className="flex flex-col items-center gap-2">
+                  <div className="relative w-20 h-20">
+                    <svg className="w-20 h-20 -rotate-90" viewBox="0 0 72 72">
+                      <circle
+                        cx="36" cy="36" r={r}
+                        fill="none"
+                        stroke="hsl(var(--eucalyptus) / 0.15)"
+                        strokeWidth="6"
+                      />
+                      <circle
+                        cx="36" cy="36" r={r}
+                        fill="none"
+                        stroke="hsl(var(--eucalyptus))"
+                        strokeWidth="6"
+                        strokeLinecap="round"
+                        strokeDasharray={circ}
+                        strokeDashoffset={offset}
+                        style={{ transition: "stroke-dashoffset 0.9s linear" }}
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-2xl font-display font-bold text-eucalyptus-dark">
+                        {completionCountdown ?? 3}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground">Completing mission…</p>
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {missionComplete && (
           <div className="text-center p-4 animate-bounce-in">
