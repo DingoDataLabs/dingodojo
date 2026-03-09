@@ -81,9 +81,8 @@ serve(async (req) => {
       status: 200,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error("[CUSTOMER-PORTAL] Error:", message);
-    return new Response(JSON.stringify({ error: message }), {
+    console.error("[CUSTOMER-PORTAL] Error:", error instanceof Error ? error.message : String(error));
+    return new Response(JSON.stringify({ error: "An unexpected error occurred" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });

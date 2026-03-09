@@ -125,10 +125,18 @@ async function callLLM(
 
 // ── Subscription Check ───────────────────────────────────────────────
 
-async function validateMissionAccess(supabaseClient: any, userId: string): Promise<{ allowed: boolean; error?: string }> {
+async function validateMissionAccess(supabaseClient: any, userId: string, subjectSlug?: string): Promise<{ allowed: boolean; error?: string }> {
   const { data: profile, error } = await supabaseClient
     .from('profiles').select('subscription_tier').eq('user_id', userId).single();
   if (error) return { allowed: false, error: 'Failed to verify subscription status' };
+
+  if (profile.subscription_tier !== 'champion') {
+    const EXPLORER_SUBJECTS = ['english', 'maths', 'mathematics'];
+    if (subjectSlug && !EXPLORER_SUBJECTS.includes(subjectSlug)) {
+      return { allowed: false, error: 'Champion subscription required for this subject.' };
+    }
+  }
+
   return { allowed: true };
 }
 
@@ -375,14 +383,12 @@ serve(async (req) => {
     const yearLevel = gradeLevel || "Year 5";
     const isMaths = subjectSlug === "maths" || subjectSlug === "mathematics";
 
-    // Only validate subscription on scaffold phase
-    if (phase === "scaffold") {
-      const userId = userData.user.id;
-      const missionAccess = await validateMissionAccess(supabaseClient, userId);
-      if (!missionAccess.allowed) {
-        return new Response(JSON.stringify({ error: missionAccess.error, code: 'LIMIT_REACHED' }),
-          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
+    // Validate subscription on all phases
+    const userId = userData.user.id;
+    const missionAccess = await validateMissionAccess(supabaseClient, userId, subjectSlug);
+    if (!missionAccess.allowed) {
+      return new Response(JSON.stringify({ error: missionAccess.error, code: 'LIMIT_REACHED' }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // ── Phase: Scaffold ──

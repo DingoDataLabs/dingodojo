@@ -160,7 +160,7 @@ serve(async (req) => {
     if (userError) {
       console.error('Auth error:', userError.message, userError.status);
       return new Response(
-        JSON.stringify({ error: 'Unauthorized', details: userError.message }),
+        JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -168,7 +168,7 @@ serve(async (req) => {
     if (!userData?.user) {
       console.error('No user found in session');
       return new Response(
-        JSON.stringify({ error: 'Unauthorized', details: 'No user in session' }),
+        JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

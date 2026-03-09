@@ -106,6 +106,7 @@ export default function ProgressPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [subjectProgress, setSubjectProgress] = useState<SubjectProgress[]>([]);
   const [handwritingData, setHandwritingData] = useState<HandwritingSubmission[]>([]);
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [missionsCompleted, setMissionsCompleted] = useState(0);
   const [topicsMastered, setTopicsMastered] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -183,7 +184,18 @@ export default function ProgressPage() {
       }).filter(s => s.totalTopics > 0);
 
       setSubjectProgress(sp);
-      setHandwritingData(hwRes.data || []);
+      const hwData = hwRes.data || [];
+      setHandwritingData(hwData);
+
+      // Generate signed URLs for submissions with images
+      const urlMap: Record<string, string> = {};
+      await Promise.all(
+        hwData.filter(h => h.image_path).slice(-5).map(async (h) => {
+          const { data } = await supabase.storage.from("handwriting-submissions").createSignedUrl(h.image_path!, 3600);
+          if (data?.signedUrl) urlMap[h.id] = data.signedUrl;
+        })
+      );
+      setSignedUrls(urlMap);
     } catch (err) {
       console.error("Error fetching progress:", err);
     } finally {
@@ -191,10 +203,8 @@ export default function ProgressPage() {
     }
   };
 
-  const getPublicUrl = (path: string) => {
-    const { data } = supabase.storage.from("handwriting-submissions").getPublicUrl(path);
-    return data.publicUrl;
-  };
+
+
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString("en-AU", { day: "numeric", month: "short" });
@@ -405,14 +415,14 @@ export default function ProgressPage() {
                 📸 Recent Submissions
               </h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {recentSubmissions.map(sub => (
+                {recentSubmissions.filter(sub => signedUrls[sub.id]).map(sub => (
                   <button
                     key={sub.id}
-                    onClick={() => sub.image_path && window.open(getPublicUrl(sub.image_path), "_blank")}
+                    onClick={() => window.open(signedUrls[sub.id], "_blank")}
                     className="relative rounded-xl overflow-hidden border border-border aspect-square group"
                   >
                     <img
-                      src={getPublicUrl(sub.image_path!)}
+                      src={signedUrls[sub.id]}
                       alt="Handwriting submission"
                       className="w-full h-full object-cover"
                       loading="lazy"
