@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import dingoLogo from "@/assets/dingo-logo.png";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -164,7 +165,7 @@ export default function Onboarding() {
       <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8 animate-slide-up">
-          <div className="text-6xl mb-4 animate-float">🦊</div>
+          <img src={dingoLogo} alt="Dingo Dojo" className="w-16 h-16 mx-auto mb-4 animate-float" />
           <h1 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-2">
             Welcome to the Dojo!
           </h1>

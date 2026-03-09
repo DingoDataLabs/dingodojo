@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import dingoLogo from "@/assets/dingo-logo.png";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -1448,7 +1449,7 @@ export default function TrainingSession() {
             <div className="bg-card rounded-3xl p-8 text-center" style={{ boxShadow: "0 30px 80px -15px hsl(var(--ochre-dark) / 0.5)" }}>
 
               {/* Mirri reaction */}
-              <div className="text-7xl animate-float mb-2 select-none">🦊</div>
+              <img src={dingoLogo} alt="Mirri" className="w-20 h-20 animate-float mb-2 select-none" />
               <p className="text-sm font-body text-muted-foreground mb-4 italic">
                 {celebrationData.xp >= 100
                   ? "You absolutely smashed it! 🔥"
@@ -1592,8 +1593,8 @@ export default function TrainingSession() {
           <div className="w-1/2 flex flex-col bg-sand/30">
             <div className="flex-shrink-0 p-4 border-b border-border bg-card/50">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-ochre flex items-center justify-center text-2xl">
-                  🦊
+                <div className="w-12 h-12 rounded-full bg-ochre flex items-center justify-center">
+                  <img src={dingoLogo} alt="Sensei" className="w-9 h-9" />
                 </div>
                 <div>
                   <h3 className="font-display font-bold text-foreground">Mirri the Study Buddy</h3>
@@ -1609,8 +1610,8 @@ export default function TrainingSession() {
                   className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} animate-slide-up`}
                 >
                   {message.role === "assistant" && (
-                    <div className="w-8 h-8 rounded-full bg-ochre flex items-center justify-center text-lg mr-2 flex-shrink-0">
-                      🦊
+                    <div className="w-8 h-8 rounded-full bg-ochre flex items-center justify-center mr-2 flex-shrink-0">
+                      <img src={dingoLogo} alt="Sensei" className="w-6 h-6" />
                     </div>
                   )}
                   <div
@@ -1624,8 +1625,8 @@ export default function TrainingSession() {
               ))}
               {isChatLoading && messages[messages.length - 1]?.content === "" && (
                 <div className="flex justify-start">
-                  <div className="w-8 h-8 rounded-full bg-ochre flex items-center justify-center text-lg mr-2">
-                    🦊
+                  <div className="w-8 h-8 rounded-full bg-ochre flex items-center justify-center mr-2">
+                    <img src={dingoLogo} alt="Sensei" className="w-6 h-6" />
                   </div>
                   <div className="chat-bubble-assistant">
                     <Loader2 className="w-4 h-4 animate-spin" />

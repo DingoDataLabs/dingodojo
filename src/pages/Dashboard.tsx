@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import dingoLogo from "@/assets/dingo-logo.png";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -384,7 +385,7 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="text-6xl animate-float mb-4">🦊</div>
+          <img src={dingoLogo} alt="Dingo Dojo" className="w-16 h-16 mx-auto animate-float mb-4" />
           <p className="text-muted-foreground text-lg animate-pulse">Loading the Dojo...</p>
         </div>
       </div>
@@ -398,7 +399,7 @@ export default function Dashboard() {
         <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 pt-4 md:pt-6 lg:pt-8 pb-14">
           <header className="flex items-center justify-between animate-slide-up">
             <div className="flex items-center gap-4">
-              <div className="text-5xl animate-float">🦊</div>
+              <img src={dingoLogo} alt="Dingo Dojo" className="w-12 h-12 animate-float" />
               <div>
                 <h1 className="text-2xl md:text-3xl font-display font-bold text-primary-foreground drop-shadow-sm">
                   G'day, {profile?.first_name || "Ninja"}!

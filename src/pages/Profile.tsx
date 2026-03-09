@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import dingoLogo from "@/assets/dingo-logo.png";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -242,7 +243,7 @@ export default function ProfilePage() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="text-6xl animate-float mb-4">🦊</div>
+          <img src={dingoLogo} alt="Dingo Dojo" className="w-16 h-16 mx-auto animate-float mb-4" />
           <p className="text-muted-foreground text-lg animate-pulse">Loading...</p>
         </div>
       </div>

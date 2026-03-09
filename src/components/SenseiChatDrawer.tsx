@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import dingoLogo from "@/assets/dingo-logo.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -48,7 +49,7 @@ export function SenseiChatDrawer({
         {!isOpen && (
           <div className="bg-card border border-border rounded-2xl rounded-tr-sm px-3 py-2 shadow-lg animate-slide-up max-w-[180px]">
             <p className="text-xs text-muted-foreground">
-              Need help? Ask Sensei! 🦊
+              Need help? Ask Sensei!
             </p>
           </div>
         )}
@@ -59,14 +60,14 @@ export function SenseiChatDrawer({
               size="icon"
               className="w-14 h-14 rounded-full bg-ochre hover:bg-ochre-dark shadow-lg"
             >
-              <span className="text-2xl">🦊</span>
+              <img src={dingoLogo} alt="Sensei" className="w-8 h-8" />
             </Button>
           </SheetTrigger>
           <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col">
             <SheetHeader className="p-4 border-b border-border bg-card/50">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-ochre flex items-center justify-center text-2xl">
-                  🦊
+                <div className="w-12 h-12 rounded-full bg-ochre flex items-center justify-center">
+                  <img src={dingoLogo} alt="Sensei" className="w-9 h-9" />
                 </div>
                 <div className="flex-1">
                   <SheetTitle className="font-display font-bold text-foreground">
@@ -84,8 +85,8 @@ export function SenseiChatDrawer({
                   className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} animate-slide-up`}
                 >
                   {message.role === "assistant" && (
-                    <div className="w-8 h-8 rounded-full bg-ochre flex items-center justify-center text-lg mr-2 flex-shrink-0">
-                      🦊
+                    <div className="w-8 h-8 rounded-full bg-ochre flex items-center justify-center mr-2 flex-shrink-0">
+                      <img src={dingoLogo} alt="Sensei" className="w-6 h-6" />
                     </div>
                   )}
                   <div
@@ -99,8 +100,8 @@ export function SenseiChatDrawer({
               ))}
               {isChatLoading && (
                 <div className="flex justify-start animate-slide-up">
-                  <div className="w-8 h-8 rounded-full bg-ochre flex items-center justify-center text-lg mr-2">
-                    🦊
+                  <div className="w-8 h-8 rounded-full bg-ochre flex items-center justify-center mr-2">
+                    <img src={dingoLogo} alt="Sensei" className="w-6 h-6" />
                   </div>
                   <div className="chat-bubble-assistant">
                     <Loader2 className="w-4 h-4 animate-spin" />
