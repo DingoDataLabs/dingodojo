@@ -209,7 +209,8 @@ function buildChecksPrompt(topicName: string, yearLevel: string, difficulty: any
 Use Australian English spelling.
 ${isMaths ? NSW_MATHS_CURRICULUM : ""}
 STUDENT LEVEL: ${difficulty.level} — ${difficulty.description}.
-${isMaths ? `CRITICAL: For EVERY question involving a calculation, include a "calculation_expression" field with the pure math expression (e.g. "3/4 + 1/2"). Double-check all arithmetic.` : ""}`;
+${isMaths ? `CRITICAL: For EVERY question involving a calculation, include a "calculation_expression" field with the pure math expression (e.g. "3/4 + 1/2"). Double-check all arithmetic.` : ""}
+CRITICAL: Multiple choice questions must always have a single correct positive answer. Do not use negatively-framed questions (e.g. 'which is NOT...', 'which does NOT...', 'except', 'which of these is false'). Each question should ask what IS correct, not what is incorrect.`;
 
   const sectionsContext = scaffoldSections.map((s, i) => `Section ${i + 1}: "${s.title}"\n${s.content}`).join("\n\n");
 
