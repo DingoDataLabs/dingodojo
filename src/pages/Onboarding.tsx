@@ -7,21 +7,33 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Check, ChevronRight, ChevronLeft, LogOut } from "lucide-react";
 
-interface Topic {
+type ConfidenceLevel = "tricky" | "okay" | "strong";
+
+interface SubjectConfidence {
   id: string;
   name: string;
   emoji: string;
-  subject_name: string;
+  confidence: ConfidenceLevel | null;
 }
+
+const confidenceOptions: { level: ConfidenceLevel; emoji: string; label: string }[] = [
+  { level: "tricky", emoji: "😬", label: "Tricky" },
+  { level: "okay", emoji: "🙂", label: "Okay" },
+  { level: "strong", emoji: "😎", label: "Strong" },
+];
+
+const XP_MAP: Record<ConfidenceLevel, number> = {
+  tricky: 0,
+  okay: 50,
+  strong: 150,
+};
 
 export default function Onboarding() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [gradeLevel, setGradeLevel] = useState("Year 5");
-  const [topics, setTopics] = useState<Topic[]>([]);
-  const [confidentTopics, setConfidentTopics] = useState<string[]>([]);
-  const [challengingTopics, setChallengingTopics] = useState<string[]>([]);
+  const [subjects, setSubjects] = useState<SubjectConfidence[]>([]);
   const [loading, setLoading] = useState(false);
   const [profileId, setProfileId] = useState<string | null>(null);
 
@@ -39,7 +51,6 @@ export default function Onboarding() {
   }, [user, navigate]);
 
   const fetchData = async () => {
-    // Fetch profile
     const { data: profile } = await supabase
       .from("profiles")
       .select("id, onboarding_completed")
@@ -55,84 +66,62 @@ export default function Onboarding() {
       setProfileId(profile.id);
     }
 
-    // Fetch all topics with subject names
     const { data: subjectsData } = await supabase
       .from("subjects")
-      .select("id, name");
-    
-    const { data: topicsData } = await supabase
-      .from("topics")
-      .select("id, name, emoji, subject_id")
-      .order("order_index");
+      .select("id, name, emoji")
+      .order("name");
 
-    if (topicsData && subjectsData) {
-      const subjectMap = Object.fromEntries(subjectsData.map(s => [s.id, s.name]));
-      setTopics(topicsData.map(t => ({
-        id: t.id,
-        name: t.name,
-        emoji: t.emoji || "📖",
-        subject_name: subjectMap[t.subject_id] || "Unknown"
-      })));
+    if (subjectsData) {
+      setSubjects(
+        subjectsData.map((s) => ({
+          id: s.id,
+          name: s.name,
+          emoji: s.emoji || "📚",
+          confidence: null,
+        }))
+      );
     }
   };
 
-  const toggleConfident = (topicId: string) => {
-    if (confidentTopics.includes(topicId)) {
-      setConfidentTopics(prev => prev.filter(id => id !== topicId));
-    } else if (confidentTopics.length < 5) {
-      // Remove from challenging if selected there
-      setChallengingTopics(prev => prev.filter(id => id !== topicId));
-      setConfidentTopics(prev => [...prev, topicId]);
-    }
+  const setConfidence = (subjectId: string, level: ConfidenceLevel) => {
+    setSubjects((prev) =>
+      prev.map((s) => (s.id === subjectId ? { ...s, confidence: level } : s))
+    );
   };
 
-  const toggleChallenging = (topicId: string) => {
-    if (challengingTopics.includes(topicId)) {
-      setChallengingTopics(prev => prev.filter(id => id !== topicId));
-    } else if (challengingTopics.length < 5) {
-      // Remove from confident if selected there
-      setConfidentTopics(prev => prev.filter(id => id !== topicId));
-      setChallengingTopics(prev => [...prev, topicId]);
-    }
-  };
+  const allRated = subjects.every((s) => s.confidence !== null);
 
   const handleComplete = async () => {
     if (!profileId) return;
     setLoading(true);
 
     try {
-      // Update profile with grade level and mark onboarding complete
       await supabase
         .from("profiles")
-        .update({
-          grade_level: gradeLevel,
-          onboarding_completed: true,
-        })
+        .update({ grade_level: gradeLevel, onboarding_completed: true })
         .eq("id", profileId);
 
-      // Create initial progress records for selected topics
-      const progressRecords = [];
+      // Fetch all topics grouped by subject
+      const { data: topicsData } = await supabase
+        .from("topics")
+        .select("id, subject_id");
 
-      // Confident topics start at Consolidating level (150+ XP)
-      for (const topicId of confidentTopics) {
-        progressRecords.push({
-          student_id: profileId,
-          topic_id: topicId,
-          xp_earned: 150, // Start at Consolidating level
-        });
-      }
+      if (topicsData) {
+        const progressRecords = topicsData
+          .map((topic) => {
+            const subject = subjects.find((s) => s.id === topic.subject_id);
+            if (!subject?.confidence) return null;
+            return {
+              student_id: profileId,
+              topic_id: topic.id,
+              xp_earned: XP_MAP[subject.confidence],
+            };
+          })
+          .filter(Boolean);
 
-      // Challenging topics start at lower XP (Beginning level)
-      for (const topicId of challengingTopics) {
-        progressRecords.push({
-          student_id: profileId,
-          topic_id: topicId,
-          xp_earned: 0, // Start at Beginning level
-        });
-      }
-
-      if (progressRecords.length > 0) {
-        await supabase.from("student_progress").insert(progressRecords);
+        if (progressRecords.length > 0) {
+          await supabase.from("student_progress").insert(progressRecords);
+        }
       }
 
       toast.success("Welcome to Dingo Dojo! Let's start training! 🦊");
@@ -162,7 +151,7 @@ export default function Onboarding() {
         </Button>
       </div>
 
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8 animate-slide-up">
           <img src={dingoLogo} alt="Dingo Dojo" className="w-16 h-16 mx-auto mb-4 animate-float" />
@@ -176,7 +165,7 @@ export default function Onboarding() {
 
         {/* Progress Steps */}
         <div className="flex items-center justify-center gap-2 mb-8">
-          {[1, 2, 3].map((s) => (
+          {[1, 2].map((s) => (
             <div key={s} className="flex items-center gap-2">
               <div
                 className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all ${
@@ -187,7 +176,7 @@ export default function Onboarding() {
               >
                 {step > s ? <Check className="w-5 h-5" /> : s}
               </div>
-              {s < 3 && (
+              {s < 2 && (
                 <div
                   className={`w-12 h-1 rounded-full transition-all ${
                     step > s ? "bg-primary" : "bg-muted"
@@ -234,96 +223,55 @@ export default function Onboarding() {
             <div className="space-y-6">
               <div className="text-center">
                 <h2 className="text-2xl font-display font-bold text-foreground mb-2">
-                  What are you confident with? 💪
+                  How do you feel about each subject?
                 </h2>
                 <p className="text-muted-foreground">
-                  Select 3-5 topics you feel good about ({confidentTopics.length}/5 selected)
+                  Tap how you feel — there's no wrong answer!
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[400px] overflow-y-auto scrollbar-thin p-1">
-                {topics.map((topic) => {
-                  const isSelected = confidentTopics.includes(topic.id);
-                  const isDisabled = !isSelected && confidentTopics.length >= 5;
-                  const isChallenging = challengingTopics.includes(topic.id);
+              <div className="space-y-4">
+                {subjects.map((subject) => (
+                  <div
+                    key={subject.id}
+                    className="rounded-2xl border-2 border-border p-4 transition-all"
+                  >
+                    <div className="flex items-center gap-3 mb-3">
+                      <span className="text-3xl">{subject.emoji}</span>
+                      <span className="text-lg font-display font-bold text-foreground">
+                        {subject.name}
+                      </span>
+                    </div>
 
-                  return (
-                    <button
-                      key={topic.id}
-                      onClick={() => toggleConfident(topic.id)}
-                      disabled={isDisabled || isChallenging}
-                      className={`p-4 rounded-xl border-2 transition-all text-left flex items-center gap-3 ${
-                        isSelected
-                          ? "border-eucalyptus bg-eucalyptus/10"
-                          : isChallenging
-                          ? "border-border bg-muted/50 opacity-50"
-                          : isDisabled
-                          ? "border-border opacity-50 cursor-not-allowed"
-                          : "border-border hover:border-eucalyptus/50"
-                      }`}
-                    >
-                      <span className="text-2xl">{topic.emoji}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-foreground truncate">{topic.name}</p>
-                        <p className="text-sm text-muted-foreground">{topic.subject_name}</p>
-                      </div>
-                      {isSelected && (
-                        <div className="w-6 h-6 rounded-full bg-eucalyptus flex items-center justify-center">
-                          <Check className="w-4 h-4 text-secondary-foreground" />
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {step === 3 && (
-            <div className="space-y-6">
-              <div className="text-center">
-                <h2 className="text-2xl font-display font-bold text-foreground mb-2">
-                  What's more challenging? 🎯
-                </h2>
-                <p className="text-muted-foreground">
-                  Select 3-5 topics you want to improve ({challengingTopics.length}/5 selected)
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[400px] overflow-y-auto scrollbar-thin p-1">
-                {topics.map((topic) => {
-                  const isSelected = challengingTopics.includes(topic.id);
-                  const isDisabled = !isSelected && challengingTopics.length >= 5;
-                  const isConfident = confidentTopics.includes(topic.id);
-
-                  return (
-                    <button
-                      key={topic.id}
-                      onClick={() => toggleChallenging(topic.id)}
-                      disabled={isDisabled || isConfident}
-                      className={`p-4 rounded-xl border-2 transition-all text-left flex items-center gap-3 ${
-                        isSelected
-                          ? "border-ochre bg-ochre/10"
-                          : isConfident
-                          ? "border-border bg-muted/50 opacity-50"
-                          : isDisabled
-                          ? "border-border opacity-50 cursor-not-allowed"
-                          : "border-border hover:border-ochre/50"
-                      }`}
-                    >
-                      <span className="text-2xl">{topic.emoji}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-foreground truncate">{topic.name}</p>
-                        <p className="text-sm text-muted-foreground">{topic.subject_name}</p>
-                      </div>
-                      {isSelected && (
-                        <div className="w-6 h-6 rounded-full bg-ochre flex items-center justify-center">
-                          <Check className="w-4 h-4 text-primary-foreground" />
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
+                    <div className="grid grid-cols-3 gap-2">
+                      {confidenceOptions.map((opt) => {
+                        const isSelected = subject.confidence === opt.level;
+                        return (
+                          <button
+                            key={opt.level}
+                            onClick={() => setConfidence(subject.id, opt.level)}
+                            className={`flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all ${
+                              isSelected
+                                ? opt.level === "strong"
+                                  ? "border-eucalyptus bg-eucalyptus/10"
+                                  : opt.level === "okay"
+                                  ? "border-primary bg-primary/10"
+                                  : "border-ochre bg-ochre/10"
+                                : "border-transparent hover:bg-muted"
+                            }`}
+                          >
+                            <span className="text-3xl">{opt.emoji}</span>
+                            <span className={`text-xs font-semibold ${
+                              isSelected ? "text-foreground" : "text-muted-foreground"
+                            }`}>
+                              {opt.label}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -333,7 +281,7 @@ export default function Onboarding() {
             {step > 1 ? (
               <Button
                 variant="outline"
-                onClick={() => setStep(step - 1)}
+                onClick={() => setStep(1)}
                 className="rounded-xl gap-2"
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -343,10 +291,9 @@ export default function Onboarding() {
               <div />
             )}
 
-            {step < 3 ? (
+            {step === 1 ? (
               <Button
-                onClick={() => setStep(step + 1)}
-                disabled={step === 2 && confidentTopics.length < 3}
+                onClick={() => setStep(2)}
                 className="rounded-xl gap-2"
               >
                 Next
@@ -355,7 +302,7 @@ export default function Onboarding() {
             ) : (
               <Button
                 onClick={handleComplete}
-                disabled={loading || challengingTopics.length < 3}
+                disabled={loading || !allRated}
                 className="rounded-xl gap-2 px-8"
               >
                 {loading ? "Setting up..." : "Start Training! 🎯"}
@@ -365,16 +312,16 @@ export default function Onboarding() {
         </div>
 
         {/* Skip option */}
-        {step === 2 || step === 3 ? (
+        {step === 2 && (
           <p className="text-center text-muted-foreground mt-4">
             <button
-              onClick={() => step === 2 ? setStep(3) : handleComplete()}
+              onClick={handleComplete}
               className="hover:text-primary transition-colors underline"
             >
               Skip this step
             </button>
           </p>
-        ) : null}
+        )}
       </div>
     </div>
   );
