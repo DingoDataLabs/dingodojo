@@ -97,14 +97,14 @@ const validateInput = (data: unknown): { valid: boolean; error?: string; data?: 
   };
 };
 
-// Validate subscription tier and daily limits
+// Validate subscription tier
 const validateMissionAccess = async (
   supabaseClient: any,
   userId: string
 ): Promise<{ allowed: boolean; error?: string }> => {
   const { data: profile, error } = await supabaseClient
     .from('profiles')
-    .select('subscription_tier, missions_today, last_mission_date')
+    .select('subscription_tier')
     .eq('user_id', userId)
     .single();
 
@@ -113,20 +113,10 @@ const validateMissionAccess = async (
     return { allowed: false, error: 'Failed to verify subscription status' };
   }
 
+  // Writing assessment access is gated by subscription tier only;
+  // mission limits are enforced by the generate-lesson function.
   if (profile.subscription_tier === 'champion') {
     return { allowed: true };
-  }
-
-  const today = new Date().toLocaleDateString('en-AU', { timeZone: 'Australia/Sydney' });
-  const lastMissionDate = profile.last_mission_date as string | null;
-  const isNewDay = !lastMissionDate || lastMissionDate !== today;
-  const effectiveMissionsToday: number = isNewDay ? 0 : (profile.missions_today || 0);
-
-  if (effectiveMissionsToday >= 2) {
-    return { 
-      allowed: false, 
-      error: 'Daily mission limit reached. Upgrade to Champion for unlimited access!' 
-    };
   }
 
   return { allowed: true };
