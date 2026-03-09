@@ -161,6 +161,7 @@ export default function TrainingSession() {
   const [challengeAttempts, setChallengeAttempts] = useState<Record<number, number>>({});
   const [earnedXp, setEarnedXp] = useState(0);
   const [missionComplete, setMissionComplete] = useState(false);
+  const [completionCountdown, setCompletionCountdown] = useState<number | null>(null);
   const [celebrationData, setCelebrationData] = useState<{ xp: number; streak: number; isStreakDay: boolean } | null>(null);
 
   // Free-text state
