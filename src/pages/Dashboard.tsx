@@ -428,8 +428,8 @@ export default function Dashboard() {
               </div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-xl text-primary-foreground hover:bg-white/20">
-                    <Settings className="w-5 h-5" />
+                  <Button variant="ghost" size="icon" className="rounded-xl text-primary-foreground hover:bg-white/20 w-12 h-12">
+                    <Settings className="w-6 h-6" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48 rounded-xl">
