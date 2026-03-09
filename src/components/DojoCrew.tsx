@@ -213,8 +213,15 @@ export function DojoCrew({ profileId, firstName, totalXp, currentStreak }: DojoC
     fetchFriendships();
   };
 
+  const [removingFriend, setRemovingFriend] = useState<{ id: string; name: string } | null>(null);
+
+  const confirmRemoveFriend = (friendshipId: string, friendName: string) => {
+    setRemovingFriend({ id: friendshipId, name: friendName });
+  };
+
   const declineOrRemove = async (friendshipId: string) => {
     await supabase.from("friendships").delete().eq("id", friendshipId);
+    setRemovingFriend(null);
     fetchFriendships();
   };
 
