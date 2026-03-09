@@ -429,7 +429,7 @@ export default function Dashboard() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="rounded-xl text-primary-foreground hover:bg-white/20 w-12 h-12">
-                    <Settings className="w-6 h-6" />
+                    <Settings className="w-7 h-7" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48 rounded-xl">
