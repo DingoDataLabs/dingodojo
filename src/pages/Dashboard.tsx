@@ -395,7 +395,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-background">
       {/* Wavy Header Background */}
-      <div className="relative" style={{ background: "linear-gradient(135deg, hsl(var(--ochre-dark)) 0%, hsl(var(--ochre)) 50%, hsl(var(--ochre-light)) 100%)" }}>
+      <div className="relative" style={{ background: "linear-gradient(135deg, hsl(var(--ochre-light)) 0%, hsl(var(--ochre)) 50%, hsl(var(--ochre-dark)) 100%)" }}>
         <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 pt-4 md:pt-6 lg:pt-8 pb-14">
           <header className="flex items-center justify-between animate-slide-up">
             <div className="flex items-center gap-4">
