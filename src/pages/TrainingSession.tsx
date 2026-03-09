@@ -18,6 +18,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { getMasteryLevel } from "@/lib/progressUtils";
 import { AnnotatedWriting } from "@/components/AnnotatedWriting";
 import { WritingFeedbackModal } from "@/components/WritingFeedbackModal";
+import { useWakeLock } from "@/hooks/useWakeLock";
 
 interface Topic {
   id: string;
