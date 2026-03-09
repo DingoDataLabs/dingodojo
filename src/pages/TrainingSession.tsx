@@ -160,6 +160,7 @@ export default function TrainingSession() {
   const [challengeCompleted, setChallengeCompleted] = useState<Record<number, boolean>>({});
   const [showChallengeHint, setShowChallengeHint] = useState<Record<number, boolean>>({});
   const [challengeAttempts, setChallengeAttempts] = useState<Record<number, number>>({});
+  const [regeneratingQuestion, setRegeneratingQuestion] = useState<Record<number, boolean>>({});
   const [earnedXp, setEarnedXp] = useState(0);
   const [missionComplete, setMissionComplete] = useState(false);
   const [completionCountdown, setCompletionCountdown] = useState<number | null>(null);
