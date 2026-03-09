@@ -3,14 +3,17 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Printer, Trophy, Flame, Target, BookOpen } from "lucide-react";
+import { ArrowLeft, Printer, Trophy, Flame, Target, BookOpen, ChevronDown } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
+import { getMasteryLevel, getProgressPercentage } from "@/lib/progressUtils";
+import { cn } from "@/lib/utils";
 
 interface Profile {
   id: string;
@@ -20,12 +23,21 @@ interface Profile {
   weekly_xp_goal: number;
 }
 
+interface TopicDetail {
+  id: string;
+  name: string;
+  emoji: string;
+  xpEarned: number;
+  isMastered: boolean;
+}
+
 interface SubjectProgress {
   subjectName: string;
   emoji: string;
   completedTopics: number;
   totalTopics: number;
   xpEarned: number;
+  topics: TopicDetail[];
 }
 
 interface HandwritingSubmission {
@@ -38,6 +50,56 @@ interface HandwritingSubmission {
   created_at: string;
 }
 
+// Belt color map for progress bars
+const BELT_BAR_COLORS: Record<string, string> = {
+  muted: "bg-muted-foreground/40",
+  "ochre-light": "bg-yellow-300",
+  ochre: "bg-orange-400",
+  "eucalyptus-light": "bg-green-400",
+  sky: "bg-blue-400",
+  purple: "bg-purple-500",
+  brown: "bg-amber-700",
+  black: "bg-gray-800",
+};
+
+function TopicRow({ topic }: { topic: TopicDetail }) {
+  const level = getMasteryLevel(topic.xpEarned);
+  const pct = getProgressPercentage(topic.xpEarned);
+
+  return (
+    <div className="space-y-1 py-2 border-b border-border/50 last:border-0">
+      <div className="flex items-center justify-between">
+        <span className="text-sm flex items-center gap-1.5">
+          <span>{topic.emoji}</span>
+          <span className={topic.isMastered ? "font-semibold text-foreground" : "text-muted-foreground"}>
+            {topic.name}
+          </span>
+          {topic.isMastered && (
+            <span className="text-[10px] bg-primary/10 text-primary font-bold px-1.5 py-0.5 rounded-full">
+              MASTERED
+            </span>
+          )}
+        </span>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-bold", level.colorClass)}>
+            {level.name}
+          </span>
+          <span>{topic.xpEarned} XP</span>
+        </div>
+      </div>
+      <div className="relative h-1.5 w-full rounded-full bg-muted overflow-hidden">
+        <div
+          className={cn(
+            "h-full rounded-full transition-all duration-500",
+            BELT_BAR_COLORS[level.color] ?? "bg-primary"
+          )}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function ProgressPage() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -47,6 +109,7 @@ export default function ProgressPage() {
   const [missionsCompleted, setMissionsCompleted] = useState(0);
   const [topicsMastered, setTopicsMastered] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [openSubjects, setOpenSubjects] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/auth");
@@ -55,6 +118,15 @@ export default function ProgressPage() {
   useEffect(() => {
     if (user) fetchAll();
   }, [user]);
+
+  const toggleSubject = (name: string) => {
+    setOpenSubjects(prev => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  };
 
   const fetchAll = async () => {
     try {
@@ -67,10 +139,9 @@ export default function ProgressPage() {
       if (!profileData) { setLoading(false); return; }
       setProfile(profileData);
 
-      // Subjects + topics + progress in parallel
       const [subjectsRes, topicsRes, progressRes, hwRes] = await Promise.all([
         supabase.from("subjects").select("id, name, emoji").order("name"),
-        supabase.from("topics").select("id, subject_id"),
+        supabase.from("topics").select("id, subject_id, name, emoji, order_index").order("order_index"),
         supabase.from("student_progress").select("topic_id, xp_earned, missions_this_week").eq("student_id", profileData.id),
         supabase.from("handwriting_submissions").select("id, image_path, letter_formation, spacing_sizing, presentation, composite_score, created_at").eq("profile_id", profileData.id).order("created_at", { ascending: true }),
       ]);
@@ -79,31 +150,35 @@ export default function ProgressPage() {
       const topics = topicsRes.data || [];
       const progress = progressRes.data || [];
 
-      // Calculate missions completed (sum of all missions_this_week across all progress records + profile level)
       const totalMissions = progress.reduce((sum, p) => sum + (p.missions_this_week || 0), 0);
       setMissionsCompleted(totalMissions);
 
-      // Topics mastered (xp >= 500)
-      const mastered = progress.filter(p => (p.xp_earned || 0) >= 500).length;
+      // Mastered = Black Belt = 1500+ XP
+      const mastered = progress.filter(p => (p.xp_earned || 0) >= 1500).length;
       setTopicsMastered(mastered);
 
-      // Subject progress
       const sp: SubjectProgress[] = subjects.map(s => {
         const subjectTopics = topics.filter(t => t.subject_id === s.id);
-        const completed = subjectTopics.filter(t => {
+        const topicDetails: TopicDetail[] = subjectTopics.map(t => {
           const p = progress.find(pr => pr.topic_id === t.id);
-          return p && (p.xp_earned || 0) >= 500;
-        }).length;
-        const xp = subjectTopics.reduce((sum, t) => {
-          const p = progress.find(pr => pr.topic_id === t.id);
-          return sum + (p?.xp_earned || 0);
-        }, 0);
+          const xp = p?.xp_earned || 0;
+          return {
+            id: t.id,
+            name: t.name,
+            emoji: t.emoji || "📖",
+            xpEarned: xp,
+            isMastered: xp >= 1500,
+          };
+        });
+        const completed = topicDetails.filter(t => t.isMastered).length;
+        const xp = topicDetails.reduce((sum, t) => sum + t.xpEarned, 0);
         return {
           subjectName: s.name,
           emoji: s.emoji || "📚",
           completedTopics: completed,
           totalTopics: subjectTopics.length,
           xpEarned: xp,
+          topics: topicDetails,
         };
       }).filter(s => s.totalTopics > 0);
 
@@ -209,26 +284,71 @@ export default function ProgressPage() {
 
           {/* Section 2: Subjects */}
           <div className="bento-card bg-card p-6 animate-slide-up stagger-1">
-            <h2 className="text-xl font-display font-bold text-foreground mb-4 flex items-center gap-2">
+            <h2 className="text-xl font-display font-bold text-foreground mb-1 flex items-center gap-2">
               📚 Subjects
             </h2>
-            <div className="space-y-4">
-              {subjectProgress.map(s => (
-                <div key={s.subjectName} className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold flex items-center gap-2">
-                      <span>{s.emoji}</span> {s.subjectName}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {s.completedTopics}/{s.totalTopics} topics · {s.xpEarned.toLocaleString()} XP
-                    </span>
-                  </div>
-                  <Progress
-                    value={s.totalTopics > 0 ? (s.completedTopics / s.totalTopics) * 100 : 0}
-                    className="h-2"
-                  />
-                </div>
-              ))}
+            <p className="text-xs text-muted-foreground mb-4">
+              Mastered topics (Black Belt 🥷) per subject — tap a subject to see all topics
+            </p>
+            <div className="space-y-2">
+              {subjectProgress.map(s => {
+                const pct = s.totalTopics > 0 ? (s.completedTopics / s.totalTopics) * 100 : 0;
+                const isOpen = openSubjects.has(s.subjectName);
+                return (
+                  <Collapsible key={s.subjectName} open={isOpen} onOpenChange={() => toggleSubject(s.subjectName)}>
+                    <CollapsibleTrigger asChild>
+                      <button className="w-full text-left rounded-xl border border-border/60 bg-muted/30 hover:bg-muted/60 transition-colors p-3 group">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-semibold flex items-center gap-2">
+                            <span>{s.emoji}</span> {s.subjectName}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">
+                              {s.completedTopics}/{s.totalTopics} mastered
+                            </span>
+                            <ChevronDown className={cn(
+                              "w-4 h-4 text-muted-foreground transition-transform duration-200",
+                              isOpen && "rotate-180"
+                            )} />
+                          </div>
+                        </div>
+                        {/* Two-tone progress bar */}
+                        <div className="relative h-2 w-full rounded-full bg-muted overflow-hidden">
+                          {/* In-progress portion (any XP at all, not just mastered) */}
+                          {(() => {
+                            const anyProgressPct = s.totalTopics > 0
+                              ? (s.topics.filter(t => t.xpEarned > 0).length / s.totalTopics) * 100
+                              : 0;
+                            return (
+                              <div
+                                className="absolute h-full rounded-full bg-primary/25 transition-all duration-500"
+                                style={{ width: `${anyProgressPct}%` }}
+                              />
+                            );
+                          })()}
+                          {/* Mastered portion */}
+                          <div
+                            className="absolute h-full rounded-full bg-primary transition-all duration-500"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        {s.xpEarned > 0 && (
+                          <p className="text-[10px] text-muted-foreground mt-1 text-right">{s.xpEarned.toLocaleString()} XP total</p>
+                        )}
+                      </button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="mt-1 rounded-xl border border-border/60 bg-card px-3 pb-1 pt-2">
+                        {s.topics.length === 0 ? (
+                          <p className="text-xs text-muted-foreground py-2 text-center">No topics yet</p>
+                        ) : (
+                          s.topics.map(t => <TopicRow key={t.id} topic={t} />)
+                        )}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                );
+              })}
               {subjectProgress.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-4">No progress yet — start a mission! 🥋</p>
               )}
