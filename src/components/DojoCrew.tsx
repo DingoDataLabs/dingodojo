@@ -155,11 +155,7 @@ export function DojoCrew({ profileId, firstName, totalXp, currentStreak }: DojoC
     setSearching(true);
     try {
       const { data } = await supabase
-        .from("user_profiles")
-        .select("id, first_name, total_xp, grade_level")
-        .ilike("username", `%${query}%`)
-        .neq("id", profileId)
-        .limit(5);
+        .rpc("search_users_by_username", { search_query: query });
 
       if (data) {
         const existingIds = new Set(friendships.flatMap(f => [f.requester_id, f.addressee_id]));
