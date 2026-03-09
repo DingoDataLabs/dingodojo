@@ -184,7 +184,18 @@ export default function ProgressPage() {
       }).filter(s => s.totalTopics > 0);
 
       setSubjectProgress(sp);
-      setHandwritingData(hwRes.data || []);
+      const hwData = hwRes.data || [];
+      setHandwritingData(hwData);
+
+      // Generate signed URLs for submissions with images
+      const urlMap: Record<string, string> = {};
+      await Promise.all(
+        hwData.filter(h => h.image_path).slice(-5).map(async (h) => {
+          const { data } = await supabase.storage.from("handwriting-submissions").createSignedUrl(h.image_path!, 3600);
+          if (data?.signedUrl) urlMap[h.id] = data.signedUrl;
+        })
+      );
+      setSignedUrls(urlMap);
     } catch (err) {
       console.error("Error fetching progress:", err);
     } finally {
