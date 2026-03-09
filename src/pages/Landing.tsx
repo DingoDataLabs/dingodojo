@@ -24,8 +24,8 @@ export default function Landing() {
             </div>
             <div className="flex items-center gap-3">
               {user ? (
-                <Button onClick={handleEnterDojo} className="rounded-xl font-semibold bg-white/20 hover:bg-white/30 text-primary-foreground border-0 backdrop-blur-sm">
-                  Enter Your Dojo
+                <Button size="lg" onClick={handleEnterDojo} className="rounded-xl font-bold text-lg h-12 px-8 gap-2 bg-background text-foreground hover:bg-background/90 hover:scale-105 transition-transform shadow-elevated">
+                  Enter Your Dojo <ArrowRight className="w-5 h-5" />
                 </Button>
               ) : (
                 <>
