@@ -361,6 +361,20 @@ export default function Dashboard() {
   // Build topic progress for smart mission selection
   const prioritySubjects = ["english", "maths"];
 
+  // Build a progress map for belt calculations
+  const progressMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const p of topicProgressData) {
+      map[p.topic_id] = p.xp_earned || 0;
+    }
+    return map;
+  }, [topicProgressData]);
+
+  // Overall belt (avg across English + Maths topics)
+  const overallBelt = useMemo(() => {
+    return getOverallBelt(subjects, topics, progressMap, prioritySubjects);
+  }, [subjects, topics, progressMap]);
+
   const smartMissionTopics = useMemo(() => {
     return topics.map(topic => {
       const subject = subjects.find(s => s.id === topic.subject_id);
