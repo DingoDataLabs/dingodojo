@@ -106,6 +106,7 @@ export default function ProgressPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [subjectProgress, setSubjectProgress] = useState<SubjectProgress[]>([]);
   const [handwritingData, setHandwritingData] = useState<HandwritingSubmission[]>([]);
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [missionsCompleted, setMissionsCompleted] = useState(0);
   const [topicsMastered, setTopicsMastered] = useState(0);
   const [loading, setLoading] = useState(true);
