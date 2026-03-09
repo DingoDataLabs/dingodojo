@@ -383,14 +383,12 @@ serve(async (req) => {
     const yearLevel = gradeLevel || "Year 5";
     const isMaths = subjectSlug === "maths" || subjectSlug === "mathematics";
 
-    // Only validate subscription on scaffold phase
-    if (phase === "scaffold") {
-      const userId = userData.user.id;
-      const missionAccess = await validateMissionAccess(supabaseClient, userId);
-      if (!missionAccess.allowed) {
-        return new Response(JSON.stringify({ error: missionAccess.error, code: 'LIMIT_REACHED' }),
-          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
+    // Validate subscription on all phases
+    const userId = userData.user.id;
+    const missionAccess = await validateMissionAccess(supabaseClient, userId, subjectSlug);
+    if (!missionAccess.allowed) {
+      return new Response(JSON.stringify({ error: missionAccess.error, code: 'LIMIT_REACHED' }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // ── Phase: Scaffold ──
