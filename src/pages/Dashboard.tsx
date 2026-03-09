@@ -421,7 +421,13 @@ export default function Dashboard() {
                 <h1 className="text-2xl md:text-3xl font-display font-bold text-primary-foreground drop-shadow-sm">
                   G'day, {profile?.first_name || "Ninja"}!
                 </h1>
-                <p className="text-primary-foreground/75">{profile?.grade_level || "Year 5"} • The Dojo</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold shadow-sm backdrop-blur-sm ${overallBelt.level.colorClass}`}>
+                    {overallBelt.level.emoji} {overallBelt.level.name}
+                  </span>
+                  <span className="text-primary-foreground/60 text-sm">•</span>
+                  <p className="text-primary-foreground/75 text-sm">{profile?.grade_level || "Year 5"}</p>
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-2">
