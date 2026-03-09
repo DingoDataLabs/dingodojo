@@ -755,20 +755,37 @@ export default function TrainingSession() {
         xp_earned: totalXp,
       });
 
+      const newStreak = currentProfile?.current_streak || 0;
+      const isStreakDay = currentProfile?.last_mission_date !== today;
+
       setMissionComplete(true);
+      setCelebrationData({ xp: finalXp, streak: newStreak, isStreakDay });
 
+      // Burst confetti
       confetti({
-        particleCount: 150,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ["#D97706", "#059669", "#0EA5E9", "#F59E0B"],
+        particleCount: 180,
+        spread: 80,
+        origin: { y: 0.55 },
+        colors: ["#D97706", "#059669", "#0EA5E9", "#F59E0B", "#EF4444"],
       });
-
-      toast.success(`+${totalXp} XP earned! You're amazing! 🏆`);
+      setTimeout(() => {
+        confetti({
+          particleCount: 80,
+          spread: 50,
+          origin: { y: 0.3, x: 0.2 },
+          colors: ["#D97706", "#F59E0B"],
+        });
+        confetti({
+          particleCount: 80,
+          spread: 50,
+          origin: { y: 0.3, x: 0.8 },
+          colors: ["#059669", "#0EA5E9"],
+        });
+      }, 400);
 
       setTimeout(() => {
         navigate(`/subject/${subjectSlug}`);
-      }, 2500);
+      }, 4000);
     } catch (err) {
       console.error("Error completing mission:", err);
       toast.error("Something went wrong!");
