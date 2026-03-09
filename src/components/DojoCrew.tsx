@@ -324,11 +324,13 @@ export function DojoCrew({ profileId, firstName, totalXp, currentStreak }: DojoC
                           </span>
                         )}
                       </div>
-                      {friendship && (
-                        <button onClick={() => declineOrRemove(friendship.id)} className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      )}
+                      <div className="w-5 shrink-0 flex items-center justify-center">
+                        {friendship && (
+                          <button onClick={() => confirmRemoveFriend(friendship.id, entry.first_name || "this friend")} className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
