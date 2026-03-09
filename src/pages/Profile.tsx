@@ -500,7 +500,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Reset Progress Card */}
-          <div className="bento-card bg-card p-6 animate-slide-up stagger-2 border-destructive/20">
+          <div className="bento-card bg-card p-6 animate-slide-up stagger-3 border-destructive/20">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center">
                 <RefreshCw className="w-5 h-5 text-destructive" />
