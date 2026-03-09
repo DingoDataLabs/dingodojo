@@ -165,20 +165,31 @@ export function DojoCrew({ profileId, firstName, totalXp, currentStreak }: DojoC
   };
 
   const sendFriendRequest = async (addresseeId: string) => {
-    // Optimistically remove from results immediately
     setSearchResults(prev => prev.filter(u => u.id !== addresseeId));
+
+    // Check if there's already a pending request between these users
+    const { data: existing } = await supabase
+      .from("friendships")
+      .select("id, status, requester_id")
+      .or(`and(requester_id.eq.${profileId},addressee_id.eq.${addresseeId}),and(requester_id.eq.${addresseeId},addressee_id.eq.${profileId})`)
+      .maybeSingle();
+
+    if (existing) {
+      if (existing.status === "pending" && existing.requester_id === profileId) {
+        toast.info("You've already sent a request to this person 👋");
+        return;
+      }
+      // Remove stale/old friendship row before re-adding
+      await supabase.from("friendships").delete().eq("id", existing.id);
+    }
+
     const { error } = await supabase.from("friendships").insert({
       requester_id: profileId!,
       addressee_id: addresseeId,
       status: "pending",
     });
     if (error) {
-      if (error.code === "23505") {
-        toast.info("You've already sent a request to this person 👋");
-      } else {
-        toast.error("Couldn't send request");
-        setSearchResults(prev => [...prev]); // restore on error
-      }
+      toast.error("Couldn't send request");
       return;
     }
     toast.success("Friend request sent! 🤝");
