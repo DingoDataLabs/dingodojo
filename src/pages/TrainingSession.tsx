@@ -532,15 +532,63 @@ export default function TrainingSession() {
       }
     } else {
       setShowChallengeHint(prev => ({ ...prev, [questionIdx]: true }));
-      toast("Good try! Check the hint and have another go! 💪", { icon: "🤔" });
       
-      // Auto-message Mirri for help after 2 attempts
       if (attempts >= 2) {
-        const helpMessage = `I need help with this challenge question: "${question.question}"`;
-        sendMessageWithContext(helpMessage, question, selectedAnswer);
+        // Regenerate this question to prevent answer spamming
+        toast("New question coming — let's try a fresh one! 🔄", { icon: "🔄" });
+        regenerateChallengeQuestion(questionIdx);
+      } else {
+        toast("Good try! Check the hint and have another go! 💪", { icon: "🤔" });
       }
       
       setChallengeAnswers(prev => ({ ...prev, [questionIdx]: null }));
+    }
+  };
+
+  const regenerateChallengeQuestion = async (questionIdx: number) => {
+    if (!lessonContent || !topic || !subject) return;
+    
+    setRegeneratingQuestion(prev => ({ ...prev, [questionIdx]: true }));
+    
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-lesson", {
+        body: {
+          topicName: topic.name,
+          topicEmoji: topic.emoji,
+          gradeLevel: profile?.grade_level || "Year 5",
+          topicXp: topicXp || 0,
+          subjectSlug: subject.slug,
+          phase: "challenge",
+        },
+      });
+
+      if (error) throw error;
+      
+      const newChallenge = data?.final_challenge;
+      if (newChallenge?.questions?.length > 0) {
+        // Pick one question from the regenerated set (use questionIdx mod length for variety)
+        const newQuestion = newChallenge.questions[questionIdx % newChallenge.questions.length];
+        
+        setLessonContent(prev => {
+          if (!prev) return prev;
+          const updatedQuestions = [...prev.final_challenge.questions];
+          updatedQuestions[questionIdx] = newQuestion;
+          return {
+            ...prev,
+            final_challenge: { ...prev.final_challenge, questions: updatedQuestions },
+          };
+        });
+        
+        // Reset state for this question
+        setChallengeAttempts(prev => ({ ...prev, [questionIdx]: 0 }));
+        setChallengeAnswers(prev => ({ ...prev, [questionIdx]: null }));
+        setShowChallengeHint(prev => ({ ...prev, [questionIdx]: false }));
+      }
+    } catch (err) {
+      console.error("Failed to regenerate question:", err);
+      toast.error("Couldn't load a new question — have another try at this one!");
+    } finally {
+      setRegeneratingQuestion(prev => ({ ...prev, [questionIdx]: false }));
     }
   };
 
