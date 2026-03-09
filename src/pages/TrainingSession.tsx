@@ -1593,8 +1593,8 @@ export default function TrainingSession() {
           <div className="w-1/2 flex flex-col bg-sand/30">
             <div className="flex-shrink-0 p-4 border-b border-border bg-card/50">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-ochre flex items-center justify-center text-2xl">
-                  🦊
+                <div className="w-12 h-12 rounded-full bg-ochre flex items-center justify-center">
+                  <img src={dingoLogo} alt="Sensei" className="w-9 h-9" />
                 </div>
                 <div>
                   <h3 className="font-display font-bold text-foreground">Mirri the Study Buddy</h3>
