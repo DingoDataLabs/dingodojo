@@ -5,6 +5,16 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Flame, X, Check, UserPlus, Search } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface FriendProfile {
   id: string;
@@ -203,8 +213,15 @@ export function DojoCrew({ profileId, firstName, totalXp, currentStreak }: DojoC
     fetchFriendships();
   };
 
+  const [removingFriend, setRemovingFriend] = useState<{ id: string; name: string } | null>(null);
+
+  const confirmRemoveFriend = (friendshipId: string, friendName: string) => {
+    setRemovingFriend({ id: friendshipId, name: friendName });
+  };
+
   const declineOrRemove = async (friendshipId: string) => {
     await supabase.from("friendships").delete().eq("id", friendshipId);
+    setRemovingFriend(null);
     fetchFriendships();
   };
 
@@ -307,11 +324,13 @@ export function DojoCrew({ profileId, firstName, totalXp, currentStreak }: DojoC
                           </span>
                         )}
                       </div>
-                      {friendship && (
-                        <button onClick={() => declineOrRemove(friendship.id)} className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      )}
+                      <div className="w-5 shrink-0 flex items-center justify-center">
+                        {friendship && (
+                          <button onClick={() => confirmRemoveFriend(friendship.id, entry.first_name || "this friend")} className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
@@ -350,6 +369,23 @@ export function DojoCrew({ profileId, firstName, totalXp, currentStreak }: DojoC
           </div>
         )}
       </div>
+
+      <AlertDialog open={!!removingFriend} onOpenChange={(open) => !open && setRemovingFriend(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove friend?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove <span className="font-medium">{removingFriend?.name}</span> from your Dojo Crew?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => removingFriend && declineOrRemove(removingFriend.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
