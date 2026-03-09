@@ -36,11 +36,21 @@ interface Profile {
   vacation_passes: number;
 }
 
+interface SubscriptionInfo {
+  subscribed: boolean;
+  tier: string;
+  subscriptionEnd: string | null;
+  status: string | null;
+}
+
 export default function ProfilePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [subInfo, setSubInfo] = useState<SubscriptionInfo | null>(null);
+  const [subLoading, setSubLoading] = useState(true);
+  const [portalLoading, setPortalLoading] = useState(false);
   
   // Form states
   const [firstName, setFirstName] = useState("");
