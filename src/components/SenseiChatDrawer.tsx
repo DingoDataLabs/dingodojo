@@ -83,9 +83,7 @@ export function SenseiChatDrawer({
                   className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} animate-slide-up`}
                 >
                   {message.role === "assistant" && (
-                    <div className="w-8 h-8 rounded-full bg-ochre flex items-center justify-center mr-2 flex-shrink-0">
-                      <img src={dingoLogo} alt="Sensei" className="w-6 h-6" />
-                    </div>
+                    <img src={dingoLogo} alt="Sensei" className="w-8 h-8 mr-2 flex-shrink-0" />
                   )}
                   <div
                     className={`max-w-[80%] ${
