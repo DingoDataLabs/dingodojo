@@ -399,7 +399,7 @@ export default function Dashboard() {
         <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 pt-4 md:pt-6 lg:pt-8 pb-14">
           <header className="flex items-center justify-between animate-slide-up">
             <div className="flex items-center gap-4">
-              <img src={dingoLogo} alt="Dingo Dojo" className="w-12 h-12 animate-float" />
+              <img src={dingoLogo} alt="Dingo Dojo" className="w-24 h-24 animate-float" />
               <div>
                 <h1 className="text-2xl md:text-3xl font-display font-bold text-primary-foreground drop-shadow-sm">
                   G'day, {profile?.first_name || "Ninja"}!
