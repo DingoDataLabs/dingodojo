@@ -271,7 +271,7 @@ export function DojoCrew({ profileId, firstName, totalXp, currentStreak }: DojoC
           <div className="space-y-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input placeholder="Find a friend by name..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9 h-9 text-sm rounded-xl" />
+              <Input placeholder="Find a friend by Dojo Name..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9 h-9 text-sm rounded-xl" />
               {searchResults.length > 0 && (
                 <div className="absolute z-10 top-full mt-1 w-full bg-card border border-border rounded-xl shadow-lg overflow-hidden">
                   {searchResults.map(user => (
