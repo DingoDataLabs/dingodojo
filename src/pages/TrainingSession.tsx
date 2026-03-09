@@ -735,6 +735,36 @@ export default function TrainingSession() {
         // Store transcribed text as the student response for display
         setFreeTextAnswers(prev => ({ ...prev, [key]: data.handwriting.transcribed_text || "" }));
 
+        // Save submission to database (handwriting image is already stored by assess-handwriting edge function)
+        if (profile?.id) {
+          const subName = subject ? (subject as any).name || subjectSlug : subjectSlug;
+          supabase.from("submissions").insert({
+            profile_id: profile.id,
+            submission_type: "handwritten",
+            subject_name: subName,
+            topic_name: topic?.name || null,
+            question: question.question,
+            student_text: data.handwriting.transcribed_text || null,
+            image_path: data.imagePath || null,
+            content_score: data.writing.score,
+            content_max_score: data.writing.maxScore,
+            content_feedback: data.writing.feedback,
+            content_overall_rating: data.writing.overallRating,
+            strengths: data.writing.strengths || [],
+            improvements: data.writing.improvements || [],
+            annotations: data.writing.annotations || [],
+            letter_formation: data.handwriting.letter_formation,
+            spacing_sizing: data.handwriting.spacing_sizing,
+            presentation: data.handwriting.presentation,
+            composite_score: data.handwriting.composite_score,
+            letter_formation_comment: data.handwriting.letter_formation_comment || null,
+            spacing_sizing_comment: data.handwriting.spacing_sizing_comment || null,
+            presentation_comment: data.handwriting.presentation_comment || null,
+          }).then(({ error: insertErr }) => {
+            if (insertErr) console.error("Failed to save submission:", insertErr);
+          });
+        }
+
         setPendingFeedbackKey(key);
         setShowFeedbackModal(true);
       }
