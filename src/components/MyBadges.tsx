@@ -60,7 +60,7 @@ export function MyBadges({ profileId, currentStreak, totalXp }: MyBadgesProps) {
       .select("xp_earned")
       .eq("student_id", profileId);
 
-    const masteryCount = progressData?.filter(p => (p.xp_earned || 0) >= 500).length || 0;
+    const masteryCount = progressData?.filter(p => (p.xp_earned || 0) >= 1500).length || 0;
     const earnedIds = new Set(earnedBadges.map(e => e.badge_id));
     const newlyEarned: Badge[] = [];
 
