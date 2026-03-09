@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import dingoLogo from "@/assets/dingo-logo.png";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
