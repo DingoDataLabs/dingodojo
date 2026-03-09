@@ -207,6 +207,17 @@ export default function TrainingSession() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Auto-complete mission after countdown when all challenges are done
+  useEffect(() => {
+    if (completionCountdown === null) return;
+    if (completionCountdown <= 0) {
+      completeMission();
+      return;
+    }
+    const timer = setTimeout(() => setCompletionCountdown(prev => (prev !== null ? prev - 1 : null)), 1000);
+    return () => clearTimeout(timer);
+  }, [completionCountdown]);
+
   const fetchProfile = async () => {
     const { data } = await supabase
       .from("profiles")
