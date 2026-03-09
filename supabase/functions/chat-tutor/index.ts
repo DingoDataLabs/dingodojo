@@ -113,40 +113,8 @@ const validateInput = (data: unknown): { valid: boolean; error?: string; data?: 
   };
 };
 
-// Validate subscription tier and daily limits
-const validateMissionAccess = async (
-  supabaseClient: any,
-  userId: string
-): Promise<{ allowed: boolean; error?: string }> => {
-  const { data: profile, error } = await supabaseClient
-    .from('profiles')
-    .select('subscription_tier, missions_today, last_mission_date')
-    .eq('user_id', userId)
-    .single();
-
-  if (error) {
-    console.error('Error fetching profile for mission access:', error);
-    return { allowed: false, error: 'Failed to verify subscription status' };
-  }
-
-  if (profile.subscription_tier === 'champion') {
-    return { allowed: true };
-  }
-
-  const today = new Date().toLocaleDateString('en-AU', { timeZone: 'Australia/Sydney' });
-  const lastMissionDate = profile.last_mission_date as string | null;
-  const isNewDay = !lastMissionDate || lastMissionDate !== today;
-  const effectiveMissionsToday: number = isNewDay ? 0 : (profile.missions_today || 0);
-
-  if (effectiveMissionsToday >= 2) {
-    return { 
-      allowed: false, 
-      error: 'Daily mission limit reached. Upgrade to Champion for unlimited access!' 
-    };
-  }
-
-  return { allowed: true };
-};
+// Note: Mission limits are enforced at mission start, not in the chat tutor.
+// The chat tutor is a helper available during lessons regardless of daily limits.
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -181,15 +149,6 @@ serve(async (req) => {
     }
     
     console.log("Authenticated user:", user.id);
-
-    // Validate subscription tier and daily limits
-    const missionAccess = await validateMissionAccess(supabaseClient, user.id);
-    if (!missionAccess.allowed) {
-      return new Response(
-        JSON.stringify({ error: missionAccess.error, code: 'LIMIT_REACHED' }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
 
     // Parse and validate input
     let rawBody: unknown;
