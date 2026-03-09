@@ -3,8 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Printer, Trophy, Flame, Target, BookOpen, ChevronDown } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
+import { ArrowLeft, Printer, Trophy, Flame, Target, BookOpen, ChevronDown, Camera, PenTool } from "lucide-react";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import {
   ChartContainer,
@@ -14,6 +13,7 @@ import {
 import { LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
 import { getMasteryLevel, getProgressPercentage } from "@/lib/progressUtils";
 import { cn } from "@/lib/utils";
+import { SubmissionDetailModal, type SubmissionDetail } from "@/components/SubmissionDetailModal";
 
 interface Profile {
   id: string;
@@ -106,7 +106,8 @@ export default function ProgressPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [subjectProgress, setSubjectProgress] = useState<SubjectProgress[]>([]);
   const [handwritingData, setHandwritingData] = useState<HandwritingSubmission[]>([]);
-  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+  const [submissions, setSubmissions] = useState<SubmissionDetail[]>([]);
+  const [selectedSubmission, setSelectedSubmission] = useState<SubmissionDetail | null>(null);
   const [missionsCompleted, setMissionsCompleted] = useState(0);
   const [topicsMastered, setTopicsMastered] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -140,11 +141,12 @@ export default function ProgressPage() {
       if (!profileData) { setLoading(false); return; }
       setProfile(profileData);
 
-      const [subjectsRes, topicsRes, progressRes, hwRes] = await Promise.all([
+      const [subjectsRes, topicsRes, progressRes, hwRes, submissionsRes] = await Promise.all([
         supabase.from("subjects").select("id, name, emoji").order("name"),
         supabase.from("topics").select("id, subject_id, name, emoji, order_index").order("order_index"),
         supabase.from("student_progress").select("topic_id, xp_earned, missions_this_week").eq("student_id", profileData.id),
         supabase.from("handwriting_submissions").select("id, image_path, letter_formation, spacing_sizing, presentation, composite_score, created_at").eq("profile_id", profileData.id).order("created_at", { ascending: true }),
+        supabase.from("submissions").select("*").eq("profile_id", profileData.id).order("created_at", { ascending: false }).limit(10),
       ]);
 
       const subjects = subjectsRes.data || [];
@@ -154,7 +156,6 @@ export default function ProgressPage() {
       const totalMissions = progress.reduce((sum, p) => sum + (p.missions_this_week || 0), 0);
       setMissionsCompleted(totalMissions);
 
-      // Mastered = Black Belt = 1500+ XP
       const mastered = progress.filter(p => (p.xp_earned || 0) >= 1500).length;
       setTopicsMastered(mastered);
 
@@ -184,27 +185,37 @@ export default function ProgressPage() {
       }).filter(s => s.totalTopics > 0);
 
       setSubjectProgress(sp);
-      const hwData = hwRes.data || [];
-      setHandwritingData(hwData);
+      setHandwritingData(hwRes.data || []);
 
-      // Generate signed URLs for submissions with images
-      const urlMap: Record<string, string> = {};
-      await Promise.all(
-        hwData.filter(h => h.image_path).slice(-5).map(async (h) => {
-          const { data } = await supabase.storage.from("handwriting-submissions").createSignedUrl(h.image_path!, 3600);
-          if (data?.signedUrl) urlMap[h.id] = data.signedUrl;
-        })
-      );
-      setSignedUrls(urlMap);
+      // Process submissions and sign URLs for handwritten ones
+      const rawSubmissions = (submissionsRes.data || []) as any[];
+      const submissionDetails: SubmissionDetail[] = [];
+
+      for (const sub of rawSubmissions) {
+        const detail: SubmissionDetail = {
+          ...sub,
+          strengths: Array.isArray(sub.strengths) ? sub.strengths : [],
+          improvements: Array.isArray(sub.improvements) ? sub.improvements : [],
+          annotations: Array.isArray(sub.annotations) ? sub.annotations : [],
+        };
+
+        if (sub.submission_type === "handwritten" && sub.image_path) {
+          const { data: urlData } = await supabase.storage
+            .from("handwriting-submissions")
+            .createSignedUrl(sub.image_path, 3600);
+          if (urlData?.signedUrl) detail.signedUrl = urlData.signedUrl;
+        }
+
+        submissionDetails.push(detail);
+      }
+
+      setSubmissions(submissionDetails);
     } catch (err) {
       console.error("Error fetching progress:", err);
     } finally {
       setLoading(false);
     }
   };
-
-
-
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString("en-AU", { day: "numeric", month: "short" });
@@ -236,10 +247,10 @@ export default function ProgressPage() {
     presentation: h.presentation,
   }));
 
-  const recentSubmissions = [...handwritingData]
-    .reverse()
-    .filter(h => h.image_path)
-    .slice(0, 5);
+  const ratingEmoji = (rating: string | null) =>
+    rating === "Fantastic!" ? "🌟" :
+    rating === "Great Work!" ? "⭐" :
+    rating === "Good Effort!" ? "👍" : "💪";
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -324,7 +335,6 @@ export default function ProgressPage() {
                         </div>
                         {/* Two-tone progress bar */}
                         <div className="relative h-2 w-full rounded-full bg-muted overflow-hidden">
-                          {/* In-progress portion (any XP at all, not just mastered) */}
                           {(() => {
                             const anyProgressPct = s.totalTopics > 0
                               ? (s.topics.filter(t => t.xpEarned > 0).length / s.totalTopics) * 100
@@ -336,7 +346,6 @@ export default function ProgressPage() {
                               />
                             );
                           })()}
-                          {/* Mastered portion */}
                           <div
                             className="absolute h-full rounded-full bg-primary transition-all duration-500"
                             style={{ width: `${pct}%` }}
@@ -409,27 +418,53 @@ export default function ProgressPage() {
           )}
 
           {/* Section 4: Recent Submissions */}
-          {recentSubmissions.length > 0 && (
+          {submissions.length > 0 && (
             <div className="bento-card bg-card p-6 animate-slide-up stagger-3">
               <h2 className="text-xl font-display font-bold text-foreground mb-4 flex items-center gap-2">
-                📸 Recent Submissions
+                📝 Recent Submissions
               </h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {recentSubmissions.filter(sub => signedUrls[sub.id]).map(sub => (
+              <div className="space-y-2">
+                {submissions.map(sub => (
                   <button
                     key={sub.id}
-                    onClick={() => window.open(signedUrls[sub.id], "_blank")}
-                    className="relative rounded-xl overflow-hidden border border-border aspect-square group"
+                    onClick={() => setSelectedSubmission(sub)}
+                    className="w-full text-left rounded-xl border border-border/60 bg-muted/30 hover:bg-muted/60 transition-colors p-3 flex items-center gap-3"
                   >
-                    <img
-                      src={signedUrls[sub.id]}
-                      alt="Handwriting submission"
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                    <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent p-2">
-                      <p className="text-white text-xs font-bold">{sub.composite_score?.toFixed(1)}/5</p>
-                      <p className="text-white/70 text-[10px]">{formatDate(sub.created_at)}</p>
+                    {/* Type icon */}
+                    <div className={cn(
+                      "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
+                      sub.submission_type === "handwritten"
+                        ? "bg-sky/15 text-sky"
+                        : "bg-eucalyptus/15 text-eucalyptus"
+                    )}>
+                      {sub.submission_type === "handwritten" ? (
+                        <Camera className="w-5 h-5" />
+                      ) : (
+                        <PenTool className="w-5 h-5" />
+                      )}
+                    </div>
+
+                    {/* Details */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-semibold text-foreground truncate">
+                          {sub.topic_name || "Unknown Topic"}
+                        </span>
+                        <span className="text-lg">{ratingEmoji(sub.content_overall_rating)}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {sub.subject_name || "Unknown Subject"} · {formatDate(sub.created_at)}
+                      </p>
+                    </div>
+
+                    {/* XP badge */}
+                    <div className="flex-shrink-0 text-right">
+                      <span className="text-sm font-bold text-primary">
+                        +{sub.content_score || 0}
+                      </span>
+                      <p className="text-[10px] text-muted-foreground">
+                        /{sub.content_max_score || 0} XP
+                      </p>
                     </div>
                   </button>
                 ))}
@@ -438,6 +473,13 @@ export default function ProgressPage() {
           )}
         </div>
       </div>
+
+      {/* Submission Detail Modal */}
+      <SubmissionDetailModal
+        isOpen={!!selectedSubmission}
+        onClose={() => setSelectedSubmission(null)}
+        submission={selectedSubmission}
+      />
     </div>
   );
 }
