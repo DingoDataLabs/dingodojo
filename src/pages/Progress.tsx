@@ -418,14 +418,14 @@ export default function ProgressPage() {
                 📸 Recent Submissions
               </h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {recentSubmissions.map(sub => (
+                {recentSubmissions.filter(sub => signedUrls[sub.id]).map(sub => (
                   <button
                     key={sub.id}
-                    onClick={() => sub.image_path && window.open(getPublicUrl(sub.image_path), "_blank")}
+                    onClick={() => window.open(signedUrls[sub.id], "_blank")}
                     className="relative rounded-xl overflow-hidden border border-border aspect-square group"
                   >
                     <img
-                      src={getPublicUrl(sub.image_path!)}
+                      src={signedUrls[sub.id]}
                       alt="Handwriting submission"
                       className="w-full h-full object-cover"
                       loading="lazy"
