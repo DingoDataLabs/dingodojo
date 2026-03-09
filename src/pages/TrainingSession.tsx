@@ -1336,6 +1336,12 @@ export default function TrainingSession() {
                   </div>
                 )}
               </div>
+            ) : regeneratingQuestion[currentChallengeIndex] ? (
+              /* Regenerating question loading state */
+              <div className="flex flex-col items-center justify-center py-8 gap-3 animate-fade-in">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                <p className="text-muted-foreground font-medium">Generating a new question…</p>
+              </div>
             ) : (
               /* Multiple choice question */
               <>
