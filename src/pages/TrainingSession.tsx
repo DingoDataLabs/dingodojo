@@ -18,6 +18,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { getMasteryLevel } from "@/lib/progressUtils";
 import { AnnotatedWriting } from "@/components/AnnotatedWriting";
 import { WritingFeedbackModal } from "@/components/WritingFeedbackModal";
+import { useWakeLock } from "@/hooks/useWakeLock";
 
 interface Topic {
   id: string;
@@ -137,6 +138,7 @@ export default function TrainingSession() {
   const { user, session, loading: authLoading } = useAuth();
   const isMobile = useIsMobile();
 
+
   const [topic, setTopic] = useState<Topic | null>(null);
   const [subject, setSubject] = useState<Subject | null>(null);
   const [lessonContent, setLessonContent] = useState<LessonContent | null>(null);
@@ -191,6 +193,10 @@ export default function TrainingSession() {
   const [isChatLoading, setIsChatLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const lessonRef = useRef<HTMLDivElement>(null);
+
+  // Keep screen awake during final challenge with free-text/photo submissions
+  const hasFreeTextChallenge = lessonContent?.final_challenge?.questions?.some(q => q.type === "free_text") ?? false;
+  useWakeLock(inFinalChallenge && hasFreeTextChallenge);
 
   useEffect(() => {
     if (!authLoading && !user) {
