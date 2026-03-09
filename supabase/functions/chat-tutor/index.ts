@@ -150,15 +150,6 @@ serve(async (req) => {
     
     console.log("Authenticated user:", user.id);
 
-    // Validate subscription tier and daily limits
-    const missionAccess = await validateMissionAccess(supabaseClient, user.id);
-    if (!missionAccess.allowed) {
-      return new Response(
-        JSON.stringify({ error: missionAccess.error, code: 'LIMIT_REACHED' }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     // Parse and validate input
     let rawBody: unknown;
     try {
