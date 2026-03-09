@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Flame, Trophy, LogOut, Zap, Settings, Compass, Crown, Star, Sparkles, Play, BarChart2, PenTool, User } from "lucide-react";
+import { HomeworkHelpDrawer } from "@/components/HomeworkHelpDrawer";
 import { toast } from "sonner";
 import { ProgressRing } from "@/components/ProgressRing";
 import { getSydneyWeekStart, isNewWeek } from "@/lib/weekUtils";
