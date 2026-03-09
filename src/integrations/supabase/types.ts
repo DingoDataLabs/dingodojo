@@ -607,6 +607,13 @@ export type Database = {
     }
     Functions: {
       get_my_profile_id: { Args: never; Returns: string }
+      search_users_by_username: {
+        Args: { search_query: string }
+        Returns: {
+          id: string
+          username: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

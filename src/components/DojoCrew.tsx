@@ -45,9 +45,7 @@ interface ActivityEntry {
 
 interface SearchResult {
   id: string;
-  first_name: string | null;
-  total_xp: number;
-  grade_level: string | null;
+  username: string | null;
 }
 
 interface DojoCrewProps {
@@ -157,11 +155,7 @@ export function DojoCrew({ profileId, firstName, totalXp, currentStreak }: DojoC
     setSearching(true);
     try {
       const { data } = await supabase
-        .from("user_profiles")
-        .select("id, first_name, total_xp, grade_level")
-        .ilike("username", `%${query}%`)
-        .neq("id", profileId)
-        .limit(5);
+        .rpc("search_users_by_username", { search_query: query });
 
       if (data) {
         const existingIds = new Set(friendships.flatMap(f => [f.requester_id, f.addressee_id]));
@@ -277,15 +271,14 @@ export function DojoCrew({ profileId, firstName, totalXp, currentStreak }: DojoC
           <div className="space-y-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input placeholder="Find a friend by name..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9 h-9 text-sm rounded-xl" />
+              <Input placeholder="Find a friend by Dojo Name..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9 h-9 text-sm rounded-xl" />
               {searchResults.length > 0 && (
                 <div className="absolute z-10 top-full mt-1 w-full bg-card border border-border rounded-xl shadow-lg overflow-hidden">
                   {searchResults.map(user => (
                     <div key={user.id} className="flex items-center gap-2 p-2 hover:bg-muted/50 transition-colors">
-                      <AvatarInitial name={user.first_name} id={user.id!} />
+                      <AvatarInitial name={user.username} id={user.id!} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{user.first_name || "Unknown"}</p>
-                        <p className="text-[10px] text-muted-foreground">{user.grade_level} · {(user.total_xp || 0).toLocaleString()} XP</p>
+                        <p className="text-sm font-medium truncate">{user.username || "Unknown"}</p>
                       </div>
                       <Button size="sm" variant="ghost" onClick={() => sendFriendRequest(user.id!)} className="h-7 px-2 text-xs gap-1">
                         <UserPlus className="w-3 h-3" /> Add
