@@ -10,9 +10,7 @@ export function SenseiSuggestion({ message, className = "" }: SenseiSuggestionPr
     <div className={`flex items-end gap-2 ${className}`}>
       {/* Dingo mascot emoji */}
       <div className="flex-shrink-0 -mb-1">
-        <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-ochre/20 flex items-center justify-center">
-          <img src={dingoLogo} alt="Sensei" className="w-12 h-12 md:w-16 md:h-16" />
-        </div>
+        <img src={dingoLogo} alt="Sensei" className="w-16 h-16 md:w-20 md:h-20" />
       </div>
       
       {/* Speech bubble */}
