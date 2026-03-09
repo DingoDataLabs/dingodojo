@@ -165,14 +165,24 @@ export function DojoCrew({ profileId, firstName, totalXp, currentStreak }: DojoC
   };
 
   const sendFriendRequest = async (addresseeId: string) => {
+    // Optimistically remove from results immediately
+    setSearchResults(prev => prev.filter(u => u.id !== addresseeId));
     const { error } = await supabase.from("friendships").insert({
       requester_id: profileId!,
       addressee_id: addresseeId,
       status: "pending",
     });
-    if (error) { toast.error("Couldn't send request"); return; }
+    if (error) {
+      if (error.code === "23505") {
+        toast.info("You've already sent a request to this person 👋");
+      } else {
+        toast.error("Couldn't send request");
+        setSearchResults(prev => [...prev]); // restore on error
+      }
+      return;
+    }
     toast.success("Friend request sent! 🤝");
-    setSearchResults(prev => prev.filter(u => u.id !== addresseeId));
+    setSearchQuery("");
     fetchFriendships();
   };
 
