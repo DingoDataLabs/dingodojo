@@ -1,3 +1,5 @@
+import dingoLogo from "@/assets/dingo-logo.png";
+
 interface SenseiSuggestionProps {
   message: string;
   className?: string;
