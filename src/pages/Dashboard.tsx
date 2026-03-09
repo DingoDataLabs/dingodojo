@@ -618,6 +618,9 @@ export default function Dashboard() {
               .map((subject, index) => {
                 const theme = getSubjectTheme(subject.slug);
                 const xp = subjectXps[subject.id] || 0;
+                const subjectTopicIds = topics.filter(t => t.subject_id === subject.id).map(t => t.id);
+                const subjectBelt = getSubjectBelt({ subjectId: subject.id, topicIds: subjectTopicIds, progressMap });
+                const beltLevel = subjectBelt.level;
                 
                 return (
                   <div
@@ -639,9 +642,10 @@ export default function Dashboard() {
                         )}
                       </div>
                       <div className="flip-card-back absolute inset-0 rounded-2xl bg-card border-2 border-primary/20 flex flex-col items-center justify-center p-5 backface-hidden rotate-y-180 shadow-lg">
-                        <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${theme.gradient} flex items-center justify-center mb-3 shadow-md`}>
-                          <Zap className="w-7 h-7 text-white" />
-                        </div>
+                        {/* Per-subject belt badge */}
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-bold shadow-sm mb-2 ${beltLevel.colorClass}`}>
+                          {beltLevel.emoji} {beltLevel.name}
+                        </span>
                         <p className="font-display font-bold text-xl text-foreground">
                           {xp > 0 ? `${xp.toLocaleString()} XP` : "Start Fresh!"}
                         </p>
