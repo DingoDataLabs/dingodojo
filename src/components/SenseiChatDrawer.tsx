@@ -60,7 +60,7 @@ export function SenseiChatDrawer({
               size="icon"
               className="w-14 h-14 rounded-full bg-ochre hover:bg-ochre-dark shadow-lg"
             >
-              <span className="text-2xl">🦊</span>
+              <img src={dingoLogo} alt="Sensei" className="w-8 h-8" />
             </Button>
           </SheetTrigger>
           <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col">
