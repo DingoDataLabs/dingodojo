@@ -125,10 +125,18 @@ async function callLLM(
 
 // ── Subscription Check ───────────────────────────────────────────────
 
-async function validateMissionAccess(supabaseClient: any, userId: string): Promise<{ allowed: boolean; error?: string }> {
+async function validateMissionAccess(supabaseClient: any, userId: string, subjectSlug?: string): Promise<{ allowed: boolean; error?: string }> {
   const { data: profile, error } = await supabaseClient
     .from('profiles').select('subscription_tier').eq('user_id', userId).single();
   if (error) return { allowed: false, error: 'Failed to verify subscription status' };
+
+  if (profile.subscription_tier !== 'champion') {
+    const EXPLORER_SUBJECTS = ['english', 'maths', 'mathematics'];
+    if (subjectSlug && !EXPLORER_SUBJECTS.includes(subjectSlug)) {
+      return { allowed: false, error: 'Champion subscription required for this subject.' };
+    }
+  }
+
   return { allowed: true };
 }
 

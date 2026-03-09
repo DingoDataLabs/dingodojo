@@ -191,9 +191,10 @@ export default function ProgressPage() {
     }
   };
 
-  const getPublicUrl = (path: string) => {
-    const { data } = supabase.storage.from("handwriting-submissions").getPublicUrl(path);
-    return data.publicUrl;
+  const getSignedUrl = async (path: string): Promise<string> => {
+    const { data, error } = await supabase.storage.from("handwriting-submissions").createSignedUrl(path, 3600);
+    if (error || !data?.signedUrl) return "";
+    return data.signedUrl;
   };
 
   const formatDate = (dateStr: string) => {
