@@ -426,18 +426,27 @@ export default function Dashboard() {
                   <p className="text-primary-foreground/75">{profile?.grade_level || "Year 5"} • The Dojo</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" onClick={() => navigate("/progress")} className="rounded-xl text-primary-foreground hover:bg-white/20" title="Progress Report">
-                  <BarChart2 className="w-5 h-5" />
-                </Button>
-                <Button variant="ghost" size="icon" onClick={() => navigate("/profile")} className="rounded-xl text-primary-foreground hover:bg-white/20">
-                  <Settings className="w-5 h-5" />
-                </Button>
-                <Button onClick={handleLogout} className="rounded-xl gap-2 bg-white/20 hover:bg-white/30 text-primary-foreground border-0 backdrop-blur-sm">
-                  <LogOut className="w-4 h-4" />
-                  <span className="hidden sm:inline">Logout</span>
-                </Button>
-              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="rounded-xl text-primary-foreground hover:bg-white/20">
+                    <Settings className="w-5 h-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48 rounded-xl">
+                  <DropdownMenuItem onClick={() => navigate("/progress")} className="gap-2 cursor-pointer">
+                    <BarChart2 className="w-4 h-4" />
+                    Progress Report
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/profile")} className="gap-2 cursor-pointer">
+                    <User className="w-4 h-4" />
+                    Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleLogout} className="gap-2 cursor-pointer text-destructive">
+                    <LogOut className="w-4 h-4" />
+                    Logout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
             {/* Overall Dojo Belt - below greeting */}
             <div className="mt-4">
