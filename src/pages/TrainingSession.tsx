@@ -194,6 +194,10 @@ export default function TrainingSession() {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const lessonRef = useRef<HTMLDivElement>(null);
 
+  // Keep screen awake during final challenge with free-text/photo submissions
+  const hasFreeTextChallenge = lessonContent?.final_challenge?.questions?.some(q => q.type === "free_text") ?? false;
+  useWakeLock(inFinalChallenge && hasFreeTextChallenge);
+
   useEffect(() => {
     if (!authLoading && !user) {
       navigate("/auth");
