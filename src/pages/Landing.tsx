@@ -282,7 +282,7 @@ export default function Landing() {
       {/* CTA */}
       <section className="py-16 px-4">
         <div className="max-w-3xl mx-auto text-center bento-card p-10 md:p-14" style={{ background: "linear-gradient(135deg, hsl(var(--ochre) / 0.08), hsl(var(--eucalyptus) / 0.08))" }}>
-          <span className="text-6xl block mb-4 animate-float">🦊</span>
+          <img src={dingoLogo} alt="Dingo Dojo" className="w-16 h-16 mx-auto mb-4 animate-float" />
           <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-4">
             Ready to Start the Adventure?
           </h2>
