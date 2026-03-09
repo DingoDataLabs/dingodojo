@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import dingoLogo from "@/assets/dingo-logo.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
