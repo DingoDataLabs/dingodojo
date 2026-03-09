@@ -45,9 +45,7 @@ interface ActivityEntry {
 
 interface SearchResult {
   id: string;
-  first_name: string | null;
-  total_xp: number;
-  grade_level: string | null;
+  username: string | null;
 }
 
 interface DojoCrewProps {
