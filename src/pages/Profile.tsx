@@ -284,9 +284,40 @@ export default function ProfilePage() {
               <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl">
                 <div>
                   <p className="text-sm text-muted-foreground">Subscription</p>
-                  <p className="font-semibold text-foreground">{profile?.subscription_tier === "champion" ? "Champion" : "Explorer"}</p>
+                  <p className="font-semibold text-foreground">
+                    {subInfo?.tier === "champion" ? "Champion" : "Explorer"}
+                    {subInfo?.subscribed && subInfo.subscriptionEnd && (
+                      <span className="text-xs font-normal text-muted-foreground ml-2">
+                        {subInfo.status === "trialing" ? "Trial ends" : "Renews"}{" "}
+                        {new Date(subInfo.subscriptionEnd).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}
+                      </span>
+                    )}
+                  </p>
                 </div>
-                {getTierBadge(profile?.subscription_tier || "explorer")}
+                <div className="flex items-center gap-2">
+                  {getTierBadge(profile?.subscription_tier || "explorer")}
+                  {subInfo?.subscribed ? (
+                    <Button
+                      onClick={openCustomerPortal}
+                      disabled={portalLoading}
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs gap-1 text-muted-foreground"
+                    >
+                      {portalLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <ExternalLink className="w-3 h-3" />}
+                      Manage
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => navigate("/dashboard?upgrade=true")}
+                      size="sm"
+                      className="text-xs gap-1 bg-gradient-to-r from-ochre to-ochre-light text-primary-foreground"
+                    >
+                      <Crown className="w-3 h-3" />
+                      Upgrade
+                    </Button>
+                  )}
+                </div>
               </div>
 
               <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl">
