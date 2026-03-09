@@ -586,69 +586,114 @@ export default function Dashboard() {
             <Star className="w-5 h-5 text-ochre" />
             Choose Your Training
           </h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            {subjects.map((subject, index) => {
-              const theme = getSubjectTheme(subject.slug);
-              const locked = isSubjectLocked(subject.slug);
-              const xp = subjectXps[subject.id] || 0;
-              
-              return (
-                <div
-                  key={subject.id}
-                  className="flip-card h-40 md:h-48 perspective-1000"
-                  style={{ animationDelay: `${0.05 * (index + 1)}s` }}
-                >
+
+          {/* Priority Subjects — English & Maths */}
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            {subjects
+              .filter(s => prioritySubjects.includes(s.slug))
+              .sort((a, b) => prioritySubjects.indexOf(a.slug) - prioritySubjects.indexOf(b.slug))
+              .map((subject, index) => {
+                const theme = getSubjectTheme(subject.slug);
+                const xp = subjectXps[subject.id] || 0;
+                
+                return (
                   <div
-                    onClick={() => !locked && navigate(`/subject/${subject.slug}`)}
-                    role="button"
-                    tabIndex={locked ? -1 : 0}
-                    className={`flip-card-inner w-full h-full relative transition-transform duration-500 transform-style-3d ${locked ? 'cursor-not-allowed' : 'cursor-pointer'} group`}
+                    key={subject.id}
+                    className="flip-card h-48 md:h-56 perspective-1000"
+                    style={{ animationDelay: `${0.05 * (index + 1)}s` }}
                   >
-                    <div className={`flip-card-front absolute inset-0 rounded-2xl bg-gradient-to-br ${theme.gradient} text-white flex flex-col items-center justify-center p-4 backface-hidden shadow-lg ${theme.glow} ${locked ? 'opacity-60' : ''}`}>
-                      <span className="text-5xl md:text-6xl mb-3 drop-shadow-lg">{subject.emoji}</span>
-                      <h3 className="text-base md:text-lg font-display font-bold text-center leading-tight drop-shadow-sm">{subject.name}</h3>
-                      {locked && (
-                        <div className="absolute top-3 right-3 w-7 h-7 bg-black/30 backdrop-blur-sm rounded-full flex items-center justify-center">
-                          <Crown className="w-4 h-4 text-yellow-300" />
+                    <div
+                      onClick={() => navigate(`/subject/${subject.slug}`)}
+                      role="button"
+                      tabIndex={0}
+                      className="flip-card-inner w-full h-full relative transition-transform duration-500 transform-style-3d cursor-pointer group"
+                    >
+                      <div className={`flip-card-front absolute inset-0 rounded-2xl bg-gradient-to-br ${theme.gradient} text-white flex flex-col items-center justify-center p-5 backface-hidden shadow-lg ${theme.glow}`}>
+                        <span className="text-6xl md:text-7xl mb-3 drop-shadow-lg">{subject.emoji}</span>
+                        <h3 className="text-lg md:text-xl font-display font-bold text-center leading-tight drop-shadow-sm">{subject.name}</h3>
+                        {xp > 0 && (
+                          <p className="mt-2 text-sm text-white/80 font-semibold">{xp.toLocaleString()} XP</p>
+                        )}
+                      </div>
+                      <div className="flip-card-back absolute inset-0 rounded-2xl bg-card border-2 border-primary/20 flex flex-col items-center justify-center p-5 backface-hidden rotate-y-180 shadow-lg">
+                        <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${theme.gradient} flex items-center justify-center mb-3 shadow-md`}>
+                          <Zap className="w-7 h-7 text-white" />
                         </div>
-                      )}
-                    </div>
-                    <div className={`flip-card-back absolute inset-0 rounded-2xl bg-card border-2 ${locked ? 'border-muted' : 'border-primary/20'} flex flex-col items-center justify-center p-4 backface-hidden rotate-y-180 shadow-lg`}>
-                      {locked ? (
-                        <>
-                          <Crown className="w-10 h-10 text-amber-500 mb-2" />
-                          <p className="font-display font-bold text-sm text-foreground mb-1">Champion Only</p>
-                          <p className="text-xs text-muted-foreground text-center mb-2">Upgrade to unlock {subject.name}</p>
-                          <Button
-                            onClick={(e) => { e.stopPropagation(); handleUpgrade(); }}
-                            onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); handleUpgrade(); }}
-                            size="sm"
-                            className="text-xs rounded-lg pointer-events-auto"
-                          >
-                            Upgrade
-                          </Button>
-                        </>
-                      ) : (
-                        <>
-                          <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${theme.gradient} flex items-center justify-center mb-3 shadow-md`}>
-                            <Zap className="w-6 h-6 text-white" />
-                          </div>
-                          <p className="font-display font-bold text-lg text-foreground">
-                            {xp > 0 ? `${xp.toLocaleString()} XP` : "Start Fresh!"}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1 mb-3">
-                            {xp > 0 ? "Keep building your skills" : "Begin your journey"}
-                          </p>
-                          <span className={`px-4 py-1.5 rounded-full bg-gradient-to-r ${theme.gradient} text-white text-sm font-bold shadow-md`}>
-                            Train →
-                          </span>
-                        </>
-                      )}
+                        <p className="font-display font-bold text-xl text-foreground">
+                          {xp > 0 ? `${xp.toLocaleString()} XP` : "Start Fresh!"}
+                        </p>
+                        <p className="text-sm text-muted-foreground mt-1 mb-3">
+                          {xp > 0 ? "Keep building your skills" : "Begin your journey"}
+                        </p>
+                        <span className={`px-5 py-2 rounded-full bg-gradient-to-r ${theme.gradient} text-white text-sm font-bold shadow-md`}>
+                          Train →
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+          </div>
+
+          {/* Other Subjects */}
+          <div className="grid grid-cols-3 md:grid-cols-3 gap-3">
+            {subjects
+              .filter(s => !prioritySubjects.includes(s.slug))
+              .map((subject, index) => {
+                const theme = getSubjectTheme(subject.slug);
+                const locked = isSubjectLocked(subject.slug);
+                const xp = subjectXps[subject.id] || 0;
+                
+                return (
+                  <div
+                    key={subject.id}
+                    className="flip-card h-32 md:h-36 perspective-1000"
+                    style={{ animationDelay: `${0.05 * (index + 3)}s` }}
+                  >
+                    <div
+                      onClick={() => !locked && navigate(`/subject/${subject.slug}`)}
+                      role="button"
+                      tabIndex={locked ? -1 : 0}
+                      className={`flip-card-inner w-full h-full relative transition-transform duration-500 transform-style-3d ${locked ? 'cursor-not-allowed' : 'cursor-pointer'} group`}
+                    >
+                      <div className={`flip-card-front absolute inset-0 rounded-2xl bg-gradient-to-br ${theme.gradient} text-white flex flex-col items-center justify-center p-3 backface-hidden shadow-md ${theme.glow} ${locked ? 'opacity-60' : ''}`}>
+                        <span className="text-4xl md:text-5xl mb-2 drop-shadow-lg">{subject.emoji}</span>
+                        <h3 className="text-sm md:text-base font-display font-bold text-center leading-tight drop-shadow-sm">{subject.name}</h3>
+                        {locked && (
+                          <div className="absolute top-2 right-2 w-6 h-6 bg-black/30 backdrop-blur-sm rounded-full flex items-center justify-center">
+                            <Crown className="w-3.5 h-3.5 text-yellow-300" />
+                          </div>
+                        )}
+                      </div>
+                      <div className={`flip-card-back absolute inset-0 rounded-2xl bg-card border-2 ${locked ? 'border-muted' : 'border-primary/20'} flex flex-col items-center justify-center p-3 backface-hidden rotate-y-180 shadow-md`}>
+                        {locked ? (
+                          <>
+                            <Crown className="w-8 h-8 text-amber-500 mb-1" />
+                            <p className="font-display font-bold text-xs text-foreground mb-1">Champion Only</p>
+                            <Button
+                              onClick={(e) => { e.stopPropagation(); handleUpgrade(); }}
+                              onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); handleUpgrade(); }}
+                              size="sm"
+                              className="text-xs rounded-lg pointer-events-auto h-7 px-2"
+                            >
+                              Upgrade
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <p className="font-display font-bold text-base text-foreground">
+                              {xp > 0 ? `${xp.toLocaleString()} XP` : "Start!"}
+                            </p>
+                            <span className={`mt-2 px-3 py-1 rounded-full bg-gradient-to-r ${theme.gradient} text-white text-xs font-bold shadow-sm`}>
+                              Train →
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
           </div>
         </section>
 
