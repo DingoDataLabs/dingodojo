@@ -455,6 +455,99 @@ export type Database = {
         }
         Relationships: []
       }
+      submissions: {
+        Row: {
+          annotations: Json | null
+          composite_score: number | null
+          content_feedback: string | null
+          content_max_score: number | null
+          content_overall_rating: string | null
+          content_score: number | null
+          created_at: string
+          id: string
+          image_path: string | null
+          improvements: Json | null
+          letter_formation: number | null
+          letter_formation_comment: string | null
+          presentation: number | null
+          presentation_comment: string | null
+          profile_id: string
+          question: string | null
+          spacing_sizing: number | null
+          spacing_sizing_comment: string | null
+          strengths: Json | null
+          student_text: string | null
+          subject_name: string | null
+          submission_type: string
+          topic_name: string | null
+        }
+        Insert: {
+          annotations?: Json | null
+          composite_score?: number | null
+          content_feedback?: string | null
+          content_max_score?: number | null
+          content_overall_rating?: string | null
+          content_score?: number | null
+          created_at?: string
+          id?: string
+          image_path?: string | null
+          improvements?: Json | null
+          letter_formation?: number | null
+          letter_formation_comment?: string | null
+          presentation?: number | null
+          presentation_comment?: string | null
+          profile_id: string
+          question?: string | null
+          spacing_sizing?: number | null
+          spacing_sizing_comment?: string | null
+          strengths?: Json | null
+          student_text?: string | null
+          subject_name?: string | null
+          submission_type?: string
+          topic_name?: string | null
+        }
+        Update: {
+          annotations?: Json | null
+          composite_score?: number | null
+          content_feedback?: string | null
+          content_max_score?: number | null
+          content_overall_rating?: string | null
+          content_score?: number | null
+          created_at?: string
+          id?: string
+          image_path?: string | null
+          improvements?: Json | null
+          letter_formation?: number | null
+          letter_formation_comment?: string | null
+          presentation?: number | null
+          presentation_comment?: string | null
+          profile_id?: string
+          question?: string | null
+          spacing_sizing?: number | null
+          spacing_sizing_comment?: string | null
+          strengths?: Json | null
+          student_text?: string | null
+          subject_name?: string | null
+          submission_type?: string
+          topic_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "submissions_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "submissions_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       topics: {
         Row: {
           created_at: string
