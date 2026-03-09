@@ -5,6 +5,16 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Flame, X, Check, UserPlus, Search } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface FriendProfile {
   id: string;
