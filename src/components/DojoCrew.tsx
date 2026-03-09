@@ -276,10 +276,9 @@ export function DojoCrew({ profileId, firstName, totalXp, currentStreak }: DojoC
                 <div className="absolute z-10 top-full mt-1 w-full bg-card border border-border rounded-xl shadow-lg overflow-hidden">
                   {searchResults.map(user => (
                     <div key={user.id} className="flex items-center gap-2 p-2 hover:bg-muted/50 transition-colors">
-                      <AvatarInitial name={user.first_name} id={user.id!} />
+                      <AvatarInitial name={user.username} id={user.id!} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{user.first_name || "Unknown"}</p>
-                        <p className="text-[10px] text-muted-foreground">{user.grade_level} · {(user.total_xp || 0).toLocaleString()} XP</p>
+                        <p className="text-sm font-medium truncate">{user.username || "Unknown"}</p>
                       </div>
                       <Button size="sm" variant="ghost" onClick={() => sendFriendRequest(user.id!)} className="h-7 px-2 text-xs gap-1">
                         <UserPlus className="w-3 h-3" /> Add
