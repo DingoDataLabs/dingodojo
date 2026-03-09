@@ -1593,9 +1593,7 @@ export default function TrainingSession() {
           <div className="w-1/2 flex flex-col bg-sand/30">
             <div className="flex-shrink-0 p-4 border-b border-border bg-card/50">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-ochre flex items-center justify-center">
-                  <img src={dingoLogo} alt="Sensei" className="w-9 h-9" />
-                </div>
+                <img src={dingoLogo} alt="Sensei" className="w-12 h-12" />
                 <div>
                   <h3 className="font-display font-bold text-foreground">Mirri the Study Buddy</h3>
                   <p className="text-sm text-muted-foreground">Ask me for hints!</p>
@@ -1610,9 +1608,7 @@ export default function TrainingSession() {
                   className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} animate-slide-up`}
                 >
                   {message.role === "assistant" && (
-                    <div className="w-8 h-8 rounded-full bg-ochre flex items-center justify-center mr-2 flex-shrink-0">
-                      <img src={dingoLogo} alt="Sensei" className="w-6 h-6" />
-                    </div>
+                    <img src={dingoLogo} alt="Sensei" className="w-8 h-8 mr-2 flex-shrink-0" />
                   )}
                   <div
                     className={`max-w-[80%] ${
@@ -1625,9 +1621,7 @@ export default function TrainingSession() {
               ))}
               {isChatLoading && messages[messages.length - 1]?.content === "" && (
                 <div className="flex justify-start">
-                  <div className="w-8 h-8 rounded-full bg-ochre flex items-center justify-center mr-2">
-                    <img src={dingoLogo} alt="Sensei" className="w-6 h-6" />
-                  </div>
+                    <img src={dingoLogo} alt="Sensei" className="w-8 h-8 mr-2" />
                   <div className="chat-bubble-assistant">
                     <Loader2 className="w-4 h-4 animate-spin" />
                   </div>
