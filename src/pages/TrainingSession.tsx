@@ -44,11 +44,15 @@ interface CheckQuestion {
   hint: string;
   explanation: string;
   points?: number;
-  type?: "multiple_choice" | "free_text";
+  type?: "multiple_choice" | "free_text" | "worked_solution";
   assessment_criteria?: string[];
   example_elements?: string[];
   max_words?: number;
   min_words?: number;
+  worked_solution_type?: "chart" | "working";
+  correct_answer_value?: string;
+  working_steps_expected?: string[];
+  bonus_xp?: number;
 }
 
 interface WritingAnnotation {
