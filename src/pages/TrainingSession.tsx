@@ -1594,6 +1594,137 @@ export default function TrainingSession() {
                   </div>
                 )}
               </div>
+            ) : question.type === "worked_solution" ? (
+              /* Worked solution question (Maths) */
+              <div className="space-y-4">
+                {question.working_steps_expected && (
+                  <div className="bg-sky/10 border border-sky/20 rounded-xl p-3 text-sm">
+                    <p className="font-semibold text-sky mb-2">
+                      {question.worked_solution_type === "chart" ? "📊 Draw a chart showing:" : "📝 Show your working:"}
+                    </p>
+                    <ul className="list-disc list-inside text-foreground/80 space-y-1">
+                      {question.working_steps_expected.map((step, i) => (
+                        <li key={i}>{step}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {question.bonus_xp && (
+                  <div className="bg-ochre/10 border border-ochre/20 rounded-lg px-3 py-2 text-sm text-center">
+                    ⭐ Up to <span className="font-bold text-primary">+{question.bonus_xp} bonus XP</span> for clear working!
+                  </div>
+                )}
+
+                {!isCompleted && (
+                  <>
+                    {/* Three-tab input */}
+                    <Tabs
+                      value={answerMode[`challenge_${currentChallengeIndex}`] || "photo"}
+                      onValueChange={(v) => setAnswerMode(prev => ({ ...prev, [`challenge_${currentChallengeIndex}`]: v as "photo" | "draw" | "type" }))}
+                    >
+                      <TabsList className="grid w-full grid-cols-3">
+                        <TabsTrigger value="photo">📷 Upload photo</TabsTrigger>
+                        <TabsTrigger value="draw">✏️ Draw</TabsTrigger>
+                        <TabsTrigger value="type">⌨️ Type</TabsTrigger>
+                      </TabsList>
+
+                      <TabsContent value="photo" className="space-y-3 mt-3">
+                        {photoPreviews[`challenge_${currentChallengeIndex}`] ? (
+                          <div className="relative">
+                            <img
+                              src={photoPreviews[`challenge_${currentChallengeIndex}`]}
+                              alt="Your working"
+                              className="w-full rounded-xl border border-border max-h-[300px] object-contain bg-muted/30"
+                            />
+                            <Button
+                              variant="outline" size="sm"
+                              className="absolute top-2 right-2 rounded-lg"
+                              onClick={() => {
+                                setPhotoFiles(prev => ({ ...prev, [`challenge_${currentChallengeIndex}`]: null }));
+                                setPhotoPreviews(prev => ({ ...prev, [`challenge_${currentChallengeIndex}`]: "" }));
+                              }}
+                            >
+                              Change photo
+                            </Button>
+                          </div>
+                        ) : (
+                          <label className="flex flex-col items-center justify-center gap-3 border-2 border-dashed border-border rounded-xl p-8 cursor-pointer hover:border-primary/40 transition-colors bg-muted/20">
+                            <Camera className="w-10 h-10 text-muted-foreground" />
+                            <p className="text-sm text-muted-foreground font-medium">📷 Upload photo of your work</p>
+                            <input
+                              type="file" accept="image/*" capture="environment"
+                              className="hidden"
+                              onChange={(e) => handlePhotoSelect(`challenge_${currentChallengeIndex}`, e.target.files?.[0] || null)}
+                            />
+                          </label>
+                        )}
+                      </TabsContent>
+
+                      <TabsContent value="draw" className="mt-3">
+                        <DrawingCanvas
+                          onCanvasReady={(getDataUrl) => {
+                            canvasGetDataUrlRef.current[`challenge_${currentChallengeIndex}`] = getDataUrl;
+                          }}
+                          disabled={isCompleted || assessingFreeText[`challenge_${currentChallengeIndex}`]}
+                        />
+                      </TabsContent>
+
+                      <TabsContent value="type" className="mt-3">
+                        <Textarea
+                          value={freeTextAnswers[`challenge_${currentChallengeIndex}`] || ""}
+                          onChange={(e) => handleFreeTextChange(`challenge_${currentChallengeIndex}`, e.target.value)}
+                          placeholder="Type your working here (use Photo or Draw for best results)..."
+                          className="min-h-[200px] resize-none font-mono"
+                          disabled={isCompleted || assessingFreeText[`challenge_${currentChallengeIndex}`]}
+                        />
+                      </TabsContent>
+                    </Tabs>
+
+                    {photoRejectionMsg[`challenge_${currentChallengeIndex}`] && (
+                      <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-3 text-sm text-destructive">
+                        {photoRejectionMsg[`challenge_${currentChallengeIndex}`]}
+                      </div>
+                    )}
+
+                    <Button
+                      onClick={() => submitWorkedSolution(currentChallengeIndex)}
+                      className="w-full h-12 text-lg font-bold rounded-xl"
+                      disabled={assessingFreeText[`challenge_${currentChallengeIndex}`]}
+                    >
+                      {assessingFreeText[`challenge_${currentChallengeIndex}`] ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                          Mirri is checking...
+                        </>
+                      ) : (
+                        "Submit Working 📐"
+                      )}
+                    </Button>
+                  </>
+                )}
+
+                {isCompleted && mathsWorkingFeedback[`challenge_${currentChallengeIndex}`] && (
+                  <div className="bg-eucalyptus/10 border border-eucalyptus/20 rounded-xl p-4 text-center animate-slide-up">
+                    <span className="text-3xl block mb-2">✅</span>
+                    <p className="font-semibold text-eucalyptus">
+                      {mathsWorkingFeedback[`challenge_${currentChallengeIndex}`].overall_rating} +{(question.points || 30) + (mathsWorkingFeedback[`challenge_${currentChallengeIndex}`].bonus_xp_awarded || 0)} XP
+                    </p>
+                  </div>
+                )}
+
+                {showHint && !isCompleted && (
+                  <div className="bg-ochre/10 border border-ochre/20 rounded-xl p-4 animate-slide-up">
+                    <div className="flex items-start gap-2">
+                      <HelpCircle className="w-5 h-5 text-ochre flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold text-sm text-ochre mb-1">Hint:</p>
+                        <p className="text-foreground/80">{question.hint}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             ) : regeneratingQuestion[currentChallengeIndex] ? (
               /* Regenerating question loading state */
               <div className="flex flex-col items-center justify-center py-8 gap-3 animate-fade-in">
