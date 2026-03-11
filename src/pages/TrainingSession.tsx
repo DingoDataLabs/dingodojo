@@ -1900,6 +1900,7 @@ export default function TrainingSession() {
             ]?.worked_solution_type || "working"
           }
         />
+      )}
 
       {/* Mission Complete Celebration Overlay */}
       {missionComplete && celebrationData && (
