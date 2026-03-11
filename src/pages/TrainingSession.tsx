@@ -142,8 +142,15 @@ export default function TrainingSession() {
   const { subjectSlug, topicSlug } = useParams<{ subjectSlug: string; topicSlug: string }>();
   const navigate = useNavigate();
   const { user, session, loading: authLoading } = useAuth();
-  const isMobile = useIsMobile();
-
+  // Use lg breakpoint (1024px) for Mirri layout — below lg = compact (no split)
+  const [isCompact, setIsCompact] = useState(false);
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 1023px)");
+    const onChange = () => setIsCompact(mql.matches);
+    onChange();
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
 
   const [topic, setTopic] = useState<Topic | null>(null);
   const [subject, setSubject] = useState<Subject | null>(null);
