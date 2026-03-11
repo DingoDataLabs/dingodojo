@@ -348,7 +348,7 @@ export default function TrainingSession() {
 
   const fetchTopicAndLesson = async () => {
     try {
-      // Fetch topic with subject
+      // Fetch topic with subject (always needed for chat context etc.)
       const { data: topicData, error: topicError } = await supabase
         .from("topics")
         .select("*, subjects!inner(id, slug, name)")
@@ -364,6 +364,12 @@ export default function TrainingSession() {
       const subjectData = (topicData as any).subjects as Subject;
       setTopic(topicData);
       setSubject(subjectData);
+
+      // If we already restored lesson from sessionStorage, skip regeneration
+      if (lessonContent) {
+        setLoading(false);
+        return;
+      }
 
       // Get profile first to fetch topic XP
       const { data: profileData } = await supabase
