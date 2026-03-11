@@ -885,13 +885,31 @@ export default function TrainingSession() {
   const handleFeedbackModalClose = () => {
     setShowFeedbackModal(false);
     
-    // Find the question index from the pending key
     const questionIdx = pendingFeedbackKey ? parseInt(pendingFeedbackKey.replace('challenge_', '')) : -1;
     setPendingFeedbackKey(null);
     
-    // Move to next question if there is one, otherwise mission will auto-complete on render
     if (questionIdx >= 0 && lessonContent && questionIdx < lessonContent.final_challenge.questions.length - 1) {
       setCurrentChallengeIndex(questionIdx + 1);
+    } else {
+      // Bug 2 fix: Start countdown only after feedback modal is dismissed
+      if (allChallengesComplete()) {
+        setCompletionCountdown(3);
+      }
+    }
+  };
+
+  const handleMathsFeedbackModalClose = () => {
+    setShowMathsFeedbackModal(false);
+    
+    const questionIdx = pendingMathsFeedbackKey ? parseInt(pendingMathsFeedbackKey.replace('challenge_', '')) : -1;
+    setPendingMathsFeedbackKey(null);
+    
+    if (questionIdx >= 0 && lessonContent && questionIdx < lessonContent.final_challenge.questions.length - 1) {
+      setCurrentChallengeIndex(questionIdx + 1);
+    } else {
+      if (allChallengesComplete()) {
+        setCompletionCountdown(3);
+      }
     }
   };
 
