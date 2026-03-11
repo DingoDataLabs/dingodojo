@@ -270,6 +270,34 @@ export default function TrainingSession() {
 
   useEffect(() => {
     if (topicSlug && user) {
+      // Bug 1 fix: Rehydrate from sessionStorage before fetching
+      const saved = sessionStorage.getItem(sessionKey);
+      if (saved && !restoredRef.current) {
+        try {
+          const snapshot = JSON.parse(saved);
+          if (snapshot.lessonContent) {
+            setLessonContent(snapshot.lessonContent);
+            setInFinalChallenge(snapshot.inFinalChallenge ?? false);
+            setCurrentChallengeIndex(snapshot.currentChallengeIndex ?? 0);
+            setChallengeCompleted(snapshot.challengeCompleted ?? {});
+            setFreeTextAnswers(snapshot.freeTextAnswers ?? {});
+            setAnswerMode(snapshot.answerMode ?? {});
+            setPhotoPreviews(snapshot.photoPreviews ?? {});
+            setEarnedXp(snapshot.earnedXp ?? 0);
+            setCurrentSectionIndex(snapshot.currentSectionIndex ?? 0);
+            setSectionCompleted(snapshot.sectionCompleted ?? {});
+            setChallengeAnswers(snapshot.challengeAnswers ?? {});
+            setChallengeAttempts(snapshot.challengeAttempts ?? {});
+            setSectionAnswers(snapshot.sectionAnswers ?? {});
+            setSectionAttempts(snapshot.sectionAttempts ?? {});
+            setShowSectionHint(snapshot.showSectionHint ?? {});
+            setShowChallengeHint(snapshot.showChallengeHint ?? {});
+            setLoading(false);
+            restoredRef.current = true;
+          }
+        } catch { /* corrupt data, proceed normally */ }
+      }
+      restoredRef.current = true;
       fetchTopicAndLesson();
       fetchProfile();
     }
