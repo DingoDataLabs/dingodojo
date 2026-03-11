@@ -1078,6 +1078,7 @@ export default function TrainingSession() {
       const isStreakDay = currentProfile?.last_mission_date !== today;
 
       setMissionComplete(true);
+      clearSessionState();
       setCelebrationData({ xp: finalXp, streak: newStreak, isStreakDay });
 
       // Burst confetti
