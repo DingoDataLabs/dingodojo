@@ -1645,8 +1645,8 @@ export default function TrainingSession() {
 
       {/* Split View */}
       <main className="flex-grow flex overflow-hidden relative">
-        {/* Mobile/Tablet: Full width lesson + floating Sensei */}
-        {isMobile && (
+        {/* Mobile/Tablet (below lg): floating Sensei bottom sheet */}
+        {isCompact && (
           <SenseiChatDrawer
             messages={messages}
             inputMessage={inputMessage}
