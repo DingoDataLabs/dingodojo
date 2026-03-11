@@ -1578,8 +1578,10 @@ export default function TrainingSession() {
           </div>
         )}
 
-        {allDone && !missionComplete && (() => {
-          // Kick off countdown the first time allDone becomes true
+        {allDone && !missionComplete && !showFeedbackModal && !showMathsFeedbackModal && (() => {
+          // Bug 2 fix: Only kick off countdown when no feedback modal is open
+          // For MC-only challenges, start countdown here; for free-text/worked_solution
+          // the countdown is started in handleFeedbackModalClose/handleMathsFeedbackModalClose
           if (completionCountdown === null) {
             setTimeout(() => setCompletionCountdown(3), 0);
           }
