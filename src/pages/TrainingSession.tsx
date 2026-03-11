@@ -1887,6 +1887,20 @@ export default function TrainingSession() {
         />
       )}
 
+      {/* Maths Working Feedback Modal */}
+      {pendingMathsFeedbackKey && mathsWorkingFeedback[pendingMathsFeedbackKey] && (
+        <MathsWorkingFeedbackModal
+          isOpen={showMathsFeedbackModal}
+          onClose={handleMathsFeedbackModalClose}
+          feedback={mathsWorkingFeedback[pendingMathsFeedbackKey]}
+          bonusXp={mathsWorkingFeedback[pendingMathsFeedbackKey].bonus_xp_awarded || 0}
+          workedSolutionType={
+            lessonContent?.final_challenge.questions[
+              parseInt(pendingMathsFeedbackKey.replace('challenge_', ''))
+            ]?.worked_solution_type || "working"
+          }
+        />
+
       {/* Mission Complete Celebration Overlay */}
       {missionComplete && celebrationData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "linear-gradient(135deg, hsl(var(--ochre-dark) / 0.92), hsl(var(--ochre) / 0.92), hsl(var(--ochre-light) / 0.88))", backdropFilter: "blur(8px)" }}>
