@@ -255,6 +255,7 @@ Guidelines:
 function buildChallengePrompt(topicName: string, yearLevel: string, difficulty: any, subjectSlug?: string) {
   const isMaths = subjectSlug === "maths" || subjectSlug === "mathematics";
   const isEnglish = subjectSlug === "english";
+  const isAdvancedMaths = isMaths && (difficulty.level === "Extending" || difficulty.level === "Mastering");
 
   const wordLimits: Record<string, { min: number; max: number }> = {
     "Beginning": { min: 50, max: 100 }, "Developing": { min: 100, max: 150 },
@@ -284,8 +285,31 @@ Include at least ONE free-text question:
   "points": 50
 }` : '';
 
+  const workedSolutionBlock = isAdvancedMaths ? `
+IMPORTANT: For this advanced maths student, include ONE "worked_solution" question where the student must show their working on paper or draw a chart/graph.
+
+First, decide whether "${topicName}" is best suited for:
+- "chart": topics involving data, statistics, coordinates, graphing (e.g. divided bar graphs, side-by-side column graphs, coordinate plotting)
+- "working": topics involving multi-step arithmetic, fractions, area/perimeter, volume, time calculations
+
+If the topic suits NEITHER (e.g. probability concepts, shape classification, angle types), do NOT include a worked_solution question — use standard multiple choice instead.
+
+If you include a worked_solution question, use this format:
+{
+  "type": "worked_solution",
+  "question": "A multi-step problem requiring the student to show their working or draw a chart",
+  "worked_solution_type": "<'chart' or 'working'>",
+  "correct_answer_value": "<the expected final answer as a string, e.g. '42.5' or 'see chart'>",
+  "working_steps_expected": ["Step 1 description", "Step 2 description", "Step 3 description"],
+  "hint": "Think about [guidance]",
+  "explanation": "The correct approach is [method explanation]",
+  "points": 30,
+  "bonus_xp": 25
+}` : '';
+
   const user = `Create a FINAL CHALLENGE for "${topicName}" (${yearLevel}, level: ${difficulty.level}).
 ${freeTextBlock}
+${workedSolutionBlock}
 
 Return ONLY valid JSON:
 {
@@ -322,6 +346,7 @@ Guidelines:
 - Progressive difficulty within the challenge
 - ${isMaths ? 'Include "calculation_expression" for arithmetic questions' : ''}
 - ${isEnglish ? 'Include at least one free-text writing question' : ''}
+- ${isAdvancedMaths ? 'Include one worked_solution question if the topic suits it (see instructions above)' : ''}
 - Use Australian English and contexts`;
 
   return { system, user };

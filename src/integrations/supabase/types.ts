@@ -301,6 +301,87 @@ export type Database = {
           },
         ]
       }
+      maths_working_submissions: {
+        Row: {
+          annotations: Json | null
+          bonus_xp_awarded: number | null
+          clear_working: number | null
+          composite_score: number | null
+          correct_answer: number | null
+          correct_method: number | null
+          created_at: string
+          feedback: string | null
+          id: string
+          image_path: string | null
+          input_method: string | null
+          neat_layout: number | null
+          overall_rating: string | null
+          profile_id: string
+          question: string | null
+          subject_name: string | null
+          topic_name: string | null
+          transcribed_working: string | null
+          worked_solution_type: string
+        }
+        Insert: {
+          annotations?: Json | null
+          bonus_xp_awarded?: number | null
+          clear_working?: number | null
+          composite_score?: number | null
+          correct_answer?: number | null
+          correct_method?: number | null
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          image_path?: string | null
+          input_method?: string | null
+          neat_layout?: number | null
+          overall_rating?: string | null
+          profile_id: string
+          question?: string | null
+          subject_name?: string | null
+          topic_name?: string | null
+          transcribed_working?: string | null
+          worked_solution_type?: string
+        }
+        Update: {
+          annotations?: Json | null
+          bonus_xp_awarded?: number | null
+          clear_working?: number | null
+          composite_score?: number | null
+          correct_answer?: number | null
+          correct_method?: number | null
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          image_path?: string | null
+          input_method?: string | null
+          neat_layout?: number | null
+          overall_rating?: string | null
+          profile_id?: string
+          question?: string | null
+          subject_name?: string | null
+          topic_name?: string | null
+          transcribed_working?: string | null
+          worked_solution_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maths_working_submissions_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maths_working_submissions_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string

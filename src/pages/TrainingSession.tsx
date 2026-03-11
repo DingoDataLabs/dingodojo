@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import dingoLogo from "@/assets/dingo-logo.png";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Send, Sparkles, CheckCircle, Loader2, ChevronRight, HelpCircle, Camera, PenTool, Crown } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
@@ -14,10 +15,11 @@ import { getSydneyWeekStart, isNewWeek } from "@/lib/weekUtils";
 import { getSydneyToday, isNewDay } from "@/lib/dailyUtils";
 import { applySubjectMultiplier } from "@/lib/weeklyGoalUtils";
 import { SenseiChatDrawer } from "@/components/SenseiChatDrawer";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { getMasteryLevel } from "@/lib/progressUtils";
 import { AnnotatedWriting } from "@/components/AnnotatedWriting";
 import { WritingFeedbackModal } from "@/components/WritingFeedbackModal";
+import { MathsWorkingFeedbackModal } from "@/components/MathsWorkingFeedbackModal";
+import { DrawingCanvas } from "@/components/DrawingCanvas";
 import { useWakeLock } from "@/hooks/useWakeLock";
 
 interface Topic {
@@ -42,11 +44,15 @@ interface CheckQuestion {
   hint: string;
   explanation: string;
   points?: number;
-  type?: "multiple_choice" | "free_text";
+  type?: "multiple_choice" | "free_text" | "worked_solution";
   assessment_criteria?: string[];
   example_elements?: string[];
   max_words?: number;
   min_words?: number;
+  worked_solution_type?: "chart" | "working";
+  correct_answer_value?: string;
+  working_steps_expected?: string[];
+  bonus_xp?: number;
 }
 
 interface WritingAnnotation {
@@ -136,8 +142,19 @@ export default function TrainingSession() {
   const { subjectSlug, topicSlug } = useParams<{ subjectSlug: string; topicSlug: string }>();
   const navigate = useNavigate();
   const { user, session, loading: authLoading } = useAuth();
-  const isMobile = useIsMobile();
+  // Use lg breakpoint (1024px) for Mirri layout — below lg = compact (no split)
+  const [isCompact, setIsCompact] = useState(false);
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 1023px)");
+    const onChange = () => setIsCompact(mql.matches);
+    onChange();
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
 
+  // ── SessionStorage persistence (Bug 1: survive camera remounts) ──
+  const sessionKey = `training_session_${topicSlug}`;
+  const restoredRef = useRef(false);
 
   const [topic, setTopic] = useState<Topic | null>(null);
   const [subject, setSubject] = useState<Subject | null>(null);
@@ -176,8 +193,14 @@ export default function TrainingSession() {
   const [pendingFeedbackKey, setPendingFeedbackKey] = useState<string | null>(null);
   const [handwritingResults, setHandwritingResults] = useState<Record<string, HandwritingResult>>({});
 
+  // Maths working state
+  const [mathsWorkingFeedback, setMathsWorkingFeedback] = useState<Record<string, any>>({});
+  const [showMathsFeedbackModal, setShowMathsFeedbackModal] = useState(false);
+  const [pendingMathsFeedbackKey, setPendingMathsFeedbackKey] = useState<string | null>(null);
+  const canvasGetDataUrlRef = useRef<Record<string, (() => string | null)>>({});
+
   // Handwriting upload state
-  const [answerMode, setAnswerMode] = useState<Record<string, "type" | "photo">>({});
+  const [answerMode, setAnswerMode] = useState<Record<string, "type" | "photo" | "draw">>({});
   const [photoFiles, setPhotoFiles] = useState<Record<string, File | null>>({});
   const [photoPreviews, setPhotoPreviews] = useState<Record<string, string>>({});
   const [photoRejectionMsg, setPhotoRejectionMsg] = useState<Record<string, string>>({});
@@ -194,9 +217,50 @@ export default function TrainingSession() {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const lessonRef = useRef<HTMLDivElement>(null);
 
-  // Keep screen awake during final challenge with free-text/photo submissions
-  const hasFreeTextChallenge = lessonContent?.final_challenge?.questions?.some(q => q.type === "free_text") ?? false;
+  // Keep screen awake during final challenge with free-text/photo/worked_solution submissions
+  const hasFreeTextChallenge = lessonContent?.final_challenge?.questions?.some(q => q.type === "free_text" || q.type === "worked_solution") ?? false;
   useWakeLock(inFinalChallenge && hasFreeTextChallenge);
+
+  // ── Persist to sessionStorage on change ──
+  useEffect(() => {
+    if (!restoredRef.current) return; // Don't save during initial restore
+    if (!lessonContent) return;
+    try {
+      const snapshot = {
+        lessonContent,
+        inFinalChallenge,
+        currentChallengeIndex,
+        challengeCompleted,
+        freeTextAnswers,
+        answerMode,
+        photoPreviews,
+        earnedXp,
+        currentSectionIndex,
+        sectionCompleted,
+        challengeAnswers,
+        challengeAttempts,
+        sectionAnswers,
+        sectionAttempts,
+        showSectionHint,
+        showChallengeHint,
+      };
+      sessionStorage.setItem(sessionKey, JSON.stringify(snapshot));
+    } catch { /* quota exceeded — non-critical */ }
+  }, [lessonContent, inFinalChallenge, currentChallengeIndex, challengeCompleted, freeTextAnswers, answerMode, photoPreviews, earnedXp, currentSectionIndex, sectionCompleted, challengeAnswers]);
+
+  // Clear session on navigation away
+  useEffect(() => {
+    return () => {
+      // Don't clear if mission is completing (navigation to subject page)
+      if (!missionComplete) {
+        // Keep it — user might be coming back from camera
+      }
+    };
+  }, [missionComplete]);
+
+  const clearSessionState = useCallback(() => {
+    try { sessionStorage.removeItem(sessionKey); } catch {}
+  }, [sessionKey]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -206,6 +270,34 @@ export default function TrainingSession() {
 
   useEffect(() => {
     if (topicSlug && user) {
+      // Bug 1 fix: Rehydrate from sessionStorage before fetching
+      const saved = sessionStorage.getItem(sessionKey);
+      if (saved && !restoredRef.current) {
+        try {
+          const snapshot = JSON.parse(saved);
+          if (snapshot.lessonContent) {
+            setLessonContent(snapshot.lessonContent);
+            setInFinalChallenge(snapshot.inFinalChallenge ?? false);
+            setCurrentChallengeIndex(snapshot.currentChallengeIndex ?? 0);
+            setChallengeCompleted(snapshot.challengeCompleted ?? {});
+            setFreeTextAnswers(snapshot.freeTextAnswers ?? {});
+            setAnswerMode(snapshot.answerMode ?? {});
+            setPhotoPreviews(snapshot.photoPreviews ?? {});
+            setEarnedXp(snapshot.earnedXp ?? 0);
+            setCurrentSectionIndex(snapshot.currentSectionIndex ?? 0);
+            setSectionCompleted(snapshot.sectionCompleted ?? {});
+            setChallengeAnswers(snapshot.challengeAnswers ?? {});
+            setChallengeAttempts(snapshot.challengeAttempts ?? {});
+            setSectionAnswers(snapshot.sectionAnswers ?? {});
+            setSectionAttempts(snapshot.sectionAttempts ?? {});
+            setShowSectionHint(snapshot.showSectionHint ?? {});
+            setShowChallengeHint(snapshot.showChallengeHint ?? {});
+            setLoading(false);
+            restoredRef.current = true;
+          }
+        } catch { /* corrupt data, proceed normally */ }
+      }
+      restoredRef.current = true;
       fetchTopicAndLesson();
       fetchProfile();
     }
@@ -256,7 +348,7 @@ export default function TrainingSession() {
 
   const fetchTopicAndLesson = async () => {
     try {
-      // Fetch topic with subject
+      // Fetch topic with subject (always needed for chat context etc.)
       const { data: topicData, error: topicError } = await supabase
         .from("topics")
         .select("*, subjects!inner(id, slug, name)")
@@ -272,6 +364,12 @@ export default function TrainingSession() {
       const subjectData = (topicData as any).subjects as Subject;
       setTopic(topicData);
       setSubject(subjectData);
+
+      // If we already restored lesson from sessionStorage, skip regeneration
+      if (lessonContent) {
+        setLoading(false);
+        return;
+      }
 
       // Get profile first to fetch topic XP
       const { data: profileData } = await supabase
@@ -776,6 +874,89 @@ export default function TrainingSession() {
     }
   };
 
+  // ── Maths Worked Solution Submission ──
+  const submitWorkedSolution = async (questionIdx: number) => {
+    const question = lessonContent?.final_challenge.questions[questionIdx];
+    if (!question) return;
+
+    const key = `challenge_${questionIdx}`;
+    const mode = answerMode[key] || "photo";
+    let imageBase64: string | null = null;
+    let inputMethod = "photographed";
+
+    if (mode === "draw") {
+      const getDataUrl = canvasGetDataUrlRef.current[key];
+      const dataUrl = getDataUrl?.();
+      if (!dataUrl) {
+        toast.error("Please draw your working first!");
+        return;
+      }
+      imageBase64 = dataUrl.split(",")[1]; // strip data:image/png;base64,
+      inputMethod = "drawn";
+    } else if (mode === "photo") {
+      const file = photoFiles[key];
+      if (!file) {
+        toast.error("Please upload a photo first!");
+        return;
+      }
+      const buffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      let binary = "";
+      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+      imageBase64 = btoa(binary);
+      inputMethod = "photographed";
+    } else {
+      // Type mode fallback — not really applicable for worked_solution, but handle gracefully
+      toast.error("Please use Photo or Draw mode for show-your-working questions.");
+      return;
+    }
+
+    setAssessingFreeText(prev => ({ ...prev, [key]: true }));
+    setPhotoRejectionMsg(prev => ({ ...prev, [key]: "" }));
+
+    try {
+      const subjectName = subject ? (subject as any).name || subjectSlug : subjectSlug;
+
+      const { data, error } = await supabase.functions.invoke("assess-maths-working", {
+        body: {
+          imageBase64,
+          question: question.question,
+          workedSolutionType: question.worked_solution_type || "working",
+          correctAnswerValue: question.correct_answer_value,
+          workingStepsExpected: question.working_steps_expected,
+          bonusXp: question.bonus_xp || 25,
+          topicName: topic?.name,
+          subjectName,
+          inputMethod,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.rejected && data?.reason === "upload_not_handwriting") {
+        setPhotoRejectionMsg(prev => ({ ...prev, [key]: "That doesn't look like maths working — please show your working on paper or draw it 📐" }));
+        setAssessingFreeText(prev => ({ ...prev, [key]: false }));
+        return;
+      }
+
+      if (data?.success && data?.assessment) {
+        setMathsWorkingFeedback(prev => ({ ...prev, [key]: data.assessment }));
+        setChallengeCompleted(prev => ({ ...prev, [questionIdx]: true }));
+        const points = question.points || 30;
+        const bonus = data.assessment.bonus_xp_awarded || 0;
+        setEarnedXp(prev => prev + points + bonus);
+
+        setPendingMathsFeedbackKey(key);
+        setShowMathsFeedbackModal(true);
+      }
+    } catch (err) {
+      console.error("Maths working assessment error:", err);
+      toast.error("Couldn't assess your working. Please try again!");
+    } finally {
+      setAssessingFreeText(prev => ({ ...prev, [key]: false }));
+    }
+  };
+
   const handlePhotoSelect = (key: string, file: File | null) => {
     if (!file) return;
     setPhotoFiles(prev => ({ ...prev, [key]: file }));
@@ -787,13 +968,31 @@ export default function TrainingSession() {
   const handleFeedbackModalClose = () => {
     setShowFeedbackModal(false);
     
-    // Find the question index from the pending key
     const questionIdx = pendingFeedbackKey ? parseInt(pendingFeedbackKey.replace('challenge_', '')) : -1;
     setPendingFeedbackKey(null);
     
-    // Move to next question if there is one, otherwise mission will auto-complete on render
     if (questionIdx >= 0 && lessonContent && questionIdx < lessonContent.final_challenge.questions.length - 1) {
       setCurrentChallengeIndex(questionIdx + 1);
+    } else {
+      // Bug 2 fix: Start countdown only after feedback modal is dismissed
+      if (allChallengesComplete()) {
+        setCompletionCountdown(3);
+      }
+    }
+  };
+
+  const handleMathsFeedbackModalClose = () => {
+    setShowMathsFeedbackModal(false);
+    
+    const questionIdx = pendingMathsFeedbackKey ? parseInt(pendingMathsFeedbackKey.replace('challenge_', '')) : -1;
+    setPendingMathsFeedbackKey(null);
+    
+    if (questionIdx >= 0 && lessonContent && questionIdx < lessonContent.final_challenge.questions.length - 1) {
+      setCurrentChallengeIndex(questionIdx + 1);
+    } else {
+      if (allChallengesComplete()) {
+        setCompletionCountdown(3);
+      }
     }
   };
 
@@ -879,6 +1078,7 @@ export default function TrainingSession() {
       const isStreakDay = currentProfile?.last_mission_date !== today;
 
       setMissionComplete(true);
+      clearSessionState();
       setCelebrationData({ xp: finalXp, streak: newStreak, isStreakDay });
 
       // Burst confetti
@@ -1394,6 +1594,137 @@ export default function TrainingSession() {
                   </div>
                 )}
               </div>
+            ) : question.type === "worked_solution" ? (
+              /* Worked solution question (Maths) */
+              <div className="space-y-4">
+                {question.working_steps_expected && (
+                  <div className="bg-sky/10 border border-sky/20 rounded-xl p-3 text-sm">
+                    <p className="font-semibold text-sky mb-2">
+                      {question.worked_solution_type === "chart" ? "📊 Draw a chart showing:" : "📝 Show your working:"}
+                    </p>
+                    <ul className="list-disc list-inside text-foreground/80 space-y-1">
+                      {question.working_steps_expected.map((step, i) => (
+                        <li key={i}>{step}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {question.bonus_xp && (
+                  <div className="bg-ochre/10 border border-ochre/20 rounded-lg px-3 py-2 text-sm text-center">
+                    ⭐ Up to <span className="font-bold text-primary">+{question.bonus_xp} bonus XP</span> for clear working!
+                  </div>
+                )}
+
+                {!isCompleted && (
+                  <>
+                    {/* Three-tab input */}
+                    <Tabs
+                      value={answerMode[`challenge_${currentChallengeIndex}`] || "photo"}
+                      onValueChange={(v) => setAnswerMode(prev => ({ ...prev, [`challenge_${currentChallengeIndex}`]: v as "photo" | "draw" | "type" }))}
+                    >
+                      <TabsList className="grid w-full grid-cols-3">
+                        <TabsTrigger value="photo">📷 Upload photo</TabsTrigger>
+                        <TabsTrigger value="draw">✏️ Draw</TabsTrigger>
+                        <TabsTrigger value="type">⌨️ Type</TabsTrigger>
+                      </TabsList>
+
+                      <TabsContent value="photo" className="space-y-3 mt-3">
+                        {photoPreviews[`challenge_${currentChallengeIndex}`] ? (
+                          <div className="relative">
+                            <img
+                              src={photoPreviews[`challenge_${currentChallengeIndex}`]}
+                              alt="Your working"
+                              className="w-full rounded-xl border border-border max-h-[300px] object-contain bg-muted/30"
+                            />
+                            <Button
+                              variant="outline" size="sm"
+                              className="absolute top-2 right-2 rounded-lg"
+                              onClick={() => {
+                                setPhotoFiles(prev => ({ ...prev, [`challenge_${currentChallengeIndex}`]: null }));
+                                setPhotoPreviews(prev => ({ ...prev, [`challenge_${currentChallengeIndex}`]: "" }));
+                              }}
+                            >
+                              Change photo
+                            </Button>
+                          </div>
+                        ) : (
+                          <label className="flex flex-col items-center justify-center gap-3 border-2 border-dashed border-border rounded-xl p-8 cursor-pointer hover:border-primary/40 transition-colors bg-muted/20">
+                            <Camera className="w-10 h-10 text-muted-foreground" />
+                            <p className="text-sm text-muted-foreground font-medium">📷 Upload photo of your work</p>
+                            <input
+                              type="file" accept="image/*" capture="environment"
+                              className="hidden"
+                              onChange={(e) => handlePhotoSelect(`challenge_${currentChallengeIndex}`, e.target.files?.[0] || null)}
+                            />
+                          </label>
+                        )}
+                      </TabsContent>
+
+                      <TabsContent value="draw" className="mt-3">
+                        <DrawingCanvas
+                          onCanvasReady={(getDataUrl) => {
+                            canvasGetDataUrlRef.current[`challenge_${currentChallengeIndex}`] = getDataUrl;
+                          }}
+                          disabled={isCompleted || assessingFreeText[`challenge_${currentChallengeIndex}`]}
+                        />
+                      </TabsContent>
+
+                      <TabsContent value="type" className="mt-3">
+                        <Textarea
+                          value={freeTextAnswers[`challenge_${currentChallengeIndex}`] || ""}
+                          onChange={(e) => handleFreeTextChange(`challenge_${currentChallengeIndex}`, e.target.value)}
+                          placeholder="Type your working here (use Photo or Draw for best results)..."
+                          className="min-h-[200px] resize-none font-mono"
+                          disabled={isCompleted || assessingFreeText[`challenge_${currentChallengeIndex}`]}
+                        />
+                      </TabsContent>
+                    </Tabs>
+
+                    {photoRejectionMsg[`challenge_${currentChallengeIndex}`] && (
+                      <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-3 text-sm text-destructive">
+                        {photoRejectionMsg[`challenge_${currentChallengeIndex}`]}
+                      </div>
+                    )}
+
+                    <Button
+                      onClick={() => submitWorkedSolution(currentChallengeIndex)}
+                      className="w-full h-12 text-lg font-bold rounded-xl"
+                      disabled={assessingFreeText[`challenge_${currentChallengeIndex}`]}
+                    >
+                      {assessingFreeText[`challenge_${currentChallengeIndex}`] ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                          Mirri is checking...
+                        </>
+                      ) : (
+                        "Submit Working 📐"
+                      )}
+                    </Button>
+                  </>
+                )}
+
+                {isCompleted && mathsWorkingFeedback[`challenge_${currentChallengeIndex}`] && (
+                  <div className="bg-eucalyptus/10 border border-eucalyptus/20 rounded-xl p-4 text-center animate-slide-up">
+                    <span className="text-3xl block mb-2">✅</span>
+                    <p className="font-semibold text-eucalyptus">
+                      {mathsWorkingFeedback[`challenge_${currentChallengeIndex}`].overall_rating} +{(question.points || 30) + (mathsWorkingFeedback[`challenge_${currentChallengeIndex}`].bonus_xp_awarded || 0)} XP
+                    </p>
+                  </div>
+                )}
+
+                {showHint && !isCompleted && (
+                  <div className="bg-ochre/10 border border-ochre/20 rounded-xl p-4 animate-slide-up">
+                    <div className="flex items-start gap-2">
+                      <HelpCircle className="w-5 h-5 text-ochre flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold text-sm text-ochre mb-1">Hint:</p>
+                        <p className="text-foreground/80">{question.hint}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             ) : regeneratingQuestion[currentChallengeIndex] ? (
               /* Regenerating question loading state */
               <div className="flex flex-col items-center justify-center py-8 gap-3 animate-fade-in">
@@ -1462,8 +1793,10 @@ export default function TrainingSession() {
           </div>
         )}
 
-        {allDone && !missionComplete && (() => {
-          // Kick off countdown the first time allDone becomes true
+        {allDone && !missionComplete && !showFeedbackModal && !showMathsFeedbackModal && (() => {
+          // Bug 2 fix: Only kick off countdown when no feedback modal is open
+          // For MC-only challenges, start countdown here; for free-text/worked_solution
+          // the countdown is started in handleFeedbackModalClose/handleMathsFeedbackModalClose
           if (completionCountdown === null) {
             setTimeout(() => setCompletionCountdown(3), 0);
           }
@@ -1554,6 +1887,21 @@ export default function TrainingSession() {
         />
       )}
 
+      {/* Maths Working Feedback Modal */}
+      {pendingMathsFeedbackKey && mathsWorkingFeedback[pendingMathsFeedbackKey] && (
+        <MathsWorkingFeedbackModal
+          isOpen={showMathsFeedbackModal}
+          onClose={handleMathsFeedbackModalClose}
+          feedback={mathsWorkingFeedback[pendingMathsFeedbackKey]}
+          bonusXp={mathsWorkingFeedback[pendingMathsFeedbackKey].bonus_xp_awarded || 0}
+          workedSolutionType={
+            lessonContent?.final_challenge.questions[
+              parseInt(pendingMathsFeedbackKey.replace('challenge_', ''))
+            ]?.worked_solution_type || "working"
+          }
+        />
+      )}
+
       {/* Mission Complete Celebration Overlay */}
       {missionComplete && celebrationData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "linear-gradient(135deg, hsl(var(--ochre-dark) / 0.92), hsl(var(--ochre) / 0.92), hsl(var(--ochre-light) / 0.88))", backdropFilter: "blur(8px)" }}>
@@ -1632,8 +1980,8 @@ export default function TrainingSession() {
 
       {/* Split View */}
       <main className="flex-grow flex overflow-hidden relative">
-        {/* Mobile/Tablet: Full width lesson + floating Sensei */}
-        {isMobile && (
+        {/* Mobile/Tablet (below lg): floating Sensei bottom sheet */}
+        {isCompact && (
           <SenseiChatDrawer
             messages={messages}
             inputMessage={inputMessage}
@@ -1644,7 +1992,7 @@ export default function TrainingSession() {
         )}
 
         {/* Left Column - The Mission */}
-        <div ref={lessonRef} className={`${isMobile ? 'w-full' : 'w-1/2'} border-r border-border overflow-y-auto scrollbar-thin p-4 md:p-6`}>
+        <div ref={lessonRef} className={`${isCompact ? 'w-full' : 'w-1/2'} border-r border-border overflow-y-auto scrollbar-thin p-4 md:p-6`}>
           {lessonContent ? (
             <div className="space-y-6 max-w-xl mx-auto">
               {/* Title & Fun Fact (always visible) */}
@@ -1702,7 +2050,7 @@ export default function TrainingSession() {
         </div>
 
         {/* Right Column - The Sensei (Desktop only) */}
-        {!isMobile && (
+        {!isCompact && (
           <div className="w-1/2 flex flex-col bg-sand/30">
             <div className="flex-shrink-0 p-4 border-b border-border bg-card/50">
               <div className="flex items-center gap-3">
