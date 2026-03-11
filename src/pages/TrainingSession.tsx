@@ -957,6 +957,7 @@ export default function TrainingSession() {
     }
   };
 
+  const handlePhotoSelect = (key: string, file: File | null) => {
     if (!file) return;
     setPhotoFiles(prev => ({ ...prev, [key]: file }));
     setPhotoRejectionMsg(prev => ({ ...prev, [key]: "" }));
