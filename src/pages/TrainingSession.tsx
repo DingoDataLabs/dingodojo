@@ -1715,7 +1715,7 @@ export default function TrainingSession() {
         </div>
 
         {/* Right Column - The Sensei (Desktop only) */}
-        {!isMobile && (
+        {!isCompact && (
           <div className="w-1/2 flex flex-col bg-sand/30">
             <div className="flex-shrink-0 p-4 border-b border-border bg-card/50">
               <div className="flex items-center gap-3">
