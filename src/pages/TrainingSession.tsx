@@ -874,7 +874,89 @@ export default function TrainingSession() {
     }
   };
 
-  const handlePhotoSelect = (key: string, file: File | null) => {
+  // ── Maths Worked Solution Submission ──
+  const submitWorkedSolution = async (questionIdx: number) => {
+    const question = lessonContent?.final_challenge.questions[questionIdx];
+    if (!question) return;
+
+    const key = `challenge_${questionIdx}`;
+    const mode = answerMode[key] || "photo";
+    let imageBase64: string | null = null;
+    let inputMethod = "photographed";
+
+    if (mode === "draw") {
+      const getDataUrl = canvasGetDataUrlRef.current[key];
+      const dataUrl = getDataUrl?.();
+      if (!dataUrl) {
+        toast.error("Please draw your working first!");
+        return;
+      }
+      imageBase64 = dataUrl.split(",")[1]; // strip data:image/png;base64,
+      inputMethod = "drawn";
+    } else if (mode === "photo") {
+      const file = photoFiles[key];
+      if (!file) {
+        toast.error("Please upload a photo first!");
+        return;
+      }
+      const buffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      let binary = "";
+      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+      imageBase64 = btoa(binary);
+      inputMethod = "photographed";
+    } else {
+      // Type mode fallback — not really applicable for worked_solution, but handle gracefully
+      toast.error("Please use Photo or Draw mode for show-your-working questions.");
+      return;
+    }
+
+    setAssessingFreeText(prev => ({ ...prev, [key]: true }));
+    setPhotoRejectionMsg(prev => ({ ...prev, [key]: "" }));
+
+    try {
+      const subjectName = subject ? (subject as any).name || subjectSlug : subjectSlug;
+
+      const { data, error } = await supabase.functions.invoke("assess-maths-working", {
+        body: {
+          imageBase64,
+          question: question.question,
+          workedSolutionType: question.worked_solution_type || "working",
+          correctAnswerValue: question.correct_answer_value,
+          workingStepsExpected: question.working_steps_expected,
+          bonusXp: question.bonus_xp || 25,
+          topicName: topic?.name,
+          subjectName,
+          inputMethod,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.rejected && data?.reason === "upload_not_handwriting") {
+        setPhotoRejectionMsg(prev => ({ ...prev, [key]: "That doesn't look like maths working — please show your working on paper or draw it 📐" }));
+        setAssessingFreeText(prev => ({ ...prev, [key]: false }));
+        return;
+      }
+
+      if (data?.success && data?.assessment) {
+        setMathsWorkingFeedback(prev => ({ ...prev, [key]: data.assessment }));
+        setChallengeCompleted(prev => ({ ...prev, [questionIdx]: true }));
+        const points = question.points || 30;
+        const bonus = data.assessment.bonus_xp_awarded || 0;
+        setEarnedXp(prev => prev + points + bonus);
+
+        setPendingMathsFeedbackKey(key);
+        setShowMathsFeedbackModal(true);
+      }
+    } catch (err) {
+      console.error("Maths working assessment error:", err);
+      toast.error("Couldn't assess your working. Please try again!");
+    } finally {
+      setAssessingFreeText(prev => ({ ...prev, [key]: false }));
+    }
+  };
+
     if (!file) return;
     setPhotoFiles(prev => ({ ...prev, [key]: file }));
     setPhotoRejectionMsg(prev => ({ ...prev, [key]: "" }));
