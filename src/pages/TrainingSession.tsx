@@ -152,6 +152,10 @@ export default function TrainingSession() {
     return () => mql.removeEventListener("change", onChange);
   }, []);
 
+  // ── SessionStorage persistence (Bug 1: survive camera remounts) ──
+  const sessionKey = `training_session_${topicSlug}`;
+  const restoredRef = useRef(false);
+
   const [topic, setTopic] = useState<Topic | null>(null);
   const [subject, setSubject] = useState<Subject | null>(null);
   const [lessonContent, setLessonContent] = useState<LessonContent | null>(null);
@@ -189,8 +193,14 @@ export default function TrainingSession() {
   const [pendingFeedbackKey, setPendingFeedbackKey] = useState<string | null>(null);
   const [handwritingResults, setHandwritingResults] = useState<Record<string, HandwritingResult>>({});
 
+  // Maths working state
+  const [mathsWorkingFeedback, setMathsWorkingFeedback] = useState<Record<string, any>>({});
+  const [showMathsFeedbackModal, setShowMathsFeedbackModal] = useState(false);
+  const [pendingMathsFeedbackKey, setPendingMathsFeedbackKey] = useState<string | null>(null);
+  const canvasGetDataUrlRef = useRef<Record<string, (() => string | null)>>({});
+
   // Handwriting upload state
-  const [answerMode, setAnswerMode] = useState<Record<string, "type" | "photo">>({});
+  const [answerMode, setAnswerMode] = useState<Record<string, "type" | "photo" | "draw">>({});
   const [photoFiles, setPhotoFiles] = useState<Record<string, File | null>>({});
   const [photoPreviews, setPhotoPreviews] = useState<Record<string, string>>({});
   const [photoRejectionMsg, setPhotoRejectionMsg] = useState<Record<string, string>>({});
@@ -207,9 +217,50 @@ export default function TrainingSession() {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const lessonRef = useRef<HTMLDivElement>(null);
 
-  // Keep screen awake during final challenge with free-text/photo submissions
-  const hasFreeTextChallenge = lessonContent?.final_challenge?.questions?.some(q => q.type === "free_text") ?? false;
+  // Keep screen awake during final challenge with free-text/photo/worked_solution submissions
+  const hasFreeTextChallenge = lessonContent?.final_challenge?.questions?.some(q => q.type === "free_text" || q.type === "worked_solution") ?? false;
   useWakeLock(inFinalChallenge && hasFreeTextChallenge);
+
+  // ── Persist to sessionStorage on change ──
+  useEffect(() => {
+    if (!restoredRef.current) return; // Don't save during initial restore
+    if (!lessonContent) return;
+    try {
+      const snapshot = {
+        lessonContent,
+        inFinalChallenge,
+        currentChallengeIndex,
+        challengeCompleted,
+        freeTextAnswers,
+        answerMode,
+        photoPreviews,
+        earnedXp,
+        currentSectionIndex,
+        sectionCompleted,
+        challengeAnswers,
+        challengeAttempts,
+        sectionAnswers,
+        sectionAttempts,
+        showSectionHint,
+        showChallengeHint,
+      };
+      sessionStorage.setItem(sessionKey, JSON.stringify(snapshot));
+    } catch { /* quota exceeded — non-critical */ }
+  }, [lessonContent, inFinalChallenge, currentChallengeIndex, challengeCompleted, freeTextAnswers, answerMode, photoPreviews, earnedXp, currentSectionIndex, sectionCompleted, challengeAnswers]);
+
+  // Clear session on navigation away
+  useEffect(() => {
+    return () => {
+      // Don't clear if mission is completing (navigation to subject page)
+      if (!missionComplete) {
+        // Keep it — user might be coming back from camera
+      }
+    };
+  }, [missionComplete]);
+
+  const clearSessionState = useCallback(() => {
+    try { sessionStorage.removeItem(sessionKey); } catch {}
+  }, [sessionKey]);
 
   useEffect(() => {
     if (!authLoading && !user) {
