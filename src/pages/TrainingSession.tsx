@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import dingoLogo from "@/assets/dingo-logo.png";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Send, Sparkles, CheckCircle, Loader2, ChevronRight, HelpCircle, Camera, PenTool, Crown } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
@@ -14,10 +15,11 @@ import { getSydneyWeekStart, isNewWeek } from "@/lib/weekUtils";
 import { getSydneyToday, isNewDay } from "@/lib/dailyUtils";
 import { applySubjectMultiplier } from "@/lib/weeklyGoalUtils";
 import { SenseiChatDrawer } from "@/components/SenseiChatDrawer";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { getMasteryLevel } from "@/lib/progressUtils";
 import { AnnotatedWriting } from "@/components/AnnotatedWriting";
 import { WritingFeedbackModal } from "@/components/WritingFeedbackModal";
+import { MathsWorkingFeedbackModal } from "@/components/MathsWorkingFeedbackModal";
+import { DrawingCanvas } from "@/components/DrawingCanvas";
 import { useWakeLock } from "@/hooks/useWakeLock";
 
 interface Topic {
