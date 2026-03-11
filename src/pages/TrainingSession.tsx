@@ -1657,7 +1657,7 @@ export default function TrainingSession() {
         )}
 
         {/* Left Column - The Mission */}
-        <div ref={lessonRef} className={`${isMobile ? 'w-full' : 'w-1/2'} border-r border-border overflow-y-auto scrollbar-thin p-4 md:p-6`}>
+        <div ref={lessonRef} className={`${isCompact ? 'w-full' : 'w-1/2'} border-r border-border overflow-y-auto scrollbar-thin p-4 md:p-6`}>
           {lessonContent ? (
             <div className="space-y-6 max-w-xl mx-auto">
               {/* Title & Fun Fact (always visible) */}
