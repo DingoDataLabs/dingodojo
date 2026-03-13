@@ -221,6 +221,8 @@ export default function TrainingSession() {
   const hasFreeTextChallenge = lessonContent?.final_challenge?.questions?.some(q => q.type === "free_text" || q.type === "worked_solution") ?? false;
   useWakeLock(inFinalChallenge && hasFreeTextChallenge);
 
+  const isBonusSubject = subject ? !['english', 'maths', 'mathematics'].includes(subject.slug) : false;
+
   // ── Persist to sessionStorage on change ──
   useEffect(() => {
     if (!restoredRef.current) return; // Don't save during initial restore
