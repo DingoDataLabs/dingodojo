@@ -570,7 +570,7 @@ export default function TrainingSession() {
     if (isCorrect) {
       setSectionCompleted(prev => ({ ...prev, [sectionIdx]: true }));
       toast.success("Brilliant! You got it! 🎉");
-      setEarnedXp(prev => prev + 10);
+      setEarnedXp(prev => prev + (isBonusSubject ? 5 : 10));
     } else {
       // Don't reveal the answer - show hint and encourage retry
       setShowSectionHint(prev => ({ ...prev, [sectionIdx]: true }));

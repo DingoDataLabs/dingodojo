@@ -327,7 +327,7 @@ Return ONLY valid JSON:
         ${isMaths ? '"calculation_expression": "math expression",' : ''}
         "hint": "Hint",
         "explanation": "Explanation",
-        "points": 20
+        "points": ${isBonus ? 5 : 20}
       },
       {
         "type": "multiple_choice",
@@ -337,7 +337,7 @@ Return ONLY valid JSON:
         ${isMaths ? '"calculation_expression": "math expression",' : ''}
         "hint": "Hint",
         "explanation": "Explanation",
-        "points": 30
+        "points": ${isBonus ? 5 : 30}
       }
     ]
   }

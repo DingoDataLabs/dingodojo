@@ -395,24 +395,20 @@ export default function ProgressPage() {
                 </ChartContainer>
               </div>
 
-              {/* Individual criteria charts */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {[
-                  { key: "letter", label: "Letter Formation", color: "composite" },
-                  { key: "spacing", label: "Spacing & Sizing", color: "spacing" },
-                  { key: "presentation", label: "Presentation", color: "presentation" },
-                ].map(c => (
-                  <div key={c.key}>
-                    <p className="text-xs font-semibold text-muted-foreground mb-1">{c.label}</p>
-                    <ChartContainer config={chartConfig} className="h-[120px] w-full">
-                      <LineChart data={chartData}>
-                        <XAxis dataKey="date" fontSize={10} tick={false} />
-                        <YAxis domain={[0, 5]} fontSize={10} />
-                        <Line type="monotone" dataKey={c.key} stroke={`var(--color-${c.color})`} strokeWidth={2} dot={{ r: 3 }} />
-                      </LineChart>
-                    </ChartContainer>
-                  </div>
-                ))}
+              {/* Component scores — combined line chart */}
+              <div>
+                <p className="text-sm font-semibold text-foreground mb-2">Component Scores</p>
+                <ChartContainer config={chartConfig} className="h-[200px] w-full">
+                  <LineChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" fontSize={12} />
+                    <YAxis domain={[0, 5]} fontSize={12} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Line type="monotone" dataKey="letter" stroke="var(--color-letter)" strokeWidth={2} dot={{ r: 3 }} name="Letter Formation" />
+                    <Line type="monotone" dataKey="spacing" stroke="var(--color-spacing)" strokeWidth={2} dot={{ r: 3 }} name="Spacing & Sizing" />
+                    <Line type="monotone" dataKey="presentation" stroke="var(--color-presentation)" strokeWidth={2} dot={{ r: 3 }} name="Presentation" />
+                  </LineChart>
+                </ChartContainer>
               </div>
             </div>
           )}

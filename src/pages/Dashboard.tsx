@@ -836,6 +836,162 @@ export default function Dashboard() {
           />
         </section>
 
+        {/* Dojo Rank Modal */}
+        <Dialog open={dojoRankModal} onOpenChange={setDojoRankModal}>
+          <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-center text-xl">🥋 Dojo Rank</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="text-center">
+                <span className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-lg font-bold ${dojoBelt.colorClass}`}>
+                  {dojoBelt.emoji} {dojoBelt.name}
+                </span>
+                <p className="text-sm text-muted-foreground mt-2">{totalXp.toLocaleString()} Total XP</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-muted/50 rounded-xl p-3 text-center">
+                  <p className="text-xs text-muted-foreground">Core Subjects</p>
+                  <p className="text-lg font-bold text-foreground">{coreXp.toLocaleString()}</p>
+                  <p className="text-[10px] text-muted-foreground">English + Maths</p>
+                </div>
+                <div className="bg-muted/50 rounded-xl p-3 text-center">
+                  <p className="text-xs text-muted-foreground">Bonus Subjects</p>
+                  <p className="text-lg font-bold text-foreground">{bonusXp.toLocaleString()}</p>
+                  <p className="text-[10px] text-muted-foreground">Other Subjects</p>
+                </div>
+              </div>
+              {nextDojoBelt && (
+                <div>
+                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                    <span>{dojoBelt.name}</span>
+                    <span>{nextDojoBelt.name}</span>
+                  </div>
+                  <div className="relative h-3 w-full rounded-full bg-muted overflow-hidden">
+                    <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${dojoProgress}%` }} />
+                  </div>
+                  <p className="text-xs text-muted-foreground text-center mt-1">
+                    {(nextDojoBelt.minXp - totalXp).toLocaleString()} XP to {nextDojoBelt.name}
+                  </p>
+                </div>
+              )}
+              <div className="space-y-1.5 pt-2 border-t border-border">
+                <p className="text-xs font-semibold text-muted-foreground mb-2">Belt Tiers</p>
+                {DOJO_BELT_LEVELS.map(belt => (
+                  <div key={belt.name} className={`flex items-center justify-between py-1.5 px-2 rounded-lg text-sm ${belt.name === dojoBelt.name ? 'bg-primary/10 ring-1 ring-primary/30' : '' }`}>
+                    <span className="flex items-center gap-2">
+                      <span className={`w-4 h-4 rounded-full inline-block ${belt.colorClass}`} />
+                      <span>{belt.name}</span>
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {belt.maxXp === Infinity ? `${belt.minXp.toLocaleString()}+` : `${belt.minXp.toLocaleString()} XP`}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Weekly Progress Modal */}
+        <Dialog open={weeklyModal} onOpenChange={setWeeklyModal}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>⚡ This Week's Progress</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="text-center">
+                <p className="text-3xl font-display font-bold text-foreground">{weeklyXpEarned} / {weeklyXpGoal} XP</p>
+                <div className="relative h-3 w-full rounded-full bg-muted overflow-hidden mt-2">
+                  <div className={`h-full rounded-full transition-all ${weeklyProgress >= 100 ? "bg-secondary" : "bg-primary"}`} style={{ width: `${weeklyProgress}%` }} />
+                </div>
+              </div>
+              {weeklyBreakdown.length > 0 ? (
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold text-foreground">By Subject</p>
+                  {weeklyBreakdown.map(wb => (
+                    <div key={wb.subjectName} className="flex items-center justify-between bg-muted/30 rounded-xl p-3">
+                      <span className="text-sm flex items-center gap-2">
+                        <span>{wb.emoji}</span> {wb.subjectName}
+                      </span>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-foreground">{wb.xp} XP</p>
+                        <p className="text-[10px] text-muted-foreground">{wb.missions} mission{wb.missions !== 1 ? 's' : ''}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center">No missions completed this week yet</p>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Handwriting Modal */}
+        <Dialog open={handwritingModal} onOpenChange={setHandwritingModal}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>✍️ Handwriting Progress</DialogTitle>
+            </DialogHeader>
+            {hwChartData.length > 0 ? (
+              <ChartContainer config={hwChartConfig} className="h-[250px] w-full">
+                <LineChart data={hwChartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" fontSize={11} />
+                  <YAxis domain={[0, 5]} fontSize={11} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Line type="monotone" dataKey="letter" stroke="var(--color-letter)" strokeWidth={2} dot={{ r: 3 }} name="Letter Formation" />
+                  <Line type="monotone" dataKey="spacing" stroke="var(--color-spacing)" strokeWidth={2} dot={{ r: 3 }} name="Spacing & Sizing" />
+                  <Line type="monotone" dataKey="presentation" stroke="var(--color-presentation)" strokeWidth={2} dot={{ r: 3 }} name="Presentation" />
+                </LineChart>
+              </ChartContainer>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">No handwriting data yet</p>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Streak Modal */}
+        <Dialog open={streakModal} onOpenChange={setStreakModal}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>🔥 Weekly Streak</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-muted/50 rounded-xl p-4 text-center">
+                  <p className="text-3xl font-display font-bold text-foreground">{profile?.current_streak || 0}</p>
+                  <p className="text-xs text-muted-foreground">Current Streak</p>
+                </div>
+                <div className="bg-muted/50 rounded-xl p-4 text-center">
+                  <p className="text-3xl font-display font-bold text-foreground">{bestStreak}</p>
+                  <p className="text-xs text-muted-foreground">Best Streak</p>
+                </div>
+              </div>
+              {termInfo && (
+                <div>
+                  <p className="text-sm font-semibold text-foreground mb-2">2026 Term {termInfo.term}</p>
+                  <div className="grid grid-cols-5 gap-2">
+                    {termWeeks.map(w => {
+                      const entry = goalHistory.find(g => g.week_start_date === w.weekStart);
+                      const isCurrent = w.weekStart === getSydneyWeekStart();
+                      return (
+                        <div key={w.weekStart} className={`flex flex-col items-center p-2 rounded-lg bg-muted/30 ${isCurrent ? 'ring-2 ring-primary' : ''}`}>
+                          <span className="text-[10px] text-muted-foreground">{w.label}</span>
+                          <span className="text-lg">
+                            {entry ? (entry.goal_met ? '✅' : '❌') : (isCurrent ? '⏳' : '—')}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
         <StripeCheckoutModal
           open={checkoutModalOpen}
           onOpenChange={setCheckoutModalOpen}
