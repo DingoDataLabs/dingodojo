@@ -249,6 +249,7 @@ export default function Dashboard() {
           first_name: updatedProfile.first_name || null,
           total_xp: updatedProfile.total_xp || 0,
           current_streak: updatedProfile.current_streak || 0,
+          best_streak: (updatedProfile as any).best_streak || 0,
           weekly_xp_earned: updatedProfile.weekly_xp_earned || 0,
           weekly_xp_goal: updatedProfile.weekly_xp_goal || 500,
           vacation_passes: updatedProfile.vacation_passes ?? 2,
