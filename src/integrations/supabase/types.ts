@@ -384,6 +384,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          best_streak: number | null
           created_at: string
           current_streak: number | null
           first_name: string | null
@@ -405,6 +406,7 @@ export type Database = {
           weekly_xp_goal: number | null
         }
         Insert: {
+          best_streak?: number | null
           created_at?: string
           current_streak?: number | null
           first_name?: string | null
@@ -426,6 +428,7 @@ export type Database = {
           weekly_xp_goal?: number | null
         }
         Update: {
+          best_streak?: number | null
           created_at?: string
           current_streak?: number | null
           first_name?: string | null
@@ -706,6 +709,51 @@ export type Database = {
           },
           {
             foreignKeyName: "user_badges_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      weekly_goal_history: {
+        Row: {
+          created_at: string
+          goal_met: boolean
+          id: string
+          profile_id: string
+          week_start_date: string
+          xp_earned: number
+          xp_goal: number
+        }
+        Insert: {
+          created_at?: string
+          goal_met?: boolean
+          id?: string
+          profile_id: string
+          week_start_date: string
+          xp_earned?: number
+          xp_goal?: number
+        }
+        Update: {
+          created_at?: string
+          goal_met?: boolean
+          id?: string
+          profile_id?: string
+          week_start_date?: string
+          xp_earned?: number
+          xp_goal?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_goal_history_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "weekly_goal_history_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "user_profiles"
