@@ -329,16 +329,26 @@ export default function Dashboard() {
           }
         }
 
-        // Fetch average handwriting score
+        // Fetch handwriting history with component scores
         const { data: hwData } = await supabase
           .from("handwriting_submissions")
-          .select("composite_score")
-          .eq("profile_id", profileData.id);
+          .select("composite_score, letter_formation, spacing_sizing, presentation, created_at")
+          .eq("profile_id", profileData.id)
+          .order("created_at", { ascending: true });
 
         if (hwData && hwData.length > 0) {
           const avg = hwData.reduce((sum, h) => sum + (Number(h.composite_score) || 0), 0) / hwData.length;
           setAvgHandwriting(avg);
+          setHandwritingHistory(hwData);
         }
+
+        // Fetch weekly goal history for streak calendar
+        const { data: goalHistoryData } = await (supabase as any)
+          .from("weekly_goal_history")
+          .select("week_start_date, goal_met")
+          .eq("profile_id", profileData.id)
+          .order("week_start_date");
+        if (goalHistoryData) setGoalHistory(goalHistoryData);
       }
     } catch (err) {
       console.error("Error fetching data:", err);
