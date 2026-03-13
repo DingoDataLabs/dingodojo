@@ -394,10 +394,8 @@ export default function Dashboard() {
   const inHoliday = isCurrentWeekHoliday();
   const holidayLabel = inHoliday ? getHolidayLabel(getSydneyWeekStart()) : null;
 
-  // Build topic progress for smart mission selection
   const prioritySubjects = ["english", "maths"];
 
-  // Build a progress map for belt calculations
   const progressMap = useMemo(() => {
     const map: Record<string, number> = {};
     for (const p of topicProgressData) {
@@ -406,10 +404,66 @@ export default function Dashboard() {
     return map;
   }, [topicProgressData]);
 
-  // Overall belt (avg across English + Maths topics)
-  const overallBelt = useMemo(() => {
-    return getOverallBelt(subjects, topics, progressMap, prioritySubjects);
-  }, [subjects, topics, progressMap]);
+  // Dojo Rank based on total XP
+  const totalXp = profile?.total_xp || 0;
+  const dojoBelt = getDojoBelt(totalXp);
+  const nextDojoBelt = getNextDojoBelt(totalXp);
+  const dojoProgress = getDojoProgress(totalXp);
+  const bestStreak = profile?.best_streak || 0;
+
+  const coreXp = useMemo(() => {
+    return subjects
+      .filter(s => ['english', 'maths'].includes(s.slug))
+      .reduce((sum, s) => sum + (subjectXps[s.id] || 0), 0);
+  }, [subjects, subjectXps]);
+
+  const bonusXp = useMemo(() => {
+    return subjects
+      .filter(s => !['english', 'maths'].includes(s.slug))
+      .reduce((sum, s) => sum + (subjectXps[s.id] || 0), 0);
+  }, [subjects, subjectXps]);
+
+  const termInfo = useMemo(() => {
+    const todayStr = getSydneyWeekStart();
+    const today = new Date(todayStr + "T00:00:00");
+    for (let i = 0; i < TERMS_2026.length; i++) {
+      const start = new Date(TERMS_2026[i].start + "T00:00:00");
+      const end = new Date(TERMS_2026[i].end + "T00:00:00");
+      if (today >= start && today <= end) return { term: i + 1, ...TERMS_2026[i] };
+    }
+    return null;
+  }, []);
+
+  const termWeeks = useMemo(() => {
+    if (!termInfo) return [];
+    const weeks: { weekStart: string; label: string }[] = [];
+    const termStart = new Date(termInfo.start + "T00:00:00");
+    const termEnd = new Date(termInfo.end + "T00:00:00");
+    let current = new Date(termStart);
+    const day = current.getDay();
+    if (day !== 1) {
+      const daysToAdd = day === 0 ? 1 : 8 - day;
+      current.setDate(current.getDate() + daysToAdd);
+    }
+    while (current <= termEnd) {
+      weeks.push({ weekStart: current.toISOString().split("T")[0], label: `W${weeks.length + 1}` });
+      current.setDate(current.getDate() + 7);
+    }
+    return weeks;
+  }, [termInfo]);
+
+  const hwChartConfig = {
+    letter: { label: "Letter Formation", color: "hsl(var(--primary))" },
+    spacing: { label: "Spacing & Sizing", color: "hsl(var(--secondary))" },
+    presentation: { label: "Presentation", color: "hsl(var(--destructive))" },
+  };
+
+  const hwChartData = handwritingHistory.map((h: any) => ({
+    date: new Date(h.created_at).toLocaleDateString("en-AU", { day: "numeric", month: "short" }),
+    letter: h.letter_formation,
+    spacing: h.spacing_sizing,
+    presentation: h.presentation,
+  }));
 
   const smartMissionTopics = useMemo(() => {
     return topics.map(topic => {
