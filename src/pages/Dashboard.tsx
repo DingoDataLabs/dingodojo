@@ -540,10 +540,6 @@ export default function Dashboard() {
                 </DropdownMenu>
               </div>
             </div>
-            {/* Overall Dojo Belt - below greeting */}
-            <div className="mt-4">
-              <OverallBeltTile avgXp={overallBelt.avgXp} topicCount={overallBelt.topicCount} />
-            </div>
           </header>
         </div>
         {/* Wavy bottom edge */}
