@@ -86,6 +86,12 @@ export default function Dashboard() {
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
   const [avgHandwriting, setAvgHandwriting] = useState<number | null>(null);
   const [weeklyBreakdown, setWeeklyBreakdown] = useState<WeeklySubjectBreakdown[]>([]);
+  const [handwritingHistory, setHandwritingHistory] = useState<any[]>([]);
+  const [goalHistory, setGoalHistory] = useState<{ week_start_date: string; goal_met: boolean }[]>([]);
+  const [dojoRankModal, setDojoRankModal] = useState(false);
+  const [weeklyModal, setWeeklyModal] = useState(false);
+  const [handwritingModal, setHandwritingModal] = useState(false);
+  const [streakModal, setStreakModal] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
