@@ -591,23 +591,24 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Stats Row — 4 cards */}
-        <div className={`grid ${avgHandwriting !== null ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-1 sm:grid-cols-3'} gap-4 mb-8`}>
-          {/* Card 1: Weekly Streak */}
-          <div className="stats-card flex items-center gap-3 animate-slide-up stagger-1">
-            <div className="w-12 h-12 rounded-2xl bg-destructive/10 flex items-center justify-center">
-              <Flame className="w-6 h-6 text-destructive" />
+        {/* Stats Row — 4 clickable cards */}
+        <div className={`grid ${handwritingHistory.length > 0 ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-1 sm:grid-cols-3'} gap-4 mb-8`}>
+          {/* Card 1: Dojo Rank */}
+          <button onClick={() => setDojoRankModal(true)} className="stats-card text-left animate-slide-up stagger-1">
+            <div className="flex items-center gap-3">
+              <span className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl ${dojoBelt.colorClass}`}>
+                {dojoBelt.emoji}
+              </span>
+              <div>
+                <p className="text-xs text-muted-foreground font-medium">Dojo Rank</p>
+                <p className="text-lg font-display font-bold text-foreground leading-tight">{dojoBelt.name}</p>
+                <p className="text-xs text-muted-foreground">{totalXp.toLocaleString()} XP</p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs text-muted-foreground font-medium">Weekly Streak</p>
-              <p className="text-2xl font-display font-bold text-foreground">
-                {profile?.current_streak || 0} <span className="text-sm font-normal text-muted-foreground">weeks</span>
-              </p>
-            </div>
-          </div>
+          </button>
 
-          {/* Card 2: Weekly Progress */}
-          <div className="stats-card animate-slide-up stagger-2">
+          {/* Card 2: This Week's Progress */}
+          <button onClick={() => setWeeklyModal(true)} className="stats-card text-left animate-slide-up stagger-2">
             <div className="flex items-center gap-2 mb-2">
               <ProgressRing
                 progress={weeklyProgress}
@@ -618,59 +619,55 @@ export default function Dashboard() {
                 <Zap className={`w-3.5 h-3.5 ${weeklyProgress >= 100 ? "text-eucalyptus" : "text-ochre"}`} />
               </ProgressRing>
               <div>
-                <p className="text-xs text-muted-foreground font-medium">This Week's Progress</p>
+                <p className="text-xs text-muted-foreground font-medium">This Week</p>
                 <p className="text-lg font-display font-bold text-foreground">
                   {weeklyXpEarned} / {weeklyXpGoal} XP
                 </p>
               </div>
             </div>
-            <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted mb-2">
+            <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${weeklyProgress >= 100 ? "bg-secondary" : "bg-primary"}`}
                 style={{ width: `${weeklyProgress}%` }}
               />
             </div>
-            {weeklyBreakdown.length > 0 && (
-              <div className="space-y-0.5 mb-1">
-                {weeklyBreakdown.map(wb => (
-                  <p key={wb.subjectName} className="text-[10px] text-muted-foreground">
-                    {wb.emoji} {wb.subjectName}: {wb.xp} XP ({wb.missions} mission{wb.missions !== 1 ? 's' : ''})
-                  </p>
-                ))}
-              </div>
-            )}
-            <p className="text-xs font-medium text-foreground">
+            <p className="text-xs font-medium text-foreground mt-1">
               {weeklyProgressMsg}
-              {inHoliday && <span className="ml-1 text-sky">🏖️ Holiday mode</span>}
+              {inHoliday && <span className="ml-1 text-sky">🏖️ Holiday</span>}
             </p>
-          </div>
+          </button>
 
-          {/* Card 3: Total XP */}
-          <div className="stats-card flex items-center gap-3 animate-slide-up stagger-3">
-            <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
-              <Trophy className="w-6 h-6 text-primary" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground font-medium">Total XP</p>
-              <p className="text-2xl font-display font-bold text-foreground">
-                {profile?.total_xp?.toLocaleString() || 0}
-              </p>
-            </div>
-          </div>
-
-          {/* Card 4: Handwriting (only if submissions exist) */}
-          {avgHandwriting !== null && (
-            <div className="stats-card flex items-center gap-3 animate-slide-up stagger-4">
-              <div className="w-12 h-12 rounded-2xl bg-secondary/10 flex items-center justify-center">
-                <PenTool className="w-6 h-6 text-secondary" />
+          {/* Card 3: Weekly Streak */}
+          <button onClick={() => setStreakModal(true)} className="stats-card text-left animate-slide-up stagger-3">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-destructive/10 flex items-center justify-center">
+                <Flame className="w-6 h-6 text-destructive" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground font-medium">Handwriting</p>
+                <p className="text-xs text-muted-foreground font-medium">Weekly Streak</p>
                 <p className="text-2xl font-display font-bold text-foreground">
-                  {avgHandwriting.toFixed(1)}<span className="text-sm ml-0.5">/5</span>
+                  {profile?.current_streak || 0}<span className="text-sm font-normal text-muted-foreground ml-0.5">w</span>
                 </p>
+                <p className="text-[10px] text-muted-foreground">Best: {bestStreak}w</p>
               </div>
             </div>
+          </button>
+
+          {/* Card 4: Handwriting */}
+          {handwritingHistory.length > 0 && (
+            <button onClick={() => setHandwritingModal(true)} className="stats-card text-left animate-slide-up stagger-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-secondary/10 flex items-center justify-center">
+                  <PenTool className="w-6 h-6 text-secondary" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium">Handwriting</p>
+                  <p className="text-2xl font-display font-bold text-foreground">
+                    {avgHandwriting?.toFixed(1)}<span className="text-sm ml-0.5">/5</span>
+                  </p>
+                </div>
+              </div>
+            </button>
           )}
         </div>
 
