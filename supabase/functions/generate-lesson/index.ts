@@ -256,6 +256,7 @@ Guidelines:
 function buildChallengePrompt(topicName: string, yearLevel: string, difficulty: any, subjectSlug?: string) {
   const isMaths = subjectSlug === "maths" || subjectSlug === "mathematics";
   const isEnglish = subjectSlug === "english";
+  const isBonus = !isMaths && !isEnglish;
   const isAdvancedMaths = isMaths && (difficulty.level === "Extending" || difficulty.level === "Mastering");
 
   const wordLimits: Record<string, { min: number; max: number }> = {
