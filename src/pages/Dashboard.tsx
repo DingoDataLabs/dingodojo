@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Flame, Trophy, LogOut, Zap, Settings, Compass, Crown, Star, Sparkles, Play, BarChart2, PenTool, User } from "lucide-react";
 import { HomeworkHelpDrawer } from "@/components/HomeworkHelpDrawer";
 import { toast } from "sonner";
@@ -17,15 +18,16 @@ import {
   isCurrentWeekHoliday,
   getHolidayLabel,
   getWeeklyXPGoal,
+  TERMS_2026,
 } from "@/lib/weeklyGoalUtils";
 import { useSmartMission } from "@/hooks/useSmartMission";
 import { MyBadges } from "@/components/MyBadges";
 import { DojoCrew } from "@/components/DojoCrew";
 import { StripeCheckoutModal } from "@/components/StripeCheckoutModal";
-import { Progress } from "@/components/ui/progress";
-import { OverallBeltTile } from "@/components/OverallBeltTile";
-import { getOverallBelt, getSubjectBelt } from "@/lib/beltUtils";
+import { getDojoBelt, getNextDojoBelt, getDojoProgress, DOJO_BELT_LEVELS, getSubjectBelt } from "@/lib/beltUtils";
 import { getMasteryLevel } from "@/lib/progressUtils";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 
 interface Profile {
   id: string;
