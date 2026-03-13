@@ -34,6 +34,7 @@ interface Profile {
   first_name: string | null;
   total_xp: number;
   current_streak: number;
+  best_streak: number;
   weekly_xp_earned: number;
   weekly_xp_goal: number;
   vacation_passes: number;
