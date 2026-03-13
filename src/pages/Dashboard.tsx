@@ -167,6 +167,9 @@ export default function Dashboard() {
             profileData.last_term_replenish_date || null
           );
 
+          // Update best streak
+          const newBest = Math.max(resetResult.newStreak, (profileData as any).best_streak || 0);
+
           await supabase
             .from("profiles")
             .update({
@@ -176,7 +179,8 @@ export default function Dashboard() {
               current_streak: resetResult.newStreak,
               vacation_passes: resetResult.vacationPasses,
               last_term_replenish_date: resetResult.lastTermReplenishDate,
-            })
+              ...(newBest > ((profileData as any).best_streak || 0) ? { best_streak: newBest } : {}),
+            } as any)
             .eq("id", profileData.id);
 
           updatedProfile = {
@@ -187,7 +191,17 @@ export default function Dashboard() {
             current_streak: resetResult.newStreak,
             vacation_passes: resetResult.vacationPasses,
             last_term_replenish_date: resetResult.lastTermReplenishDate,
-          };
+            best_streak: newBest,
+          } as any;
+
+          // Save previous week's result to goal history
+          await (supabase as any).from("weekly_goal_history").upsert({
+            profile_id: profileData.id,
+            week_start_date: profileData.week_start_date,
+            xp_earned: profileData.weekly_xp_earned || 0,
+            xp_goal: profileData.weekly_xp_goal || 500,
+            goal_met: (profileData.weekly_xp_earned || 0) >= (profileData.weekly_xp_goal || 500),
+          }, { onConflict: "profile_id,week_start_date" });
 
           // Show toasts for reset events
           if (resetResult.passConsumed) {
