@@ -43,7 +43,7 @@ interface TermDates {
 }
 
 // NSW 2026 Eastern Division term dates (inclusive)
-const TERMS_2026: TermDates[] = [
+export const TERMS_2026: TermDates[] = [
   { start: "2026-01-28", end: "2026-04-04" }, // Term 1
   { start: "2026-04-22", end: "2026-07-03" }, // Term 2
   { start: "2026-07-21", end: "2026-09-25" }, // Term 3

@@ -271,6 +271,11 @@ export default function SubjectTopics() {
               <div>
                 <h1 className="text-3xl md:text-4xl font-display font-bold">
                   {subject?.name}
+                  {subject && !['english', 'maths'].includes(subject.slug) && (
+                    <span className="ml-2 text-sm font-semibold bg-white/20 backdrop-blur-sm px-2.5 py-0.5 rounded-full align-middle">
+                      ⭐ Bonus
+                    </span>
+                  )}
                 </h1>
                 <p className="opacity-80 text-lg">
                   {topics.length} topics to master

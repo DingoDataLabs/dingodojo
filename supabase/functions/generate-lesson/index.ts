@@ -178,6 +178,7 @@ function correctMathQuestions(questions: any[]): any[] {
 
 function buildScaffoldPrompt(topicName: string, topicEmoji: string, yearLevel: string, difficulty: any, subjectSlug?: string) {
   const isMaths = subjectSlug === "maths" || subjectSlug === "mathematics";
+  const isBonus = !isMaths && subjectSlug !== "english";
 
   const system = `You are an expert educational content creator for Australian primary school students (NSW ${yearLevel}, Stage 3).
 Use Australian English spelling. Include Australian references where appropriate.
@@ -198,7 +199,7 @@ Return ONLY valid JSON:
     { "type": "learn", "title": "Section 2 title", "content": "2-3 paragraphs building on section 1" },
     { "type": "learn", "title": "Section 3 title", "content": "2-3 paragraphs with deeper concepts" }
   ],
-  "total_xp": 50
+  "total_xp": ${isBonus ? 5 : 50}
 }
 
 Guidelines:
@@ -255,6 +256,7 @@ Guidelines:
 function buildChallengePrompt(topicName: string, yearLevel: string, difficulty: any, subjectSlug?: string) {
   const isMaths = subjectSlug === "maths" || subjectSlug === "mathematics";
   const isEnglish = subjectSlug === "english";
+  const isBonus = !isMaths && !isEnglish;
   const isAdvancedMaths = isMaths && (difficulty.level === "Extending" || difficulty.level === "Mastering");
 
   const wordLimits: Record<string, { min: number; max: number }> = {
@@ -325,7 +327,7 @@ Return ONLY valid JSON:
         ${isMaths ? '"calculation_expression": "math expression",' : ''}
         "hint": "Hint",
         "explanation": "Explanation",
-        "points": 20
+        "points": ${isBonus ? 5 : 20}
       },
       {
         "type": "multiple_choice",
@@ -335,7 +337,7 @@ Return ONLY valid JSON:
         ${isMaths ? '"calculation_expression": "math expression",' : ''}
         "hint": "Hint",
         "explanation": "Explanation",
-        "points": 30
+        "points": ${isBonus ? 5 : 30}
       }
     ]
   }

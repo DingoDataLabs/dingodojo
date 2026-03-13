@@ -221,6 +221,8 @@ export default function TrainingSession() {
   const hasFreeTextChallenge = lessonContent?.final_challenge?.questions?.some(q => q.type === "free_text" || q.type === "worked_solution") ?? false;
   useWakeLock(inFinalChallenge && hasFreeTextChallenge);
 
+  const isBonusSubject = subject ? !['english', 'maths', 'mathematics'].includes(subject.slug) : false;
+
   // ── Persist to sessionStorage on change ──
   useEffect(() => {
     if (!restoredRef.current) return; // Don't save during initial restore
@@ -568,7 +570,7 @@ export default function TrainingSession() {
     if (isCorrect) {
       setSectionCompleted(prev => ({ ...prev, [sectionIdx]: true }));
       toast.success("Brilliant! You got it! 🎉");
-      setEarnedXp(prev => prev + 10);
+      setEarnedXp(prev => prev + (isBonusSubject ? 5 : 10));
     } else {
       // Don't reveal the answer - show hint and encourage retry
       setShowSectionHint(prev => ({ ...prev, [sectionIdx]: true }));

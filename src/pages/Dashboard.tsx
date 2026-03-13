@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Flame, Trophy, LogOut, Zap, Settings, Compass, Crown, Star, Sparkles, Play, BarChart2, PenTool, User } from "lucide-react";
 import { HomeworkHelpDrawer } from "@/components/HomeworkHelpDrawer";
 import { toast } from "sonner";
@@ -17,21 +18,23 @@ import {
   isCurrentWeekHoliday,
   getHolidayLabel,
   getWeeklyXPGoal,
+  TERMS_2026,
 } from "@/lib/weeklyGoalUtils";
 import { useSmartMission } from "@/hooks/useSmartMission";
 import { MyBadges } from "@/components/MyBadges";
 import { DojoCrew } from "@/components/DojoCrew";
 import { StripeCheckoutModal } from "@/components/StripeCheckoutModal";
-import { Progress } from "@/components/ui/progress";
-import { OverallBeltTile } from "@/components/OverallBeltTile";
-import { getOverallBelt, getSubjectBelt } from "@/lib/beltUtils";
+import { getDojoBelt, getNextDojoBelt, getDojoProgress, DOJO_BELT_LEVELS, getSubjectBelt } from "@/lib/beltUtils";
 import { getMasteryLevel } from "@/lib/progressUtils";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 
 interface Profile {
   id: string;
   first_name: string | null;
   total_xp: number;
   current_streak: number;
+  best_streak: number;
   weekly_xp_earned: number;
   weekly_xp_goal: number;
   vacation_passes: number;
@@ -83,6 +86,12 @@ export default function Dashboard() {
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
   const [avgHandwriting, setAvgHandwriting] = useState<number | null>(null);
   const [weeklyBreakdown, setWeeklyBreakdown] = useState<WeeklySubjectBreakdown[]>([]);
+  const [handwritingHistory, setHandwritingHistory] = useState<any[]>([]);
+  const [goalHistory, setGoalHistory] = useState<{ week_start_date: string; goal_met: boolean }[]>([]);
+  const [dojoRankModal, setDojoRankModal] = useState(false);
+  const [weeklyModal, setWeeklyModal] = useState(false);
+  const [handwritingModal, setHandwritingModal] = useState(false);
+  const [streakModal, setStreakModal] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -158,6 +167,9 @@ export default function Dashboard() {
             profileData.last_term_replenish_date || null
           );
 
+          // Update best streak
+          const newBest = Math.max(resetResult.newStreak, (profileData as any).best_streak || 0);
+
           await supabase
             .from("profiles")
             .update({
@@ -167,7 +179,8 @@ export default function Dashboard() {
               current_streak: resetResult.newStreak,
               vacation_passes: resetResult.vacationPasses,
               last_term_replenish_date: resetResult.lastTermReplenishDate,
-            })
+              ...(newBest > ((profileData as any).best_streak || 0) ? { best_streak: newBest } : {}),
+            } as any)
             .eq("id", profileData.id);
 
           updatedProfile = {
@@ -178,7 +191,17 @@ export default function Dashboard() {
             current_streak: resetResult.newStreak,
             vacation_passes: resetResult.vacationPasses,
             last_term_replenish_date: resetResult.lastTermReplenishDate,
-          };
+            best_streak: newBest,
+          } as any;
+
+          // Save previous week's result to goal history
+          await (supabase as any).from("weekly_goal_history").upsert({
+            profile_id: profileData.id,
+            week_start_date: profileData.week_start_date,
+            xp_earned: profileData.weekly_xp_earned || 0,
+            xp_goal: profileData.weekly_xp_goal || 500,
+            goal_met: (profileData.weekly_xp_earned || 0) >= (profileData.weekly_xp_goal || 500),
+          }, { onConflict: "profile_id,week_start_date" });
 
           // Show toasts for reset events
           if (resetResult.passConsumed) {
@@ -226,6 +249,7 @@ export default function Dashboard() {
           first_name: updatedProfile.first_name || null,
           total_xp: updatedProfile.total_xp || 0,
           current_streak: updatedProfile.current_streak || 0,
+          best_streak: (updatedProfile as any).best_streak || 0,
           weekly_xp_earned: updatedProfile.weekly_xp_earned || 0,
           weekly_xp_goal: updatedProfile.weekly_xp_goal || 500,
           vacation_passes: updatedProfile.vacation_passes ?? 2,
@@ -305,16 +329,26 @@ export default function Dashboard() {
           }
         }
 
-        // Fetch average handwriting score
+        // Fetch handwriting history with component scores
         const { data: hwData } = await supabase
           .from("handwriting_submissions")
-          .select("composite_score")
-          .eq("profile_id", profileData.id);
+          .select("composite_score, letter_formation, spacing_sizing, presentation, created_at")
+          .eq("profile_id", profileData.id)
+          .order("created_at", { ascending: true });
 
         if (hwData && hwData.length > 0) {
           const avg = hwData.reduce((sum, h) => sum + (Number(h.composite_score) || 0), 0) / hwData.length;
           setAvgHandwriting(avg);
+          setHandwritingHistory(hwData);
         }
+
+        // Fetch weekly goal history for streak calendar
+        const { data: goalHistoryData } = await (supabase as any)
+          .from("weekly_goal_history")
+          .select("week_start_date, goal_met")
+          .eq("profile_id", profileData.id)
+          .order("week_start_date");
+        if (goalHistoryData) setGoalHistory(goalHistoryData);
       }
     } catch (err) {
       console.error("Error fetching data:", err);
@@ -360,10 +394,8 @@ export default function Dashboard() {
   const inHoliday = isCurrentWeekHoliday();
   const holidayLabel = inHoliday ? getHolidayLabel(getSydneyWeekStart()) : null;
 
-  // Build topic progress for smart mission selection
   const prioritySubjects = ["english", "maths"];
 
-  // Build a progress map for belt calculations
   const progressMap = useMemo(() => {
     const map: Record<string, number> = {};
     for (const p of topicProgressData) {
@@ -372,10 +404,66 @@ export default function Dashboard() {
     return map;
   }, [topicProgressData]);
 
-  // Overall belt (avg across English + Maths topics)
-  const overallBelt = useMemo(() => {
-    return getOverallBelt(subjects, topics, progressMap, prioritySubjects);
-  }, [subjects, topics, progressMap]);
+  // Dojo Rank based on total XP
+  const totalXp = profile?.total_xp || 0;
+  const dojoBelt = getDojoBelt(totalXp);
+  const nextDojoBelt = getNextDojoBelt(totalXp);
+  const dojoProgress = getDojoProgress(totalXp);
+  const bestStreak = profile?.best_streak || 0;
+
+  const coreXp = useMemo(() => {
+    return subjects
+      .filter(s => ['english', 'maths'].includes(s.slug))
+      .reduce((sum, s) => sum + (subjectXps[s.id] || 0), 0);
+  }, [subjects, subjectXps]);
+
+  const bonusXp = useMemo(() => {
+    return subjects
+      .filter(s => !['english', 'maths'].includes(s.slug))
+      .reduce((sum, s) => sum + (subjectXps[s.id] || 0), 0);
+  }, [subjects, subjectXps]);
+
+  const termInfo = useMemo(() => {
+    const todayStr = getSydneyWeekStart();
+    const today = new Date(todayStr + "T00:00:00");
+    for (let i = 0; i < TERMS_2026.length; i++) {
+      const start = new Date(TERMS_2026[i].start + "T00:00:00");
+      const end = new Date(TERMS_2026[i].end + "T00:00:00");
+      if (today >= start && today <= end) return { term: i + 1, ...TERMS_2026[i] };
+    }
+    return null;
+  }, []);
+
+  const termWeeks = useMemo(() => {
+    if (!termInfo) return [];
+    const weeks: { weekStart: string; label: string }[] = [];
+    const termStart = new Date(termInfo.start + "T00:00:00");
+    const termEnd = new Date(termInfo.end + "T00:00:00");
+    let current = new Date(termStart);
+    const day = current.getDay();
+    if (day !== 1) {
+      const daysToAdd = day === 0 ? 1 : 8 - day;
+      current.setDate(current.getDate() + daysToAdd);
+    }
+    while (current <= termEnd) {
+      weeks.push({ weekStart: current.toISOString().split("T")[0], label: `W${weeks.length + 1}` });
+      current.setDate(current.getDate() + 7);
+    }
+    return weeks;
+  }, [termInfo]);
+
+  const hwChartConfig = {
+    letter: { label: "Letter Formation", color: "hsl(var(--primary))" },
+    spacing: { label: "Spacing & Sizing", color: "hsl(var(--secondary))" },
+    presentation: { label: "Presentation", color: "hsl(var(--destructive))" },
+  };
+
+  const hwChartData = handwritingHistory.map((h: any) => ({
+    date: new Date(h.created_at).toLocaleDateString("en-AU", { day: "numeric", month: "short" }),
+    letter: h.letter_formation,
+    spacing: h.spacing_sizing,
+    presentation: h.presentation,
+  }));
 
   const smartMissionTopics = useMemo(() => {
     return topics.map(topic => {
@@ -452,10 +540,6 @@ export default function Dashboard() {
                 </DropdownMenu>
               </div>
             </div>
-            {/* Overall Dojo Belt - below greeting */}
-            <div className="mt-4">
-              <OverallBeltTile avgXp={overallBelt.avgXp} topicCount={overallBelt.topicCount} />
-            </div>
           </header>
         </div>
         {/* Wavy bottom edge */}
@@ -507,23 +591,24 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Stats Row — 4 cards */}
-        <div className={`grid ${avgHandwriting !== null ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-1 sm:grid-cols-3'} gap-4 mb-8`}>
-          {/* Card 1: Weekly Streak */}
-          <div className="stats-card flex items-center gap-3 animate-slide-up stagger-1">
-            <div className="w-12 h-12 rounded-2xl bg-destructive/10 flex items-center justify-center">
-              <Flame className="w-6 h-6 text-destructive" />
+        {/* Stats Row — 4 clickable cards */}
+        <div className={`grid ${handwritingHistory.length > 0 ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-1 sm:grid-cols-3'} gap-4 mb-8`}>
+          {/* Card 1: Dojo Rank */}
+          <button onClick={() => setDojoRankModal(true)} className="stats-card text-left animate-slide-up stagger-1">
+            <div className="flex items-center gap-3">
+              <span className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl ${dojoBelt.colorClass}`}>
+                {dojoBelt.emoji}
+              </span>
+              <div>
+                <p className="text-xs text-muted-foreground font-medium">Dojo Rank</p>
+                <p className="text-lg font-display font-bold text-foreground leading-tight">{dojoBelt.name}</p>
+                <p className="text-xs text-muted-foreground">{totalXp.toLocaleString()} XP</p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs text-muted-foreground font-medium">Weekly Streak</p>
-              <p className="text-2xl font-display font-bold text-foreground">
-                {profile?.current_streak || 0} <span className="text-sm font-normal text-muted-foreground">weeks</span>
-              </p>
-            </div>
-          </div>
+          </button>
 
-          {/* Card 2: Weekly Progress */}
-          <div className="stats-card animate-slide-up stagger-2">
+          {/* Card 2: This Week's Progress */}
+          <button onClick={() => setWeeklyModal(true)} className="stats-card text-left animate-slide-up stagger-2">
             <div className="flex items-center gap-2 mb-2">
               <ProgressRing
                 progress={weeklyProgress}
@@ -534,59 +619,55 @@ export default function Dashboard() {
                 <Zap className={`w-3.5 h-3.5 ${weeklyProgress >= 100 ? "text-eucalyptus" : "text-ochre"}`} />
               </ProgressRing>
               <div>
-                <p className="text-xs text-muted-foreground font-medium">This Week's Progress</p>
+                <p className="text-xs text-muted-foreground font-medium">This Week</p>
                 <p className="text-lg font-display font-bold text-foreground">
                   {weeklyXpEarned} / {weeklyXpGoal} XP
                 </p>
               </div>
             </div>
-            <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted mb-2">
+            <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${weeklyProgress >= 100 ? "bg-secondary" : "bg-primary"}`}
                 style={{ width: `${weeklyProgress}%` }}
               />
             </div>
-            {weeklyBreakdown.length > 0 && (
-              <div className="space-y-0.5 mb-1">
-                {weeklyBreakdown.map(wb => (
-                  <p key={wb.subjectName} className="text-[10px] text-muted-foreground">
-                    {wb.emoji} {wb.subjectName}: {wb.xp} XP ({wb.missions} mission{wb.missions !== 1 ? 's' : ''})
-                  </p>
-                ))}
-              </div>
-            )}
-            <p className="text-xs font-medium text-foreground">
+            <p className="text-xs font-medium text-foreground mt-1">
               {weeklyProgressMsg}
-              {inHoliday && <span className="ml-1 text-sky">🏖️ Holiday mode</span>}
+              {inHoliday && <span className="ml-1 text-sky">🏖️ Holiday</span>}
             </p>
-          </div>
+          </button>
 
-          {/* Card 3: Total XP */}
-          <div className="stats-card flex items-center gap-3 animate-slide-up stagger-3">
-            <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
-              <Trophy className="w-6 h-6 text-primary" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground font-medium">Total XP</p>
-              <p className="text-2xl font-display font-bold text-foreground">
-                {profile?.total_xp?.toLocaleString() || 0}
-              </p>
-            </div>
-          </div>
-
-          {/* Card 4: Handwriting (only if submissions exist) */}
-          {avgHandwriting !== null && (
-            <div className="stats-card flex items-center gap-3 animate-slide-up stagger-4">
-              <div className="w-12 h-12 rounded-2xl bg-secondary/10 flex items-center justify-center">
-                <PenTool className="w-6 h-6 text-secondary" />
+          {/* Card 3: Weekly Streak */}
+          <button onClick={() => setStreakModal(true)} className="stats-card text-left animate-slide-up stagger-3">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-destructive/10 flex items-center justify-center">
+                <Flame className="w-6 h-6 text-destructive" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground font-medium">Handwriting</p>
+                <p className="text-xs text-muted-foreground font-medium">Weekly Streak</p>
                 <p className="text-2xl font-display font-bold text-foreground">
-                  {avgHandwriting.toFixed(1)}<span className="text-sm ml-0.5">/5</span>
+                  {profile?.current_streak || 0}<span className="text-sm font-normal text-muted-foreground ml-0.5">w</span>
                 </p>
+                <p className="text-[10px] text-muted-foreground">Best: {bestStreak}w</p>
               </div>
             </div>
+          </button>
+
+          {/* Card 4: Handwriting */}
+          {handwritingHistory.length > 0 && (
+            <button onClick={() => setHandwritingModal(true)} className="stats-card text-left animate-slide-up stagger-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-secondary/10 flex items-center justify-center">
+                  <PenTool className="w-6 h-6 text-secondary" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium">Handwriting</p>
+                  <p className="text-2xl font-display font-bold text-foreground">
+                    {avgHandwriting?.toFixed(1)}<span className="text-sm ml-0.5">/5</span>
+                  </p>
+                </div>
+              </div>
+            </button>
           )}
         </div>
 
@@ -754,6 +835,162 @@ export default function Dashboard() {
             currentStreak={profile?.current_streak || 0}
           />
         </section>
+
+        {/* Dojo Rank Modal */}
+        <Dialog open={dojoRankModal} onOpenChange={setDojoRankModal}>
+          <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-center text-xl">🥋 Dojo Rank</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="text-center">
+                <span className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-lg font-bold ${dojoBelt.colorClass}`}>
+                  {dojoBelt.emoji} {dojoBelt.name}
+                </span>
+                <p className="text-sm text-muted-foreground mt-2">{totalXp.toLocaleString()} Total XP</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-muted/50 rounded-xl p-3 text-center">
+                  <p className="text-xs text-muted-foreground">Core Subjects</p>
+                  <p className="text-lg font-bold text-foreground">{coreXp.toLocaleString()}</p>
+                  <p className="text-[10px] text-muted-foreground">English + Maths</p>
+                </div>
+                <div className="bg-muted/50 rounded-xl p-3 text-center">
+                  <p className="text-xs text-muted-foreground">Bonus Subjects</p>
+                  <p className="text-lg font-bold text-foreground">{bonusXp.toLocaleString()}</p>
+                  <p className="text-[10px] text-muted-foreground">Other Subjects</p>
+                </div>
+              </div>
+              {nextDojoBelt && (
+                <div>
+                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                    <span>{dojoBelt.name}</span>
+                    <span>{nextDojoBelt.name}</span>
+                  </div>
+                  <div className="relative h-3 w-full rounded-full bg-muted overflow-hidden">
+                    <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${dojoProgress}%` }} />
+                  </div>
+                  <p className="text-xs text-muted-foreground text-center mt-1">
+                    {(nextDojoBelt.minXp - totalXp).toLocaleString()} XP to {nextDojoBelt.name}
+                  </p>
+                </div>
+              )}
+              <div className="space-y-1.5 pt-2 border-t border-border">
+                <p className="text-xs font-semibold text-muted-foreground mb-2">Belt Tiers</p>
+                {DOJO_BELT_LEVELS.map(belt => (
+                  <div key={belt.name} className={`flex items-center justify-between py-1.5 px-2 rounded-lg text-sm ${belt.name === dojoBelt.name ? 'bg-primary/10 ring-1 ring-primary/30' : '' }`}>
+                    <span className="flex items-center gap-2">
+                      <span className={`w-4 h-4 rounded-full inline-block ${belt.colorClass}`} />
+                      <span>{belt.name}</span>
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {belt.maxXp === Infinity ? `${belt.minXp.toLocaleString()}+` : `${belt.minXp.toLocaleString()} XP`}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Weekly Progress Modal */}
+        <Dialog open={weeklyModal} onOpenChange={setWeeklyModal}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>⚡ This Week's Progress</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="text-center">
+                <p className="text-3xl font-display font-bold text-foreground">{weeklyXpEarned} / {weeklyXpGoal} XP</p>
+                <div className="relative h-3 w-full rounded-full bg-muted overflow-hidden mt-2">
+                  <div className={`h-full rounded-full transition-all ${weeklyProgress >= 100 ? "bg-secondary" : "bg-primary"}`} style={{ width: `${weeklyProgress}%` }} />
+                </div>
+              </div>
+              {weeklyBreakdown.length > 0 ? (
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold text-foreground">By Subject</p>
+                  {weeklyBreakdown.map(wb => (
+                    <div key={wb.subjectName} className="flex items-center justify-between bg-muted/30 rounded-xl p-3">
+                      <span className="text-sm flex items-center gap-2">
+                        <span>{wb.emoji}</span> {wb.subjectName}
+                      </span>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-foreground">{wb.xp} XP</p>
+                        <p className="text-[10px] text-muted-foreground">{wb.missions} mission{wb.missions !== 1 ? 's' : ''}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center">No missions completed this week yet</p>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Handwriting Modal */}
+        <Dialog open={handwritingModal} onOpenChange={setHandwritingModal}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>✍️ Handwriting Progress</DialogTitle>
+            </DialogHeader>
+            {hwChartData.length > 0 ? (
+              <ChartContainer config={hwChartConfig} className="h-[250px] w-full">
+                <LineChart data={hwChartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" fontSize={11} />
+                  <YAxis domain={[0, 5]} fontSize={11} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Line type="monotone" dataKey="letter" stroke="var(--color-letter)" strokeWidth={2} dot={{ r: 3 }} name="Letter Formation" />
+                  <Line type="monotone" dataKey="spacing" stroke="var(--color-spacing)" strokeWidth={2} dot={{ r: 3 }} name="Spacing & Sizing" />
+                  <Line type="monotone" dataKey="presentation" stroke="var(--color-presentation)" strokeWidth={2} dot={{ r: 3 }} name="Presentation" />
+                </LineChart>
+              </ChartContainer>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">No handwriting data yet</p>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Streak Modal */}
+        <Dialog open={streakModal} onOpenChange={setStreakModal}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>🔥 Weekly Streak</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-muted/50 rounded-xl p-4 text-center">
+                  <p className="text-3xl font-display font-bold text-foreground">{profile?.current_streak || 0}</p>
+                  <p className="text-xs text-muted-foreground">Current Streak</p>
+                </div>
+                <div className="bg-muted/50 rounded-xl p-4 text-center">
+                  <p className="text-3xl font-display font-bold text-foreground">{bestStreak}</p>
+                  <p className="text-xs text-muted-foreground">Best Streak</p>
+                </div>
+              </div>
+              {termInfo && (
+                <div>
+                  <p className="text-sm font-semibold text-foreground mb-2">2026 Term {termInfo.term}</p>
+                  <div className="grid grid-cols-5 gap-2">
+                    {termWeeks.map(w => {
+                      const entry = goalHistory.find(g => g.week_start_date === w.weekStart);
+                      const isCurrent = w.weekStart === getSydneyWeekStart();
+                      return (
+                        <div key={w.weekStart} className={`flex flex-col items-center p-2 rounded-lg bg-muted/30 ${isCurrent ? 'ring-2 ring-primary' : ''}`}>
+                          <span className="text-[10px] text-muted-foreground">{w.label}</span>
+                          <span className="text-lg">
+                            {entry ? (entry.goal_met ? '✅' : '❌') : (isCurrent ? '⏳' : '—')}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <StripeCheckoutModal
           open={checkoutModalOpen}
