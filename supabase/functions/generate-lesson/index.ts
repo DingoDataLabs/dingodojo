@@ -199,7 +199,7 @@ Return ONLY valid JSON:
     { "type": "learn", "title": "Section 2 title", "content": "2-3 paragraphs building on section 1" },
     { "type": "learn", "title": "Section 3 title", "content": "2-3 paragraphs with deeper concepts" }
   ],
-  "total_xp": 50
+  "total_xp": ${isBonus ? 5 : 50}
 }
 
 Guidelines:
