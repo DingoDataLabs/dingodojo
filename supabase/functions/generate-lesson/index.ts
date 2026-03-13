@@ -178,6 +178,7 @@ function correctMathQuestions(questions: any[]): any[] {
 
 function buildScaffoldPrompt(topicName: string, topicEmoji: string, yearLevel: string, difficulty: any, subjectSlug?: string) {
   const isMaths = subjectSlug === "maths" || subjectSlug === "mathematics";
+  const isBonus = !isMaths && subjectSlug !== "english";
 
   const system = `You are an expert educational content creator for Australian primary school students (NSW ${yearLevel}, Stage 3).
 Use Australian English spelling. Include Australian references where appropriate.
