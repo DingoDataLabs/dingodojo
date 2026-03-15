@@ -38,6 +38,10 @@ const App = () => (
             <Route path="/progress" element={<Progress />} />
             <Route path="/subject/:slug" element={<SubjectTopics />} />
             <Route path="/learn/:subjectSlug/:topicSlug" element={<TrainingSession />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/terms" element={<TermsAndConditions />} />
+            <Route path="/ai-transparency" element={<AITransparency />} />
+            <Route path="/contact" element={<Contact />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
