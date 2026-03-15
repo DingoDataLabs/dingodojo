@@ -997,6 +997,12 @@ export default function Dashboard() {
           onOpenChange={setCheckoutModalOpen}
           onSuccess={handleCheckoutSuccess}
         />
+        {/* Footer */}
+        <footer className="mt-8 py-6 text-center">
+          <a href="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            ← Back to Home
+          </a>
+        </footer>
       </div>
     </div>
   );

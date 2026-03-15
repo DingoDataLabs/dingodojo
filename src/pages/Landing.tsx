@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import dingoLogo from "@/assets/dingo-logo.png";
 import { Check, Target, Clock, Star, Shield, ArrowRight, Compass, Crown, Zap, BookOpen, PenTool } from "lucide-react";
@@ -301,14 +301,24 @@ export default function Landing() {
 
       {/* Footer */}
       <footer className="py-10 px-4 border-t border-border">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="max-w-6xl mx-auto flex flex-col items-center gap-4">
           <div className="flex items-center gap-2">
             <img src={dingoLogo} alt="Dingo Dojo" className="w-8 h-8" />
             <span className="font-display font-bold text-foreground">Dingo Dojo</span>
           </div>
-          <p className="text-muted-foreground text-sm">
-            🇦🇺 Made with ❤️ for Aussie learners
-          </p>
+          <div className="flex flex-wrap justify-center gap-4 text-sm">
+            <Link to="/terms" className="text-muted-foreground hover:text-foreground transition-colors">Terms & Conditions</Link>
+            <span className="text-border">·</span>
+            <Link to="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">Privacy Policy</Link>
+            <span className="text-border">·</span>
+            <Link to="/ai-transparency" className="text-muted-foreground hover:text-foreground transition-colors">AI Transparency</Link>
+            <span className="text-border">·</span>
+            <Link to="/contact" className="text-muted-foreground hover:text-foreground transition-colors">Contact Us</Link>
+          </div>
+          <div className="text-center text-sm text-muted-foreground">
+            <p>Dingo Stack · ABN 50 488 099 569</p>
+            <p className="mt-1">🇦🇺 Made with ❤️ for Aussie learners</p>
+          </div>
         </div>
       </footer>
     </div>
