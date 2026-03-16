@@ -1904,7 +1904,7 @@ export default function TrainingSession() {
         />
       )}
 
-      {/* Mission Complete Celebration Overlay */}
+      {/* Training Complete Celebration Overlay */}
       {missionComplete && celebrationData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "linear-gradient(135deg, hsl(var(--ochre-dark) / 0.92), hsl(var(--ochre) / 0.92), hsl(var(--ochre-light) / 0.88))", backdropFilter: "blur(8px)" }}>
           <div className="relative max-w-sm w-full mx-4 animate-bounce-in">
