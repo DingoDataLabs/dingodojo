@@ -4,9 +4,9 @@ import dingoLogo from "@/assets/dingo-logo.png";
 const SCENE_DURATIONS = [4000, 3000, 4500, 4200, 5500, 5200, 5000];
 const SCENE_LABELS = [
   "Dashboard",
-  "Generating lesson",
-  "Lesson content",
-  "Challenge question",
+  "Generating training",
+  "Training content",
+  "Challenge",
   "Camera submission",
   "Mirri's feedback",
   "Rank upgrade",
@@ -56,9 +56,8 @@ export default function HeroDemoPhone({ activeScene, onSceneChange }: HeroDemoPh
   }, [activeScene, scheduleNext, clearTimers]);
 
   const fireRipple = (scene: number) => {
-    // Positions are percentages of screen dimensions
     const positions: Record<number, { x: number; y: number; label: string }> = {
-      0: { x: 50, y: 82, label: "👆 Start Mission" },
+      0: { x: 50, y: 82, label: "👆 Start Training" },
       3: { x: 72, y: 78, label: "👆 Upload photo" },
       4: { x: 50, y: 88, label: "👆 Capture" },
       5: { x: 50, y: 90, label: "👆 Claim XP" },
@@ -70,20 +69,6 @@ export default function HeroDemoPhone({ activeScene, onSceneChange }: HeroDemoPh
       setTimeout(() => setRipple(null), 1200);
     }
   };
-
-  const headerOchre = (
-    <div
-      className="relative px-3 pt-3 pb-4"
-      style={{ background: "linear-gradient(135deg, hsl(var(--ochre-dark)), hsl(var(--ochre)), hsl(var(--ochre-light)))" }}
-    >
-      <div className="flex items-center gap-2">
-        <img src={dingoLogo} alt="" className="w-6 h-6 rounded-full" />
-        <div className="min-w-0">
-          <p className="text-[9px] font-bold text-primary-foreground leading-tight truncate" />
-        </div>
-      </div>
-    </div>
-  );
 
   return (
     <div className="relative select-none" style={{ width: 260, height: 520 }}>
@@ -114,12 +99,10 @@ export default function HeroDemoPhone({ activeScene, onSceneChange }: HeroDemoPh
                 </div>
               </div>
             </div>
-            {/* Wavy edge */}
             <svg viewBox="0 0 260 12" className="w-full -mt-[1px] block" preserveAspectRatio="none">
               <path d="M0,6 C65,12 130,0 195,6 C220,9 240,4 260,6 L260,12 L0,12 Z" className="fill-background" />
             </svg>
             <div className="px-3 pt-1">
-              {/* Stats 2x2 */}
               <div className="grid grid-cols-2 gap-1.5 mb-2">
                 {[
                   { icon: "🥋", label: "Dojo Rank", val: "Orange Belt", sub: "1,906 XP" },
@@ -137,7 +120,7 @@ export default function HeroDemoPhone({ activeScene, onSceneChange }: HeroDemoPh
                   </div>
                 ))}
               </div>
-              {/* Start Mission */}
+              {/* Start Training */}
               <div
                 className="rounded-2xl p-3 flex items-center gap-2"
                 style={{ background: "linear-gradient(135deg, hsl(var(--ochre)), hsl(var(--ochre-light)))" }}
@@ -146,7 +129,7 @@ export default function HeroDemoPhone({ activeScene, onSceneChange }: HeroDemoPh
                   <span className="text-primary-foreground text-xs">▶</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-bold text-primary-foreground">Start Mission</p>
+                  <p className="text-[10px] font-bold text-primary-foreground">Start Training</p>
                   <p className="text-[7px] text-primary-foreground/70">Just 94 XP to level up!</p>
                 </div>
                 <span className="text-primary-foreground text-xs">⚡</span>
@@ -170,11 +153,11 @@ export default function HeroDemoPhone({ activeScene, onSceneChange }: HeroDemoPh
             </div>
             <div className="flex-1 flex flex-col items-center justify-center" style={{ paddingTop: 100 }}>
               <span className="text-4xl animate-pulse-soft">✨</span>
-              <p className="text-[10px] text-muted-foreground mt-3 text-center px-6">Creating your personalised lesson...</p>
+              <p className="text-[10px] text-muted-foreground mt-3 text-center px-6">Creating your personalised training...</p>
             </div>
           </SceneWrapper>
 
-          {/* Scene 2 — Lesson content */}
+          {/* Scene 2 — Training content */}
           <SceneWrapper active={activeScene === 2}>
             <div
               className="px-3 pt-5 pb-3 relative"
@@ -198,12 +181,10 @@ export default function HeroDemoPhone({ activeScene, onSceneChange }: HeroDemoPh
                   Crafting Gripping Narratives: Beyond the Basics
                 </p>
               </div>
-              {/* Fun fact */}
               <div className="rounded-xl p-2" style={{ background: "hsl(var(--sky) / 0.1)", border: "1.5px dashed hsl(var(--sky) / 0.35)" }}>
                 <p className="text-[7px] font-bold" style={{ color: "hsl(var(--sky))" }}>✦ Fun Fact</p>
                 <p className="text-[7px] text-muted-foreground">Australian authors like Morris Gleitzman use sensory detail to bring the bush to life!</p>
               </div>
-              {/* Dots */}
               <div className="flex justify-center gap-1">
                 <div className="w-1.5 h-1.5 rounded-full bg-primary" />
                 <div className="w-1.5 h-1.5 rounded-full bg-muted" />
@@ -216,7 +197,7 @@ export default function HeroDemoPhone({ activeScene, onSceneChange }: HeroDemoPh
             </div>
           </SceneWrapper>
 
-          {/* Scene 3 — Challenge question */}
+          {/* Scene 3 — Challenge */}
           <SceneWrapper active={activeScene === 3}>
             <div
               className="px-3 pt-5 pb-3 relative"
@@ -236,7 +217,7 @@ export default function HeroDemoPhone({ activeScene, onSceneChange }: HeroDemoPh
             <div className="px-3 pt-3">
               <div className="rounded-2xl border border-primary/25 bg-card p-3 space-y-2">
                 <div className="flex justify-between items-center">
-                  <p className="text-[8px] font-bold text-muted-foreground">Question 3 of 3</p>
+                  <p className="text-[8px] font-bold text-muted-foreground">Challenge 3 of 3</p>
                   <span className="text-[7px] font-bold text-primary">+50 XP</span>
                 </div>
                 <p className="text-[9px] font-bold text-foreground leading-tight">
@@ -260,15 +241,10 @@ export default function HeroDemoPhone({ activeScene, onSceneChange }: HeroDemoPh
           {/* Scene 4 — Camera */}
           <SceneWrapper active={activeScene === 4}>
             <div className="absolute inset-0 flex flex-col" style={{ background: "linear-gradient(160deg, #9b845e, #b5986a 50%, #8a7350)" }}>
-              {/* Viewfinder label */}
               <p className="text-[8px] text-white/75 text-center mt-6 mb-2">Align your handwritten work</p>
-              {/* Paper with viewfinder */}
               <div className="flex-1 flex items-center justify-center px-6 relative">
-                {/* Corner brackets */}
                 <CornerBrackets />
-                {/* Focus rect */}
                 <FocusRect active={activeScene === 4} />
-                {/* Paper */}
                 <div
                   className="bg-white rounded-lg p-4 w-full shadow-elevated"
                   style={{ transform: "rotate(-2deg)" }}
@@ -283,16 +259,13 @@ export default function HeroDemoPhone({ activeScene, onSceneChange }: HeroDemoPh
                   </svg>
                 </div>
               </div>
-              {/* Camera bar */}
               <div className="pb-6 pt-3 flex items-center justify-center gap-8" style={{ background: "rgba(0,0,0,0.4)" }}>
                 <span className="text-white/60 text-sm">⊠</span>
-                {/* Shutter */}
                 <div className="w-12 h-12 rounded-full border-[3px] border-white flex items-center justify-center">
                   <div className="w-9 h-9 rounded-full bg-white" />
                 </div>
                 <span className="text-white/60 text-sm">↻</span>
               </div>
-              {/* Flash overlay */}
               <CameraFlash active={activeScene === 4} />
             </div>
           </SceneWrapper>
@@ -315,7 +288,6 @@ export default function HeroDemoPhone({ activeScene, onSceneChange }: HeroDemoPh
               </div>
             </div>
             <div className="px-3 pt-3 space-y-2">
-              {/* Stars */}
               <div className="text-center">
                 <div className="flex justify-center gap-0.5">
                   {[1, 2, 3, 4].map(i => (
@@ -325,7 +297,6 @@ export default function HeroDemoPhone({ activeScene, onSceneChange }: HeroDemoPh
                 </div>
                 <p className="text-[9px] font-bold text-foreground mt-1">Excellent work!</p>
               </div>
-              {/* Feedback rows */}
               <div className="bg-card rounded-xl p-2.5 space-y-2 border border-border/40">
                 {[
                   { color: "hsl(var(--eucalyptus))", text: "Vivid Australian setting — the garden felt real and atmospheric." },
@@ -338,7 +309,6 @@ export default function HeroDemoPhone({ activeScene, onSceneChange }: HeroDemoPh
                   </div>
                 ))}
               </div>
-              {/* XP bar */}
               <div className="space-y-1">
                 <div className="flex justify-between text-[7px] text-muted-foreground">
                   <span>1,906 → 1,986 XP</span>
@@ -347,7 +317,6 @@ export default function HeroDemoPhone({ activeScene, onSceneChange }: HeroDemoPh
                   <XPBar active={activeScene === 5} />
                 </div>
               </div>
-              {/* Claim button */}
               <button
                 className="w-full rounded-xl py-2 text-[9px] font-bold text-primary-foreground"
                 style={{ background: "linear-gradient(135deg, hsl(var(--ochre)), hsl(var(--ochre-light)))" }}
@@ -376,7 +345,6 @@ export default function HeroDemoPhone({ activeScene, onSceneChange }: HeroDemoPh
               <p className="text-[12px] font-display font-bold text-foreground mt-3">Green Belt</p>
               <p className="text-[8px] text-muted-foreground mb-3">You've levelled up!</p>
               <XPCounter active={activeScene === 6} />
-              {/* Progress bar */}
               <div className="w-full mt-3 space-y-1">
                 <div className="flex justify-between text-[7px] text-muted-foreground">
                   <span>Green Belt</span>
@@ -386,7 +354,6 @@ export default function HeroDemoPhone({ activeScene, onSceneChange }: HeroDemoPh
                   <RankBar active={activeScene === 6} />
                 </div>
               </div>
-              {/* Celebration emojis */}
               <CelebrationEmojis active={activeScene === 6} />
             </div>
           </SceneWrapper>

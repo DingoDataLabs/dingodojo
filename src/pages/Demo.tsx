@@ -170,7 +170,7 @@ export default function Demo() {
               <img src={dingoLogo} alt="Dingo Dojo" className="w-24 h-24 animate-float" />
               <div>
                 <h1 className="text-2xl md:text-3xl font-display font-bold text-primary-foreground drop-shadow-sm">
-                  G'day, Explorer!
+                  G'day, Learner!
                 </h1>
                 <p className="text-primary-foreground/75">Year 5 • Demo Dojo</p>
               </div>
@@ -247,7 +247,7 @@ export default function Demo() {
               <p className="text-[10px] text-muted-foreground">📖 English: 120 XP (2 missions)</p>
               <p className="text-[10px] text-muted-foreground">🔢 Maths: 180 XP (3 missions)</p>
             </div>
-            <p className="text-xs font-medium text-foreground">2 more missions to hit your goal!</p>
+            <p className="text-xs font-medium text-foreground">2 more sessions to hit your goal!</p>
           </div>
 
           {/* Total XP */}
@@ -385,7 +385,7 @@ export default function Demo() {
                       </div>
                       <div className="flip-card-back absolute inset-0 rounded-2xl bg-card border-2 border-muted flex flex-col items-center justify-center p-3 backface-hidden rotate-y-180 shadow-md">
                         <Crown className="w-8 h-8 text-amber-500 mb-1" />
-                        <p className="font-display font-bold text-xs text-foreground mb-1">Champion Only</p>
+                        <p className="font-display font-bold text-xs text-foreground mb-1">Pen Licence Only</p>
                         <Button
                           onClick={(e) => { e.stopPropagation(); navigate("/auth"); }}
                           size="sm"

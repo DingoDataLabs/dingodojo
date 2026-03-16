@@ -227,14 +227,13 @@ export default function ProfilePage() {
     if (tier === "champion") {
       return (
         <span className="inline-flex items-center gap-1 bg-gradient-to-r from-ochre to-ochre-light text-primary-foreground px-3 py-1 rounded-full text-sm font-bold">
-          <Crown className="w-4 h-4" />
-          Champion
+          🖊️ Pen Licence
         </span>
       );
     }
     return (
       <span className="inline-flex items-center gap-1 bg-muted text-muted-foreground px-3 py-1 rounded-full text-sm font-bold">
-        Explorer
+        ✏️ Pencil
       </span>
     );
   };
@@ -286,7 +285,7 @@ export default function ProfilePage() {
                 <div>
                   <p className="text-sm text-muted-foreground">Subscription</p>
                   <p className="font-semibold text-foreground">
-                    {subInfo?.tier === "champion" ? "Champion" : "Explorer"}
+                    {subInfo?.tier === "champion" ? "Pen Licence" : "Pencil"}
                     {subInfo?.subscribed && subInfo.subscriptionEnd && (
                       <span className="text-xs font-normal text-muted-foreground ml-2">
                         {subInfo.status === "trialing" ? "Trial ends" : "Renews"}{" "}

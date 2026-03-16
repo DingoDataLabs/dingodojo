@@ -535,7 +535,7 @@ export default function TrainingSession() {
 
     } catch (err) {
       console.error("Generation error:", err);
-      toast.error("Couldn't generate the lesson. Please try again!");
+      toast.error("Couldn't generate the training session. Please try again!");
       setGenerating(false);
       setLoading(false);
       setQuestionsLoading(false);
@@ -1413,7 +1413,7 @@ export default function TrainingSession() {
           <div className="bg-card rounded-2xl p-5 border-2 border-primary/20">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-display font-bold text-lg">
-                Question {currentChallengeIndex + 1} of {final_challenge.questions.length}
+                Challenge {currentChallengeIndex + 1} of {final_challenge.questions.length}
               </h3>
               <span className="text-sm font-medium text-primary">+{question.points || 20} XP</span>
             </div>
@@ -1449,7 +1449,7 @@ export default function TrainingSession() {
                     <button
                       onClick={() => {
                         if (profile?.subscription_tier !== "champion") {
-                          toast("📷 Photo upload is a Champion feature!", { icon: "👑", description: "Upgrade to submit handwritten answers." });
+                          toast("📷 Photo upload is a Pen Licence feature!", { icon: "🖊️", description: "Upgrade to submit handwritten answers." });
                           return;
                         }
                         setAnswerMode(prev => ({ ...prev, [`challenge_${currentChallengeIndex}`]: "photo" }));
@@ -1461,7 +1461,7 @@ export default function TrainingSession() {
                       }`}
                     >
                       <Camera className="w-4 h-4" /> Upload photo
-                      {profile?.subscription_tier !== "champion" && <Crown className="w-3 h-3 text-primary" />}
+                      {profile?.subscription_tier !== "champion" && <span className="text-xs">🖊️</span>}
                     </button>
                   </div>
                 )}
@@ -1811,10 +1811,10 @@ export default function TrainingSession() {
               <div className="bg-eucalyptus/10 border-2 border-eucalyptus/30 rounded-2xl p-6">
                 <span className="text-5xl block mb-3">🎉</span>
                 <h3 className="text-xl font-display font-bold text-foreground mb-1">
-                  All Challenges Complete!
+                  All Challenges Mastered!
                 </h3>
                 <p className="text-muted-foreground mb-5">
-                  You've earned <span className="font-bold text-eucalyptus">{earnedXp} XP</span> this lesson!
+                  You've earned <span className="font-bold text-eucalyptus">{earnedXp} XP</span> this session!
                 </p>
 
                 {/* Countdown ring */}
@@ -1844,7 +1844,7 @@ export default function TrainingSession() {
                       </span>
                     </div>
                   </div>
-                  <p className="text-sm text-muted-foreground">Completing mission…</p>
+                  <p className="text-sm text-muted-foreground">Completing training…</p>
                 </div>
               </div>
             </div>
@@ -1904,7 +1904,7 @@ export default function TrainingSession() {
         />
       )}
 
-      {/* Mission Complete Celebration Overlay */}
+      {/* Training Complete Celebration Overlay */}
       {missionComplete && celebrationData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "linear-gradient(135deg, hsl(var(--ochre-dark) / 0.92), hsl(var(--ochre) / 0.92), hsl(var(--ochre-light) / 0.88))", backdropFilter: "blur(8px)" }}>
           <div className="relative max-w-sm w-full mx-4 animate-bounce-in">
@@ -1993,7 +1993,7 @@ export default function TrainingSession() {
           />
         )}
 
-        {/* Left Column - The Mission */}
+        {/* Left Column - The Training */}
         <div ref={lessonRef} className={`${isCompact ? 'w-full' : 'w-1/2'} border-r border-border overflow-y-auto scrollbar-thin p-4 md:p-6`}>
           {lessonContent ? (
             <div className="space-y-6 max-w-xl mx-auto">
@@ -2045,7 +2045,7 @@ export default function TrainingSession() {
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
                 <Loader2 className="w-10 h-10 animate-spin text-primary mx-auto mb-4" />
-                <p className="text-muted-foreground">Generating your personalised lesson...</p>
+                <p className="text-muted-foreground">Generating your personalised training...</p>
               </div>
             </div>
           )}
