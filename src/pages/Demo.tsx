@@ -385,7 +385,7 @@ export default function Demo() {
                       </div>
                       <div className="flip-card-back absolute inset-0 rounded-2xl bg-card border-2 border-muted flex flex-col items-center justify-center p-3 backface-hidden rotate-y-180 shadow-md">
                         <Crown className="w-8 h-8 text-amber-500 mb-1" />
-                        <p className="font-display font-bold text-xs text-foreground mb-1">Champion Only</p>
+                        <p className="font-display font-bold text-xs text-foreground mb-1">Pen Licence Only</p>
                         <Button
                           onClick={(e) => { e.stopPropagation(); navigate("/auth"); }}
                           size="sm"
