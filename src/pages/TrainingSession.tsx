@@ -1844,7 +1844,7 @@ export default function TrainingSession() {
                       </span>
                     </div>
                   </div>
-                  <p className="text-sm text-muted-foreground">Completing mission…</p>
+                  <p className="text-sm text-muted-foreground">Completing training…</p>
                 </div>
               </div>
             </div>
