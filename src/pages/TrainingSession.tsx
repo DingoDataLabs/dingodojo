@@ -1413,7 +1413,7 @@ export default function TrainingSession() {
           <div className="bg-card rounded-2xl p-5 border-2 border-primary/20">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-display font-bold text-lg">
-                Question {currentChallengeIndex + 1} of {final_challenge.questions.length}
+                Challenge {currentChallengeIndex + 1} of {final_challenge.questions.length}
               </h3>
               <span className="text-sm font-medium text-primary">+{question.points || 20} XP</span>
             </div>
