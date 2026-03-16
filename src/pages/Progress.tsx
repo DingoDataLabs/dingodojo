@@ -286,7 +286,7 @@ export default function ProgressPage() {
               <div className="bg-muted/50 rounded-xl p-4 text-center">
                 <Target className="w-6 h-6 text-secondary mx-auto mb-1" />
                 <p className="text-2xl font-display font-bold text-foreground">{missionsCompleted}</p>
-                <p className="text-xs text-muted-foreground">Missions</p>
+                <p className="text-xs text-muted-foreground">Training Sessions</p>
               </div>
               <div className="bg-muted/50 rounded-xl p-4 text-center">
                 <BookOpen className="w-6 h-6 text-accent mx-auto mb-1" />
