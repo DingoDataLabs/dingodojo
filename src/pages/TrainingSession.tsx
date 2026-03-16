@@ -1449,7 +1449,7 @@ export default function TrainingSession() {
                     <button
                       onClick={() => {
                         if (profile?.subscription_tier !== "champion") {
-                          toast("📷 Photo upload is a Champion feature!", { icon: "👑", description: "Upgrade to submit handwritten answers." });
+                          toast("📷 Photo upload is a Pen Licence feature!", { icon: "🖊️", description: "Upgrade to submit handwritten answers." });
                           return;
                         }
                         setAnswerMode(prev => ({ ...prev, [`challenge_${currentChallengeIndex}`]: "photo" }));
