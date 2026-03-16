@@ -227,14 +227,13 @@ export default function ProfilePage() {
     if (tier === "champion") {
       return (
         <span className="inline-flex items-center gap-1 bg-gradient-to-r from-ochre to-ochre-light text-primary-foreground px-3 py-1 rounded-full text-sm font-bold">
-          <Crown className="w-4 h-4" />
-          Champion
+          🖊️ Pen Licence
         </span>
       );
     }
     return (
       <span className="inline-flex items-center gap-1 bg-muted text-muted-foreground px-3 py-1 rounded-full text-sm font-bold">
-        Explorer
+        ✏️ Pencil
       </span>
     );
   };
