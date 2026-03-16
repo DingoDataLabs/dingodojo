@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Flame, Trophy, LogOut, Zap, Settings, Compass, Crown, Star, Sparkles, Play, BarChart2, PenTool, User } from "lucide-react";
+import { Flame, Trophy, LogOut, Zap, Settings, Crown, Star, Sparkles, Play, BarChart2, PenTool, User } from "lucide-react";
 import { HomeworkHelpDrawer } from "@/components/HomeworkHelpDrawer";
 import { toast } from "sonner";
 import { ProgressRing } from "@/components/ProgressRing";
@@ -106,7 +106,7 @@ export default function Dashboard() {
       
       const subscriptionStatus = searchParams.get("subscription");
       if (subscriptionStatus === "success") {
-        toast.success("Welcome to Champion tier! 🏆 Unlimited learning awaits!");
+        toast.success("Welcome to Pen Licence! 🖊️ Unlimited learning awaits!");
       } else if (subscriptionStatus === "cancelled") {
         toast("No worries! You can upgrade anytime.", { icon: "👍" });
       }
@@ -130,7 +130,7 @@ export default function Dashboard() {
   };
 
   const handleCheckoutSuccess = () => {
-    toast.success("Welcome to Champion tier! 🏆 Unlimited learning awaits!");
+    toast.success("Welcome to Pen Licence! 🖊️ Unlimited learning awaits!");
     fetchData();
     checkSubscriptionStatus();
   };
@@ -156,7 +156,6 @@ export default function Dashboard() {
 
         let updatedProfile = { ...profileData };
 
-        // Handle new week reset with weekly XP goal system
         if (wasNewWeek && profileData.week_start_date) {
           const resetResult = calculateWeeklyReset(
             profileData.week_start_date,
@@ -167,7 +166,6 @@ export default function Dashboard() {
             profileData.last_term_replenish_date || null
           );
 
-          // Update best streak
           const newBest = Math.max(resetResult.newStreak, (profileData as any).best_streak || 0);
 
           await supabase
@@ -194,7 +192,6 @@ export default function Dashboard() {
             best_streak: newBest,
           } as any;
 
-          // Save previous week's result to goal history
           await (supabase as any).from("weekly_goal_history").upsert({
             profile_id: profileData.id,
             week_start_date: profileData.week_start_date,
@@ -203,7 +200,6 @@ export default function Dashboard() {
             goal_met: (profileData.weekly_xp_earned || 0) >= (profileData.weekly_xp_goal || 500),
           }, { onConflict: "profile_id,week_start_date" });
 
-          // Show toasts for reset events
           if (resetResult.passConsumed) {
             toast(`Vacation pass used! 🏖️ You have ${resetResult.vacationPasses} left this term. Your streak continues!`);
           } else if (resetResult.streakReset) {
@@ -212,7 +208,6 @@ export default function Dashboard() {
             toast("School holidays protected your streak! 🏖️");
           }
         } else if (!profileData.week_start_date) {
-          // First time — initialize
           const initialGoal = getWeeklyXPGoal(0);
           await supabase
             .from("profiles")
@@ -226,8 +221,6 @@ export default function Dashboard() {
           };
         }
 
-        // Also check term replenishment even if not a new week
-        // (user may not have logged in at term start)
         if (!wasNewWeek) {
           const { shouldReplenishPasses } = await import("@/lib/weeklyGoalUtils");
           const termReplenish = shouldReplenishPasses(updatedProfile.last_term_replenish_date || null);
@@ -261,7 +254,6 @@ export default function Dashboard() {
           onboarding_completed: updatedProfile.onboarding_completed || false,
         });
 
-        // Fetch subject data
         const { data: subjectsData } = await supabase.from("subjects").select("*").order("name");
         
         if (subjectsData) {
@@ -290,7 +282,6 @@ export default function Dashboard() {
               setSubjectXps(xpBySubject);
             }
 
-            // Fetch weekly subject breakdown (student_progress updated this week)
             const weekStart = updatedProfile.week_start_date || currentWeekStart;
             const { data: weeklyProgress } = await supabase
               .from("student_progress")
@@ -329,7 +320,6 @@ export default function Dashboard() {
           }
         }
 
-        // Fetch handwriting history with component scores
         const { data: hwData } = await supabase
           .from("handwriting_submissions")
           .select("composite_score, letter_formation, spacing_sizing, presentation, created_at")
@@ -342,7 +332,6 @@ export default function Dashboard() {
           setHandwritingHistory(hwData);
         }
 
-        // Fetch weekly goal history for streak calendar
         const { data: goalHistoryData } = await (supabase as any)
           .from("weekly_goal_history")
           .select("week_start_date, goal_met")
@@ -363,7 +352,6 @@ export default function Dashboard() {
     navigate("/auth");
   };
 
-  // Subject-specific color schemes
   const getSubjectTheme = (slug: string) => {
     switch (slug) {
       case "english":
@@ -404,7 +392,6 @@ export default function Dashboard() {
     return map;
   }, [topicProgressData]);
 
-  // Dojo Rank based on total XP
   const totalXp = profile?.total_xp || 0;
   const dojoBelt = getDojoBelt(totalXp);
   const nextDojoBelt = getNextDojoBelt(totalXp);
@@ -542,7 +529,6 @@ export default function Dashboard() {
             </div>
           </header>
         </div>
-        {/* Wavy bottom edge */}
         <div className="absolute bottom-0 left-0 right-0 overflow-hidden leading-[0]">
           <svg viewBox="0 0 1200 60" preserveAspectRatio="none" className="w-full h-[30px] md:h-[44px]">
             <path d="M0,30 C200,55 400,5 600,30 C800,55 1000,5 1200,30 L1200,60 L0,60 Z" className="fill-background" />
@@ -565,17 +551,17 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Subscription Banner for Explorer */}
+        {/* Subscription Banner for Pencil */}
         {isExplorer && (
           <div className="mb-6 bento-card bg-gradient-to-r from-ochre/10 to-eucalyptus/10 border-2 border-ochre/20 animate-slide-up">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-sky/20 flex items-center justify-center">
-                  <Compass className="w-5 h-5 text-sky" />
+                  <span className="text-xl">✏️</span>
                 </div>
                 <div>
-                  <p className="font-semibold text-foreground">Explorer Plan</p>
-                  <p className="text-sm text-muted-foreground">2 missions per day</p>
+                  <p className="font-semibold text-foreground">Pencil Plan</p>
+                  <p className="text-sm text-muted-foreground">2 training sessions per day</p>
                 </div>
               </div>
               <Button 
@@ -584,8 +570,8 @@ export default function Dashboard() {
                 size="sm" 
                 className="rounded-xl gap-2 bg-gradient-to-r from-ochre to-amber-500 hover:from-ochre/90 hover:to-amber-500/90"
               >
-                <Crown className="w-4 h-4" />
-                Upgrade to Champion
+                <span>🖊️</span>
+                Upgrade to Pen Licence
               </Button>
             </div>
           </div>
@@ -637,14 +623,14 @@ export default function Dashboard() {
             </p>
           </button>
 
-          {/* Card 3: Weekly Streak */}
+          {/* Card 3: Training Streak */}
           <button onClick={() => setStreakModal(true)} className="stats-card text-left animate-slide-up stagger-3">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-2xl bg-destructive/10 flex items-center justify-center">
                 <Flame className="w-6 h-6 text-destructive" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground font-medium">Weekly Streak</p>
+                <p className="text-xs text-muted-foreground font-medium">Training Streak</p>
                 <p className="text-2xl font-display font-bold text-foreground">
                   {profile?.current_streak || 0}<span className="text-sm font-normal text-muted-foreground ml-0.5">w</span>
                 </p>
@@ -672,7 +658,7 @@ export default function Dashboard() {
         </div>
 
 
-        {/* Start Mission Button */}
+        {/* Start Training Button */}
         {smartMission && (
           <section className="mb-8 animate-slide-up stagger-5">
             <button
@@ -686,7 +672,7 @@ export default function Dashboard() {
                     <Play className="w-8 h-8 md:w-10 md:h-10 text-white fill-white" />
                   </div>
                   <div className="text-left">
-                    <h3 className="text-xl md:text-2xl font-display font-bold text-white drop-shadow-sm">Start Mission</h3>
+                    <h3 className="text-xl md:text-2xl font-display font-bold text-white drop-shadow-sm">Start Training</h3>
                     <p className="text-white/90 text-sm md:text-base font-medium">{smartMission.reasonText}</p>
                   </div>
                 </div>
@@ -739,7 +725,6 @@ export default function Dashboard() {
                         )}
                       </div>
                       <div className="flip-card-back absolute inset-0 rounded-2xl bg-card border-2 border-primary/20 flex flex-col items-center justify-center p-5 backface-hidden rotate-y-180 shadow-lg">
-                        {/* Per-subject belt badge */}
                         <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-bold shadow-sm mb-2 ${beltLevel.colorClass}`}>
                           {beltLevel.emoji} {beltLevel.name}
                         </span>
@@ -785,15 +770,15 @@ export default function Dashboard() {
                         <h3 className="text-sm md:text-base font-display font-bold text-center leading-tight drop-shadow-sm">{subject.name}</h3>
                         {locked && (
                           <div className="absolute top-2 right-2 w-6 h-6 bg-black/30 backdrop-blur-sm rounded-full flex items-center justify-center">
-                            <Crown className="w-3.5 h-3.5 text-yellow-300" />
+                            <span className="text-xs">🖊️</span>
                           </div>
                         )}
                       </div>
                       <div className={`flip-card-back absolute inset-0 rounded-2xl bg-card border-2 ${locked ? 'border-muted' : 'border-primary/20'} flex flex-col items-center justify-center p-3 backface-hidden rotate-y-180 shadow-md`}>
                         {locked ? (
                           <>
-                            <Crown className="w-8 h-8 text-amber-500 mb-1" />
-                            <p className="font-display font-bold text-xs text-foreground mb-1">Champion Only</p>
+                            <span className="text-3xl mb-1">🖊️</span>
+                            <p className="font-display font-bold text-xs text-foreground mb-1">Pen Licence Only</p>
                             <Button
                               onClick={(e) => { e.stopPropagation(); handleUpgrade(); }}
                               onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); handleUpgrade(); }}
@@ -916,13 +901,13 @@ export default function Dashboard() {
                       </span>
                       <div className="text-right">
                         <p className="text-sm font-bold text-foreground">{wb.xp} XP</p>
-                        <p className="text-[10px] text-muted-foreground">{wb.missions} mission{wb.missions !== 1 ? 's' : ''}</p>
+                        <p className="text-[10px] text-muted-foreground">{wb.missions} session{wb.missions !== 1 ? 's' : ''}</p>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground text-center">No missions completed this week yet</p>
+                <p className="text-sm text-muted-foreground text-center">No training sessions completed this week yet</p>
               )}
             </div>
           </DialogContent>
@@ -956,7 +941,7 @@ export default function Dashboard() {
         <Dialog open={streakModal} onOpenChange={setStreakModal}>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>🔥 Weekly Streak</DialogTitle>
+              <DialogTitle>🔥 Training Streak</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">

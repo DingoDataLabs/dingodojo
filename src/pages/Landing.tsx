@@ -1,10 +1,11 @@
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import dingoLogo from "@/assets/dingo-logo.png";
-import { Check, Target, Clock, Star, Shield, ArrowRight, Compass, Crown, Zap, BookOpen, PenTool } from "lucide-react";
+import { Check, Target, Clock, Star, Shield, ArrowRight, Zap, BookOpen, PenTool, Crown } from "lucide-react";
 import { useState, useCallback } from "react";
 import HeroDemoPhone, { SCENE_LABELS } from "@/components/HeroDemoPhone";
 import { useAuth } from "@/contexts/AuthContext";
+import { DOJO_BELT_LEVELS } from "@/lib/beltUtils";
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -18,6 +19,16 @@ export default function Landing() {
     setActiveScene(scene);
   }, []);
 
+  const scrollTo = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const secondarySubjects = [
+    { emoji: "🔬", name: "Science", gradient: "from-rose-500 to-red-600" },
+    { emoji: "🌏", name: "Geography", gradient: "from-emerald-500 to-teal-600" },
+    { emoji: "🏛️", name: "History", gradient: "from-amber-600 to-yellow-500" },
+  ];
+
   return (
     <div className="min-h-screen bg-background">
       {/* Wavy Header - matches Dashboard */}
@@ -30,6 +41,9 @@ export default function Landing() {
               <span className="text-2xl md:text-3xl font-display font-bold text-primary-foreground drop-shadow-sm">Dingo Dojo</span>
             </div>
             <div className="flex items-center gap-3">
+              <button onClick={() => scrollTo("how-it-works")} className="hidden md:inline-flex text-primary-foreground/80 hover:text-primary-foreground text-sm font-semibold px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors">How It Works</button>
+              <button onClick={() => scrollTo("subjects")} className="hidden md:inline-flex text-primary-foreground/80 hover:text-primary-foreground text-sm font-semibold px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors">Subjects</button>
+              <button onClick={() => scrollTo("pricing")} className="hidden md:inline-flex text-primary-foreground/80 hover:text-primary-foreground text-sm font-semibold px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors">Pricing</button>
               {user ? (
                 <Button size="lg" onClick={handleEnterDojo} className="rounded-xl font-bold text-lg h-12 px-8 gap-2 bg-background text-primary hover:bg-background/90 hover:scale-105 transition-transform shadow-elevated">
                   Enter Your Dojo <ArrowRight className="w-5 h-5" />
@@ -52,15 +66,14 @@ export default function Landing() {
             <div className="animate-slide-up">
               <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm text-primary-foreground px-4 py-2 rounded-full text-sm font-semibold mb-6">
                 <Star className="w-4 h-4" />
-                High School Ready in 10 Minutes a Day
+                NSW Curriculum · Years 5-6
               </div>
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold text-primary-foreground leading-tight mb-6 drop-shadow-sm">
-                No Fuss Learning for
-                <span className="block text-white/90">Aussie Kids</span>
+                Get Your Kid High School Ready
+                <span className="block text-white/90">— 10 Minutes a Day</span>
               </h1>
               <p className="text-lg md:text-xl text-primary-foreground/80 mb-8 leading-relaxed">
-                Quick daily missions. Real curriculum. No monkey business. 
-                Help your child prepare for high school with focused, 10-minute learning sessions.
+                Daily training. NSW curriculum. AI feedback on real handwriting.
               </p>
               <div className="flex flex-wrap gap-4">
                 <Button 
@@ -75,10 +88,12 @@ export default function Landing() {
                   onClick={() => navigate("/demo")}
                   className="rounded-xl font-bold text-lg h-14 px-8 gap-2 bg-white/20 hover:bg-white/30 text-primary-foreground border-0 backdrop-blur-sm"
                 >
-                  <Compass className="w-5 h-5" />
                   Try Demo
                 </Button>
               </div>
+              <p className="text-sm text-primary-foreground/60 mt-4 font-medium">
+                Free forever · No credit card · No ads · Safe for kids
+              </p>
             </div>
             
             {/* Phone demo */}
@@ -138,7 +153,7 @@ export default function Landing() {
       </section>
 
       {/* Features */}
-      <section className="py-16 max-w-6xl mx-auto px-4 md:px-6 lg:px-8">
+      <section className="py-16 max-w-6xl mx-auto px-4 md:px-6 lg:px-8" style={{ background: "hsl(var(--sand) / 0.3)" }}>
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-4">
             Learning That Actually Works
@@ -148,13 +163,13 @@ export default function Landing() {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
           {[
-            { icon: <Target className="w-7 h-7 text-primary" />, title: "Focused Missions", desc: "Short, targeted lessons that respect your child's time. Complete a mission in 10 minutes or less.", bg: "bg-primary/10" },
+            { icon: <Target className="w-7 h-7 text-primary" />, title: "Focused Training", desc: "Short, targeted sessions that respect your child's time. Complete a training session in 10 minutes or less.", bg: "bg-primary/10" },
             { icon: <Zap className="w-7 h-7 text-secondary" />, title: "AI-Powered Help", desc: "Mirri the Dingo guides your child through tricky problems with hints, not answers.", bg: "bg-secondary/10" },
             { icon: <PenTool className="w-7 h-7 text-accent" />, title: "Handwriting Feedback", desc: "Upload handwritten work and get AI feedback on letter formation, spacing, and content.", bg: "bg-accent/10" },
           ].map((f) => (
-            <div key={f.title} className="bento-card p-8 text-center">
+            <div key={f.title} className="bento-card p-8 text-center bg-card">
               <div className={`w-14 h-14 rounded-2xl ${f.bg} flex items-center justify-center mx-auto mb-5`}>
                 {f.icon}
               </div>
@@ -165,14 +180,85 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* How It Works */}
+      <section id="how-it-works" className="py-20 px-4 md:px-6 lg:px-8" style={{ background: "hsl(var(--ochre-dark) / 0.06)" }}>
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-display font-bold text-foreground mb-4">
+              How It Works
+            </h2>
+            <p className="text-lg text-muted-foreground">Three steps. Ten minutes. Real progress.</p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8 md:gap-12">
+            {/* Step 1 */}
+            <div className="text-center">
+              <span className="text-6xl md:text-7xl font-display font-bold text-primary/20 block mb-4">1</span>
+              <h3 className="text-2xl font-display font-bold text-foreground mb-3">Pick your training</h3>
+              <p className="text-muted-foreground mb-6">
+                Choose from English, Maths, and more. The AI selects your next session based on where you need the most practice.
+              </p>
+              {/* Mini subject cards */}
+              <div className="flex justify-center gap-2 flex-wrap">
+                {[
+                  { emoji: "📖", name: "English", gradient: "from-violet-500 to-purple-600" },
+                  { emoji: "🔢", name: "Maths", gradient: "from-blue-500 to-indigo-600" },
+                  ...secondarySubjects,
+                ].map(s => (
+                  <div key={s.name} className={`rounded-xl bg-gradient-to-br ${s.gradient} text-white px-3 py-2 text-sm font-bold shadow-sm`}>
+                    <span className="mr-1">{s.emoji}</span> {s.name}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Step 2 */}
+            <div className="text-center">
+              <span className="text-6xl md:text-7xl font-display font-bold text-primary/20 block mb-4">2</span>
+              <h3 className="text-2xl font-display font-bold text-foreground mb-3">Complete the challenge</h3>
+              <p className="text-muted-foreground mb-6">
+                Learn the content, answer quick checks, then tackle the final challenge. Upload handwritten work for real feedback from Mirri.
+              </p>
+              <div className="flex justify-center gap-3">
+                <div className="bg-card border border-border rounded-xl px-4 py-3 text-sm font-semibold text-foreground">📝 Learn</div>
+                <div className="bg-card border border-border rounded-xl px-4 py-3 text-sm font-semibold text-foreground">✅ Check</div>
+                <div className="bg-primary/10 border border-primary/30 rounded-xl px-4 py-3 text-sm font-bold text-primary">🎯 Challenge</div>
+              </div>
+            </div>
+
+            {/* Step 3 */}
+            <div className="text-center">
+              <span className="text-6xl md:text-7xl font-display font-bold text-primary/20 block mb-4">3</span>
+              <h3 className="text-2xl font-display font-bold text-foreground mb-3">Master it and rank up</h3>
+              <p className="text-muted-foreground mb-6">
+                Earn XP from every session. Hit weekly goals to build your training streak. Climb through the belt ranks toward Black Belt mastery.
+              </p>
+              {/* Belt strip */}
+              <div className="flex justify-center gap-1 flex-wrap">
+                {DOJO_BELT_LEVELS.map(belt => (
+                  <div
+                    key={belt.name}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs ${belt.colorClass} shadow-sm`}
+                    title={`${belt.name} — ${belt.minXp.toLocaleString()}+ XP`}
+                  >
+                    {belt.emoji}
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">White → Yellow → Orange → Green → Blue → Purple → Brown → Black</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Subjects */}
-      <section className="py-16 max-w-6xl mx-auto px-4 md:px-6 lg:px-8">
+      <section id="subjects" className="py-16 max-w-6xl mx-auto px-4 md:px-6 lg:px-8">
         <div className="text-center mb-10">
           <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-4">
             Core Subjects
           </h2>
           <p className="text-lg text-muted-foreground">
-            English & Maths lead the way, with more subjects for Champion members
+            English & Maths lead the way, with more subjects for Pen Licence members
           </p>
         </div>
 
@@ -192,16 +278,12 @@ export default function Landing() {
 
         {/* Secondary subjects */}
         <div className="grid grid-cols-3 gap-3">
-          {[
-            { emoji: "🔬", name: "Science", gradient: "from-rose-500 to-red-600" },
-            { emoji: "🌏", name: "Geography", gradient: "from-emerald-500 to-teal-600" },
-            { emoji: "🏛️", name: "History", gradient: "from-amber-600 to-yellow-500" },
-          ].map((s) => (
+          {secondarySubjects.map((s) => (
             <div key={s.name} className={`rounded-2xl bg-gradient-to-br ${s.gradient} p-4 md:p-6 text-center text-white shadow-card`}>
               <span className="text-3xl md:text-4xl block mb-2">{s.emoji}</span>
               <p className="font-display font-bold text-sm md:text-base">{s.name}</p>
               <span className="inline-block mt-1 bg-white/20 backdrop-blur-sm text-white text-[10px] md:text-xs font-bold px-2 py-0.5 rounded-full">
-                <Crown className="w-3 h-3 inline mr-1" />Champion
+                🖊️ Pen Licence
               </span>
             </div>
           ))}
@@ -209,99 +291,101 @@ export default function Landing() {
       </section>
 
       {/* Pricing */}
-      <section className="py-16 max-w-4xl mx-auto px-4 md:px-6 lg:px-8">
-        <div className="text-center mb-10">
-          <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-4">
-            Simple, Fair Pricing
-          </h2>
-          <p className="text-lg text-muted-foreground">
-            Start free. Upgrade when you're ready.
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Explorer */}
-          <div className="bento-card p-8 border-2 border-border">
-            <div className="mb-6">
-              <div className="flex items-center gap-2 mb-2">
-                <Compass className="w-6 h-6 text-accent" />
-                <h3 className="text-2xl font-display font-bold text-foreground">Explorer</h3>
-              </div>
-              <p className="text-muted-foreground">Perfect for getting started</p>
-            </div>
-            <div className="mb-6">
-              <span className="text-4xl font-display font-bold text-foreground">Free</span>
-              <span className="text-muted-foreground ml-2">forever</span>
-            </div>
-            <ul className="space-y-3 mb-8">
-              {["2 missions per day", "English & Maths", "AI tutor help", "Daily & weekly streaks"].map(item => (
-                <li key={item} className="flex items-center gap-3 text-foreground">
-                  <Check className="w-5 h-5 text-secondary flex-shrink-0" />
-                  {item}
-                </li>
-              ))}
-            </ul>
-            <Button variant="outline" className="w-full h-12 rounded-xl font-semibold" onClick={handleGetStarted}>
-              Get Started Free
-            </Button>
+      <section id="pricing" className="py-16 px-4 md:px-6 lg:px-8" style={{ background: "hsl(var(--sand) / 0.3)" }}>
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-10">
+            <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-4">
+              Simple, Fair Pricing
+            </h2>
+            <p className="text-lg text-muted-foreground">
+              Start free. Upgrade when you're ready.
+            </p>
           </div>
 
-          {/* Champion */}
-          <div className="bento-card p-8 border-2 border-primary/30 relative" style={{ background: "linear-gradient(135deg, hsl(var(--ochre) / 0.06), hsl(var(--ochre) / 0.12))" }}>
-            <div className="absolute -top-3 right-6">
-              <span className="bg-primary text-primary-foreground px-4 py-1 rounded-full text-sm font-bold">
-                Most Popular
-              </span>
-            </div>
-            <div className="mb-6">
-              <div className="flex items-center gap-2 mb-2">
-                <Crown className="w-6 h-6 text-primary" />
-                <h3 className="text-2xl font-display font-bold text-foreground">Champion</h3>
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Pencil */}
+            <div className="bento-card p-8 border-2 border-border bg-card">
+              <div className="mb-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-2xl">✏️</span>
+                  <h3 className="text-2xl font-display font-bold text-foreground">Pencil</h3>
+                </div>
+                <p className="text-muted-foreground">Perfect for getting started</p>
               </div>
-              <p className="text-muted-foreground">Unlimited learning power</p>
+              <div className="mb-6">
+                <span className="text-4xl font-display font-bold text-foreground">Free</span>
+                <span className="text-muted-foreground ml-2">forever</span>
+              </div>
+              <ul className="space-y-3 mb-8">
+                {["2 training sessions per day", "English & Maths", "AI tutor help", "Training streaks"].map(item => (
+                  <li key={item} className="flex items-center gap-3 text-foreground">
+                    <Check className="w-5 h-5 text-secondary flex-shrink-0" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <Button variant="outline" className="w-full h-12 rounded-xl font-semibold" onClick={handleGetStarted}>
+                Get Started Free
+              </Button>
             </div>
-            <div className="mb-6">
-              <span className="text-4xl font-display font-bold text-foreground">$5</span>
-              <span className="text-muted-foreground ml-2">AUD / month</span>
+
+            {/* Pen Licence */}
+            <div className="bento-card p-8 border-2 border-primary/30 relative" style={{ background: "linear-gradient(135deg, hsl(var(--ochre) / 0.06), hsl(var(--ochre) / 0.12))" }}>
+              <div className="absolute -top-3 right-6">
+                <span className="bg-primary text-primary-foreground px-4 py-1 rounded-full text-sm font-bold">
+                  Most Popular
+                </span>
+              </div>
+              <div className="mb-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-2xl">🖊️</span>
+                  <h3 className="text-2xl font-display font-bold text-foreground">Pen Licence</h3>
+                </div>
+                <p className="text-muted-foreground">Unlimited learning power</p>
+              </div>
+              <div className="mb-6">
+                <span className="text-4xl font-display font-bold text-foreground">$5</span>
+                <span className="text-muted-foreground ml-2">AUD / month</span>
+              </div>
+              <ul className="space-y-3 mb-8">
+                {[
+                  { text: "Unlimited training sessions", bold: true },
+                  { text: "All 5 subjects unlocked" },
+                  { text: "AI tutor help" },
+                  { text: "Exclusive badges & rewards" },
+                  { text: "Priority support" },
+                ].map(item => (
+                  <li key={item.text} className="flex items-center gap-3 text-foreground">
+                    <Check className="w-5 h-5 text-secondary flex-shrink-0" />
+                    {item.bold ? <strong>{item.text}</strong> : item.text}
+                  </li>
+                ))}
+              </ul>
+              <Button className="w-full h-12 rounded-xl font-semibold" onClick={handleGetStarted}>
+                Start Pen Licence Trial
+              </Button>
+              <p className="text-xs text-muted-foreground text-center mt-3">
+                Use code <span className="font-bold text-primary">3MFREE</span> for 3 months free!
+              </p>
             </div>
-            <ul className="space-y-3 mb-8">
-              {[
-                { text: "Unlimited missions", bold: true },
-                { text: "All 5 subjects unlocked" },
-                { text: "AI tutor help" },
-                { text: "Exclusive badges & rewards" },
-                { text: "Priority support" },
-              ].map(item => (
-                <li key={item.text} className="flex items-center gap-3 text-foreground">
-                  <Check className="w-5 h-5 text-secondary flex-shrink-0" />
-                  {item.bold ? <strong>{item.text}</strong> : item.text}
-                </li>
-              ))}
-            </ul>
-            <Button className="w-full h-12 rounded-xl font-semibold" onClick={handleGetStarted}>
-              Start Champion Trial
-            </Button>
-            <p className="text-xs text-muted-foreground text-center mt-3">
-              Use code <span className="font-bold text-primary">3MFREE</span> for 3 months free!
-            </p>
           </div>
         </div>
       </section>
 
       {/* CTA */}
-      <section className="py-16 px-4">
-        <div className="max-w-3xl mx-auto text-center bento-card p-10 md:p-14" style={{ background: "linear-gradient(135deg, hsl(var(--ochre) / 0.08), hsl(var(--eucalyptus) / 0.08))" }}>
-          <img src={dingoLogo} alt="Dingo Dojo" className="w-16 h-16 mx-auto mb-4 animate-float" />
-          <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-4">
+      <section className="py-20 px-4" style={{ background: "linear-gradient(135deg, hsl(var(--ochre-dark)) 0%, hsl(var(--ochre)) 50%, hsl(var(--ochre-light)) 100%)" }}>
+        <div className="max-w-3xl mx-auto text-center">
+          <img src={dingoLogo} alt="Mirri the Dingo" className="w-24 h-24 mx-auto mb-6 animate-float" />
+          <h2 className="text-4xl md:text-5xl font-display font-bold text-primary-foreground mb-4">
             Ready to Start the Adventure?
           </h2>
-          <p className="text-lg text-muted-foreground mb-8">
-            Join Aussie families getting high school ready, one mission at a time.
+          <p className="text-lg text-primary-foreground/80 mb-8">
+            Join Aussie families getting high school ready, one training session at a time.
           </p>
           <Button 
             size="lg"
             onClick={handleGetStarted}
-            className="rounded-xl font-bold text-lg h-14 px-10 gap-2 hover:scale-105 transition-transform"
+            className="rounded-xl font-bold text-lg h-14 px-10 gap-2 bg-background text-foreground hover:bg-background/90 hover:scale-105 transition-transform"
           >
             Start Learning Free <ArrowRight className="w-5 h-5" />
           </Button>
