@@ -2,14 +2,21 @@ import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import dingoLogo from "@/assets/dingo-logo.png";
 import { Check, Target, Clock, Star, Shield, ArrowRight, Compass, Crown, Zap, BookOpen, PenTool } from "lucide-react";
+import { useState, useCallback } from "react";
+import HeroDemoPhone, { SCENE_LABELS } from "@/components/HeroDemoPhone";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function Landing() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [activeScene, setActiveScene] = useState(0);
 
   const handleGetStarted = () => navigate(user ? "/dashboard" : "/auth");
   const handleEnterDojo = () => navigate(user ? "/dashboard" : "/auth");
+
+  const handleSceneChange = useCallback((scene: number) => {
+    setActiveScene(scene);
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -74,30 +81,32 @@ export default function Landing() {
               </div>
             </div>
             
-            {/* Preview cards */}
-            <div className="relative animate-slide-up stagger-2 hidden md:block">
-              <div className="space-y-4">
-                <div className="flex items-center gap-3 p-4 bg-white/15 backdrop-blur-sm rounded-2xl">
-                  <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center text-2xl">📐</div>
-                  <div>
-                    <p className="font-semibold text-primary-foreground">Maths Mission Complete!</p>
-                    <p className="text-sm text-primary-foreground/70">+25 XP earned</p>
-                  </div>
+            {/* Phone demo */}
+            <div className="hidden md:flex flex-col items-center justify-center animate-slide-up stagger-2">
+              <div style={{ perspective: "1200px" }}>
+                <div style={{ transform: "rotateY(-12deg) rotateX(4deg)" }}>
+                  <HeroDemoPhone activeScene={activeScene} onSceneChange={handleSceneChange} />
                 </div>
-                <div className="flex items-center gap-3 p-4 bg-white/15 backdrop-blur-sm rounded-2xl">
-                  <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center text-2xl">📖</div>
-                  <div>
-                    <p className="font-semibold text-primary-foreground">English Level Up!</p>
-                    <p className="text-sm text-primary-foreground/70">Now at Developing level</p>
-                  </div>
+              </div>
+              {/* Scene nav — outside 3D transform */}
+              <div className="mt-4 select-none">
+                <div className="flex justify-center gap-2">
+                  {SCENE_LABELS.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handleSceneChange(i)}
+                      className="rounded-full cursor-pointer transition-all duration-300"
+                      style={{
+                        width: activeScene === i ? 12 : 10,
+                        height: activeScene === i ? 12 : 10,
+                        background: activeScene === i ? "hsl(var(--ochre))" : "hsl(var(--muted-foreground) / 0.3)",
+                      }}
+                    />
+                  ))}
                 </div>
-                <div className="flex items-center gap-3 p-4 bg-white/15 backdrop-blur-sm rounded-2xl">
-                  <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center text-2xl">🔥</div>
-                  <div>
-                    <p className="font-semibold text-primary-foreground">3 Week Streak!</p>
-                    <p className="text-sm text-primary-foreground/70">Keep it going!</p>
-                  </div>
-                </div>
+                <p className="text-xs text-muted-foreground text-center mt-2 h-4 transition-opacity duration-300">
+                  {SCENE_LABELS[activeScene]}
+                </p>
               </div>
             </div>
           </div>
