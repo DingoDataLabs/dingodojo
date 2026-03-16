@@ -170,7 +170,7 @@ export default function Demo() {
               <img src={dingoLogo} alt="Dingo Dojo" className="w-24 h-24 animate-float" />
               <div>
                 <h1 className="text-2xl md:text-3xl font-display font-bold text-primary-foreground drop-shadow-sm">
-                  G'day, Explorer!
+                  G'day, Learner!
                 </h1>
                 <p className="text-primary-foreground/75">Year 5 • Demo Dojo</p>
               </div>
