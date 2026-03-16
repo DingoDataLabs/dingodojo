@@ -1811,10 +1811,10 @@ export default function TrainingSession() {
               <div className="bg-eucalyptus/10 border-2 border-eucalyptus/30 rounded-2xl p-6">
                 <span className="text-5xl block mb-3">🎉</span>
                 <h3 className="text-xl font-display font-bold text-foreground mb-1">
-                  All Challenges Complete!
+                  All Challenges Mastered!
                 </h3>
                 <p className="text-muted-foreground mb-5">
-                  You've earned <span className="font-bold text-eucalyptus">{earnedXp} XP</span> this lesson!
+                  You've earned <span className="font-bold text-eucalyptus">{earnedXp} XP</span> this session!
                 </p>
 
                 {/* Countdown ring */}
