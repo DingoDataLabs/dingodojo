@@ -247,7 +247,7 @@ export default function Demo() {
               <p className="text-[10px] text-muted-foreground">📖 English: 120 XP (2 missions)</p>
               <p className="text-[10px] text-muted-foreground">🔢 Maths: 180 XP (3 missions)</p>
             </div>
-            <p className="text-xs font-medium text-foreground">2 more missions to hit your goal!</p>
+            <p className="text-xs font-medium text-foreground">2 more sessions to hit your goal!</p>
           </div>
 
           {/* Total XP */}
