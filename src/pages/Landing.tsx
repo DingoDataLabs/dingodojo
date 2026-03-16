@@ -2,6 +2,8 @@ import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import dingoLogo from "@/assets/dingo-logo.png";
 import { Check, Target, Clock, Star, Shield, ArrowRight, Compass, Crown, Zap, BookOpen, PenTool } from "lucide-react";
+import { useState, useCallback } from "react";
+import HeroDemoPhone, { SCENE_LABELS } from "@/components/HeroDemoPhone";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function Landing() {
