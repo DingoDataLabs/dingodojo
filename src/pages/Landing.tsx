@@ -9,9 +9,14 @@ import { useAuth } from "@/contexts/AuthContext";
 export default function Landing() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [activeScene, setActiveScene] = useState(0);
 
   const handleGetStarted = () => navigate(user ? "/dashboard" : "/auth");
   const handleEnterDojo = () => navigate(user ? "/dashboard" : "/auth");
+
+  const handleSceneChange = useCallback((scene: number) => {
+    setActiveScene(scene);
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
