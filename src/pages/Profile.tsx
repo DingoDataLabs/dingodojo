@@ -285,7 +285,7 @@ export default function ProfilePage() {
                 <div>
                   <p className="text-sm text-muted-foreground">Subscription</p>
                   <p className="font-semibold text-foreground">
-                    {subInfo?.tier === "champion" ? "Champion" : "Explorer"}
+                    {subInfo?.tier === "champion" ? "Pen Licence" : "Pencil"}
                     {subInfo?.subscribed && subInfo.subscriptionEnd && (
                       <span className="text-xs font-normal text-muted-foreground ml-2">
                         {subInfo.status === "trialing" ? "Trial ends" : "Renews"}{" "}
