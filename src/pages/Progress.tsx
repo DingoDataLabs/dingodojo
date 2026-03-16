@@ -369,7 +369,7 @@ export default function ProgressPage() {
                 );
               })}
               {subjectProgress.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">No progress yet — start a mission! 🥋</p>
+                <p className="text-sm text-muted-foreground text-center py-4">No progress yet — start training! 🥋</p>
               )}
             </div>
           </div>

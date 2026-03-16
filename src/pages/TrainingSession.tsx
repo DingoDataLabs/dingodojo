@@ -1461,7 +1461,7 @@ export default function TrainingSession() {
                       }`}
                     >
                       <Camera className="w-4 h-4" /> Upload photo
-                      {profile?.subscription_tier !== "champion" && <Crown className="w-3 h-3 text-primary" />}
+                      {profile?.subscription_tier !== "champion" && <span className="text-xs">🖊️</span>}
                     </button>
                   </div>
                 )}
