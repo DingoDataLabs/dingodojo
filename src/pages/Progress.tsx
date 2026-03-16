@@ -298,7 +298,7 @@ export default function ProgressPage() {
                 <p className="text-2xl font-display font-bold text-foreground">
                   {profile?.current_streak || 0}w
                 </p>
-                <p className="text-xs text-muted-foreground">Weekly Streak</p>
+                <p className="text-xs text-muted-foreground">Training Streak</p>
               </div>
             </div>
           </div>
