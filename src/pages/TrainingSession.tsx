@@ -535,7 +535,7 @@ export default function TrainingSession() {
 
     } catch (err) {
       console.error("Generation error:", err);
-      toast.error("Couldn't generate the lesson. Please try again!");
+      toast.error("Couldn't generate the training session. Please try again!");
       setGenerating(false);
       setLoading(false);
       setQuestionsLoading(false);
