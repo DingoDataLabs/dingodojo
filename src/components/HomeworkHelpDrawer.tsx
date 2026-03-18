@@ -157,7 +157,7 @@ export function HomeworkHelpDrawer({ gradeLevel, subscriptionTier }: HomeworkHel
     } finally {
       setIsLoading(false);
     }
-  }, [inputMessage, isLoading, messages, gradeLevel]);
+  }, [isLoading, gradeLevel]);
 
   // Keep ref in sync so voice callback always uses latest version
   sendMessageRef.current = sendMessageWithText;
