@@ -28,13 +28,16 @@ export function HomeworkHelpDrawer({ gradeLevel, subscriptionTier }: HomeworkHel
   const chatEndRef = useRef<HTMLDivElement>(null);
   const streamingCompleteRef = useRef(false);
   const latestAssistantRef = useRef("");
+  const messagesRef = useRef<ChatMessage[]>([]);
 
   const isChampion = subscriptionTier === "champion";
+
+  const sendMessageRef = useRef<(text: string) => void>(() => {});
 
   const handleTranscript = useCallback((text: string) => {
     setInputMessage(text);
     setTimeout(() => {
-      sendMessageWithText(text);
+      sendMessageRef.current(text);
     }, 100);
   }, []);
 
@@ -45,6 +48,11 @@ export function HomeworkHelpDrawer({ gradeLevel, subscriptionTier }: HomeworkHel
     onTranscript: handleTranscript,
     onSpeakingChange: handleSpeakingChange,
   });
+
+  // Keep messagesRef in sync
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   useEffect(() => {
     if (isOpen) {
@@ -65,7 +73,7 @@ export function HomeworkHelpDrawer({ gradeLevel, subscriptionTier }: HomeworkHel
     if (!trimmed || isLoading) return;
 
     const userMsg: ChatMessage = { role: "user", content: trimmed };
-    const allMessages = [...messages, userMsg];
+    const allMessages = [...messagesRef.current, userMsg];
     setMessages(allMessages);
     setInputMessage("");
     setIsLoading(true);
@@ -149,7 +157,10 @@ export function HomeworkHelpDrawer({ gradeLevel, subscriptionTier }: HomeworkHel
     } finally {
       setIsLoading(false);
     }
-  }, [inputMessage, isLoading, messages, gradeLevel]);
+  }, [isLoading, gradeLevel]);
+
+  // Keep ref in sync so voice callback always uses latest version
+  sendMessageRef.current = sendMessageWithText;
 
   const sendMessage = useCallback(() => {
     sendMessageWithText(inputMessage);
