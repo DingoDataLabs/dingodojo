@@ -73,7 +73,7 @@ export function HomeworkHelpDrawer({ gradeLevel, subscriptionTier }: HomeworkHel
     if (!trimmed || isLoading) return;
 
     const userMsg: ChatMessage = { role: "user", content: trimmed };
-    const allMessages = [...messages, userMsg];
+    const allMessages = [...messagesRef.current, userMsg];
     setMessages(allMessages);
     setInputMessage("");
     setIsLoading(true);
