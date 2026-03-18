@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Send, Sparkles, CheckCircle, Loader2, ChevronRight, HelpCircle, Camera, PenTool, Crown } from "lucide-react";
+import { ArrowLeft, Send, Sparkles, CheckCircle, Loader2, ChevronRight, HelpCircle, Camera, PenTool, Crown, Mic, MicOff, Square } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
@@ -21,6 +21,7 @@ import { WritingFeedbackModal } from "@/components/WritingFeedbackModal";
 import { MathsWorkingFeedbackModal } from "@/components/MathsWorkingFeedbackModal";
 import { DrawingCanvas } from "@/components/DrawingCanvas";
 import { useWakeLock } from "@/hooks/useWakeLock";
+import { useMirriVoice } from "@/hooks/useMirriVoice";
 
 interface Topic {
   id: string;
@@ -216,6 +217,39 @@ export default function TrainingSession() {
   const [isChatLoading, setIsChatLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const lessonRef = useRef<HTMLDivElement>(null);
+  const [desktopVoiceMode, setDesktopVoiceMode] = useState(false);
+  const prevChatLoadingRef = useRef(false);
+  const pendingVoiceTranscriptRef = useRef<string | null>(null);
+
+  const isChampionUser = profile?.subscription_tier === "champion";
+
+  const desktopVoice = useMirriVoice({
+    isChampion: isChampionUser,
+    onTranscript: (text: string) => {
+      pendingVoiceTranscriptRef.current = text;
+      setInputMessage(text);
+    },
+    onSpeakingChange: () => {},
+  });
+
+  // Auto-send when voice transcript sets inputMessage
+  useEffect(() => {
+    if (pendingVoiceTranscriptRef.current && inputMessage === pendingVoiceTranscriptRef.current && desktopVoiceMode) {
+      pendingVoiceTranscriptRef.current = null;
+      sendMessage();
+    }
+  }, [inputMessage, desktopVoiceMode]);
+
+  // Detect streaming complete for desktop voice
+  useEffect(() => {
+    if (prevChatLoadingRef.current && !isChatLoading && desktopVoiceMode) {
+      const lastMsg = messages[messages.length - 1];
+      if (lastMsg?.role === "assistant" && lastMsg.content) {
+        desktopVoice.speak(lastMsg.content);
+      }
+    }
+    prevChatLoadingRef.current = isChatLoading;
+  }, [isChatLoading, messages, desktopVoiceMode]);
 
   // Keep screen awake during final challenge with free-text/photo/worked_solution submissions
   const hasFreeTextChallenge = lessonContent?.final_challenge?.questions?.some(q => q.type === "free_text" || q.type === "worked_solution") ?? false;
@@ -1990,6 +2024,7 @@ export default function TrainingSession() {
             setInputMessage={setInputMessage}
             isChatLoading={isChatLoading}
             onSendMessage={sendMessage}
+            subscriptionTier={profile?.subscription_tier}
           />
         )}
 
@@ -2056,11 +2091,39 @@ export default function TrainingSession() {
           <div className="w-1/2 flex flex-col bg-sand/30">
             <div className="flex-shrink-0 p-4 border-b border-border bg-card/50">
               <div className="flex items-center gap-3">
-                <img src={dingoLogo} alt="Sensei" className="w-12 h-12" />
-                <div>
+                <div className="relative">
+                  <img src={dingoLogo} alt="Sensei" className={`w-12 h-12 ${desktopVoice.isListening ? "animate-pulse" : ""} ${desktopVoice.isSpeaking ? "animate-bounce" : ""}`} />
+                  {desktopVoice.isListening && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-destructive animate-pulse" />
+                  )}
+                </div>
+                <div className="flex-1">
                   <h3 className="font-display font-bold text-foreground">Mirri the Study Buddy</h3>
                   <p className="text-sm text-muted-foreground">Ask me for hints!</p>
                 </div>
+                {isChampionUser && (
+                  <Button
+                    variant={desktopVoiceMode ? "default" : "ghost"}
+                    size="icon"
+                    onClick={() => {
+                      if (!desktopVoiceMode) {
+                        if (desktopVoice.sttUnsupported) {
+                          toast("Voice input isn't supported on this browser. Mirri can still speak her replies — or switch to text mode.", { icon: "🎙️" });
+                        }
+                        setDesktopVoiceMode(true);
+                        desktopVoice.startListening();
+                      } else {
+                        setDesktopVoiceMode(false);
+                        desktopVoice.stopListening();
+                        desktopVoice.cancelSpeech();
+                      }
+                    }}
+                    className="rounded-full"
+                    title={desktopVoiceMode ? "Switch to text mode" : "Switch to voice mode"}
+                  >
+                    {desktopVoiceMode ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -2094,23 +2157,43 @@ export default function TrainingSession() {
             </div>
 
             <div className="flex-shrink-0 p-4 border-t border-border bg-card/50">
-              <div className="flex gap-2">
-                <Input
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
-                  placeholder="Ask Mirri for help..."
-                  className="flex-grow h-12 rounded-xl bg-background"
-                  disabled={isChatLoading}
-                />
-                <Button
-                  onClick={sendMessage}
-                  disabled={!inputMessage.trim() || isChatLoading}
-                  className="h-12 w-12 rounded-xl"
-                >
-                  <Send className="w-5 h-5" />
-                </Button>
-              </div>
+              {desktopVoiceMode ? (
+                <div className="flex items-center justify-center gap-3">
+                  {desktopVoice.isSpeaking ? (
+                    <>
+                      <p className="text-sm text-muted-foreground">Mirri is talking…</p>
+                      <Button size="icon" variant="destructive" onClick={desktopVoice.cancelSpeech} className="rounded-full">
+                        <Square className="w-4 h-4" />
+                      </Button>
+                    </>
+                  ) : desktopVoice.isListening ? (
+                    <div className="flex items-center gap-2">
+                      <span className="w-3 h-3 rounded-full bg-destructive animate-pulse" />
+                      <p className="text-sm text-muted-foreground">Listening…</p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Tap the mic to start</p>
+                  )}
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Input
+                    value={inputMessage}
+                    onChange={(e) => setInputMessage(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
+                    placeholder="Ask Mirri for help..."
+                    className="flex-grow h-12 rounded-xl bg-background"
+                    disabled={isChatLoading}
+                  />
+                  <Button
+                    onClick={sendMessage}
+                    disabled={!inputMessage.trim() || isChatLoading}
+                    className="h-12 w-12 rounded-xl"
+                  >
+                    <Send className="w-5 h-5" />
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -1,0 +1,210 @@
+import { useState, useRef, useCallback, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+
+interface UseMirriVoiceOptions {
+  isChampion: boolean;
+  onTranscript: (text: string) => void;
+  onSpeakingChange: (speaking: boolean) => void;
+}
+
+// Check for SpeechRecognition support
+const SpeechRecognitionAPI =
+  typeof window !== "undefined"
+    ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    : null;
+
+export function useMirriVoice({ isChampion, onTranscript, onSpeakingChange }: UseMirriVoiceOptions) {
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [sttUnsupported, setSttUnsupported] = useState(!SpeechRecognitionAPI);
+
+  const recognitionRef = useRef<any>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUnlockedRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const shouldRestartListeningRef = useRef(false);
+
+  // Create audio element once
+  useEffect(() => {
+    audioRef.current = new Audio();
+    return () => {
+      audioRef.current?.pause();
+      audioRef.current = null;
+    };
+  }, []);
+
+  const unlockAudio = useCallback(async () => {
+    if (audioUnlockedRef.current || !audioRef.current) return;
+    try {
+      audioRef.current.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+      await audioRef.current.play();
+      audioUnlockedRef.current = true;
+    } catch {
+      // Silent fail
+    }
+  }, []);
+
+  const stopRecognition = useCallback(() => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.abort();
+      } catch {
+        try { recognitionRef.current.stop(); } catch {}
+      }
+    }
+    setIsListening(false);
+  }, []);
+
+  const startRecognition = useCallback(() => {
+    if (!SpeechRecognitionAPI || !isChampion) return;
+
+    stopRecognition();
+
+    const recognition = new SpeechRecognitionAPI();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = "en-AU";
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0]?.[0]?.transcript;
+      if (transcript?.trim()) {
+        onTranscript(transcript.trim());
+      }
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      // Auto-restart if we should be listening
+      if (shouldRestartListeningRef.current && !isSpeaking) {
+        setTimeout(() => {
+          if (shouldRestartListeningRef.current) {
+            startRecognition();
+          }
+        }, 300);
+      }
+    };
+
+    recognition.onerror = (event: any) => {
+      if (event.error !== "aborted" && event.error !== "no-speech") {
+        console.error("STT error:", event.error);
+      }
+      setIsListening(false);
+    };
+
+    recognitionRef.current = recognition;
+    try {
+      recognition.start();
+      setIsListening(true);
+    } catch (e) {
+      console.error("Failed to start recognition:", e);
+    }
+  }, [isChampion, onTranscript, isSpeaking, stopRecognition]);
+
+  const startListening = useCallback(() => {
+    unlockAudio();
+    shouldRestartListeningRef.current = true;
+    startRecognition();
+  }, [startRecognition, unlockAudio]);
+
+  const stopListening = useCallback(() => {
+    shouldRestartListeningRef.current = false;
+    stopRecognition();
+  }, [stopRecognition]);
+
+  const cancelSpeech = useCallback(() => {
+    abortControllerRef.current?.abort();
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    setIsSpeaking(false);
+    onSpeakingChange(false);
+
+    // Resume listening after cancelling
+    if (shouldRestartListeningRef.current) {
+      setTimeout(() => startRecognition(), 300);
+    }
+  }, [onSpeakingChange, startRecognition]);
+
+  const speak = useCallback(async (text: string) => {
+    if (!text.trim()) return;
+
+    // Stop listening while speaking
+    stopRecognition();
+
+    setIsSpeaking(true);
+    onSpeakingChange(true);
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Not authenticated");
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/text-to-speech`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ text }),
+          signal: controller.signal,
+        }
+      );
+
+      if (!response.ok) throw new Error(`TTS failed: ${response.status}`);
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+
+      if (!audioRef.current) return;
+      audioRef.current.src = url;
+
+      await new Promise<void>((resolve, reject) => {
+        if (!audioRef.current) return reject();
+        audioRef.current.onended = () => {
+          URL.revokeObjectURL(url);
+          resolve();
+        };
+        audioRef.current.onerror = () => {
+          URL.revokeObjectURL(url);
+          reject();
+        };
+        audioRef.current.play().catch(reject);
+      });
+    } catch (err: any) {
+      if (err?.name === "AbortError") return;
+      console.error("Speak error:", err);
+    } finally {
+      setIsSpeaking(false);
+      onSpeakingChange(false);
+
+      // Resume listening after speaking
+      if (shouldRestartListeningRef.current) {
+        setTimeout(() => startRecognition(), 300);
+      }
+    }
+  }, [onSpeakingChange, stopRecognition, startRecognition]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      shouldRestartListeningRef.current = false;
+      stopRecognition();
+      abortControllerRef.current?.abort();
+    };
+  }, [stopRecognition]);
+
+  return {
+    isListening,
+    isSpeaking,
+    sttUnsupported,
+    startListening,
+    stopListening,
+    speak,
+    cancelSpeech,
+  };
+}

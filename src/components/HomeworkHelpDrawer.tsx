@@ -3,8 +3,10 @@ import dingoLogo from "@/assets/dingo-logo.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Send, Loader2, MessageCircle } from "lucide-react";
+import { Send, Loader2, MessageCircle, Mic, MicOff, Square } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useMirriVoice } from "@/hooks/useMirriVoice";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -13,14 +15,38 @@ interface ChatMessage {
 
 interface HomeworkHelpDrawerProps {
   gradeLevel?: string;
+  subscriptionTier?: string;
 }
 
-export function HomeworkHelpDrawer({ gradeLevel }: HomeworkHelpDrawerProps) {
+export function HomeworkHelpDrawer({ gradeLevel, subscriptionTier }: HomeworkHelpDrawerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [voiceMode, setVoiceMode] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const streamingCompleteRef = useRef(false);
+  const latestAssistantRef = useRef("");
+
+  const isChampion = subscriptionTier === "champion";
+
+  const handleTranscript = useCallback((text: string) => {
+    setInputMessage(text);
+    // Auto-send after a short delay
+    setTimeout(() => {
+      sendMessageWithText(text);
+    }, 100);
+  }, []);
+
+  const handleSpeakingChange = useCallback((speaking: boolean) => {
+    // No-op, state managed in hook
+  }, []);
+
+  const voice = useMirriVoice({
+    isChampion,
+    onTranscript: handleTranscript,
+    onSpeakingChange: handleSpeakingChange,
+  });
 
   useEffect(() => {
     if (isOpen) {
@@ -28,24 +54,36 @@ export function HomeworkHelpDrawer({ gradeLevel }: HomeworkHelpDrawerProps) {
     }
   }, [messages, isOpen]);
 
-  const sendMessage = useCallback(async () => {
-    if (!inputMessage.trim() || isLoading) return;
+  // When streaming completes and voice mode is on, speak the response
+  useEffect(() => {
+    if (streamingCompleteRef.current && voiceMode && latestAssistantRef.current && !isLoading) {
+      streamingCompleteRef.current = false;
+      voice.speak(latestAssistantRef.current);
+    }
+  }, [isLoading, voiceMode]);
 
-    const userMsg: ChatMessage = { role: "user", content: inputMessage.trim() };
+  const sendMessageWithText = useCallback(async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || isLoading) return;
+
+    const userMsg: ChatMessage = { role: "user", content: trimmed };
     const allMessages = [...messages, userMsg];
     setMessages(allMessages);
     setInputMessage("");
     setIsLoading(true);
+    streamingCompleteRef.current = false;
+    latestAssistantRef.current = "";
 
     let assistantContent = "";
 
     try {
-      const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/homework-help`;
+      const { data: { session } } = await supabase.auth.getSession();
+      const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-tutor`;
       const resp = await fetch(CHAT_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
         body: JSON.stringify({
           messages: allMessages,
@@ -104,6 +142,9 @@ export function HomeworkHelpDrawer({ gradeLevel }: HomeworkHelpDrawerProps) {
           }
         }
       }
+
+      latestAssistantRef.current = assistantContent;
+      streamingCompleteRef.current = true;
     } catch (err) {
       console.error("Homework help error:", err);
       toast.error("Something went wrong. Try again!");
@@ -112,10 +153,28 @@ export function HomeworkHelpDrawer({ gradeLevel }: HomeworkHelpDrawerProps) {
     }
   }, [inputMessage, isLoading, messages, gradeLevel]);
 
+  const sendMessage = useCallback(() => {
+    sendMessageWithText(inputMessage);
+  }, [inputMessage, sendMessageWithText]);
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
+    }
+  };
+
+  const toggleVoiceMode = () => {
+    if (!voiceMode) {
+      if (voice.sttUnsupported) {
+        toast("Voice input isn't supported on this browser. Mirri can still speak her replies — or switch to text mode.", { icon: "🎙️" });
+      }
+      setVoiceMode(true);
+      voice.startListening();
+    } else {
+      setVoiceMode(false);
+      voice.stopListening();
+      voice.cancelSpeech();
     }
   };
 
@@ -133,13 +192,29 @@ export function HomeworkHelpDrawer({ gradeLevel }: HomeworkHelpDrawerProps) {
       <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col">
         <SheetHeader className="p-4 border-b border-border bg-card/50">
           <div className="flex items-center gap-3">
-            <img src={dingoLogo} alt="Mirri" className="w-12 h-12" />
+            <div className="relative">
+              <img src={dingoLogo} alt="Mirri" className={`w-12 h-12 ${voice.isListening ? "animate-pulse" : ""} ${voice.isSpeaking ? "animate-bounce" : ""}`} />
+              {voice.isListening && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-destructive animate-pulse" />
+              )}
+            </div>
             <div className="flex-1">
               <SheetTitle className="font-display font-bold text-foreground">
                 Mirri — Homework Help
               </SheetTitle>
               <p className="text-sm text-muted-foreground">I'll help you figure it out! 🦘</p>
             </div>
+            {isChampion && (
+              <Button
+                variant={voiceMode ? "default" : "ghost"}
+                size="icon"
+                onClick={toggleVoiceMode}
+                className="rounded-full"
+                title={voiceMode ? "Switch to text mode" : "Switch to voice mode"}
+              >
+                {voiceMode ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+              </Button>
+            )}
           </div>
         </SheetHeader>
 
@@ -184,24 +259,44 @@ export function HomeworkHelpDrawer({ gradeLevel }: HomeworkHelpDrawerProps) {
         </div>
 
         <div className="flex-shrink-0 p-4 bg-card border-t border-border">
-          <div className="flex gap-2">
-            <Input
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              placeholder="What do you need help with?"
-              onKeyPress={handleKeyPress}
-              disabled={isLoading}
-              className="flex-1 rounded-xl"
-            />
-            <Button
-              onClick={sendMessage}
-              disabled={!inputMessage.trim() || isLoading}
-              size="icon"
-              className="rounded-xl w-12 h-10"
-            >
-              <Send className="w-4 h-4" />
-            </Button>
-          </div>
+          {voiceMode ? (
+            <div className="flex items-center justify-center gap-3">
+              {voice.isSpeaking ? (
+                <>
+                  <p className="text-sm text-muted-foreground">Mirri is talking…</p>
+                  <Button size="icon" variant="destructive" onClick={voice.cancelSpeech} className="rounded-full">
+                    <Square className="w-4 h-4" />
+                  </Button>
+                </>
+              ) : voice.isListening ? (
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-destructive animate-pulse" />
+                  <p className="text-sm text-muted-foreground">Listening…</p>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Tap the mic to start</p>
+              )}
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <Input
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                placeholder="What do you need help with?"
+                onKeyPress={handleKeyPress}
+                disabled={isLoading}
+                className="flex-1 rounded-xl"
+              />
+              <Button
+                onClick={sendMessage}
+                disabled={!inputMessage.trim() || isLoading}
+                size="icon"
+                className="rounded-xl w-12 h-10"
+              >
+                <Send className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
         </div>
       </SheetContent>
     </Sheet>

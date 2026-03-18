@@ -503,7 +503,7 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="flex items-center gap-1">
-                <HomeworkHelpDrawer gradeLevel={profile?.grade_level || "Year 5"} />
+                <HomeworkHelpDrawer gradeLevel={profile?.grade_level || "Year 5"} subscriptionTier={profile?.subscription_tier} />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="rounded-xl text-primary-foreground hover:bg-white/20 w-12 h-12">
