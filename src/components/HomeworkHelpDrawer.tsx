@@ -31,10 +31,12 @@ export function HomeworkHelpDrawer({ gradeLevel, subscriptionTier }: HomeworkHel
 
   const isChampion = subscriptionTier === "champion";
 
+  const sendMessageRef = useRef(sendMessageWithText);
+
   const handleTranscript = useCallback((text: string) => {
     setInputMessage(text);
     setTimeout(() => {
-      sendMessageWithText(text);
+      sendMessageRef.current(text);
     }, 100);
   }, []);
 
