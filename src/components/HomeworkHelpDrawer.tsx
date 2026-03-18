@@ -153,6 +153,9 @@ export function HomeworkHelpDrawer({ gradeLevel, subscriptionTier }: HomeworkHel
     }
   }, [inputMessage, isLoading, messages, gradeLevel]);
 
+  // Keep ref in sync so voice callback always uses latest version
+  sendMessageRef.current = sendMessageWithText;
+
   const sendMessage = useCallback(() => {
     sendMessageWithText(inputMessage);
   }, [inputMessage, sendMessageWithText]);
