@@ -2201,6 +2201,7 @@ export default function TrainingSession() {
                 </div>
               )}
             </div>
+          </div>
         )}
       </main>
     </div>
