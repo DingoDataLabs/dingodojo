@@ -7,7 +7,6 @@ interface UseMirriVoiceOptions {
   onSpeakingChange: (speaking: boolean) => void;
 }
 
-// Check for SpeechRecognition support
 const SpeechRecognitionAPI =
   typeof window !== "undefined"
     ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
@@ -16,15 +15,13 @@ const SpeechRecognitionAPI =
 export function useMirriVoice({ isChampion, onTranscript, onSpeakingChange }: UseMirriVoiceOptions) {
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [sttUnsupported, setSttUnsupported] = useState(!SpeechRecognitionAPI);
+  const [sttUnsupported] = useState(!SpeechRecognitionAPI);
 
   const recognitionRef = useRef<any>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUnlockedRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const shouldRestartListeningRef = useRef(false);
 
-  // Create audio element once
   useEffect(() => {
     audioRef.current = new Audio();
     return () => {
@@ -55,9 +52,10 @@ export function useMirriVoice({ isChampion, onTranscript, onSpeakingChange }: Us
     setIsListening(false);
   }, []);
 
-  const startRecognition = useCallback(() => {
+  const startListening = useCallback(() => {
     if (!SpeechRecognitionAPI || !isChampion) return;
 
+    unlockAudio();
     stopRecognition();
 
     const recognition = new SpeechRecognitionAPI();
@@ -74,14 +72,7 @@ export function useMirriVoice({ isChampion, onTranscript, onSpeakingChange }: Us
 
     recognition.onend = () => {
       setIsListening(false);
-      // Auto-restart if we should be listening
-      if (shouldRestartListeningRef.current && !isSpeaking) {
-        setTimeout(() => {
-          if (shouldRestartListeningRef.current) {
-            startRecognition();
-          }
-        }, 300);
-      }
+      // No auto-restart — user must press push-to-talk again
     };
 
     recognition.onerror = (event: any) => {
@@ -98,16 +89,9 @@ export function useMirriVoice({ isChampion, onTranscript, onSpeakingChange }: Us
     } catch (e) {
       console.error("Failed to start recognition:", e);
     }
-  }, [isChampion, onTranscript, isSpeaking, stopRecognition]);
-
-  const startListening = useCallback(() => {
-    unlockAudio();
-    shouldRestartListeningRef.current = true;
-    startRecognition();
-  }, [startRecognition, unlockAudio]);
+  }, [isChampion, onTranscript, stopRecognition, unlockAudio]);
 
   const stopListening = useCallback(() => {
-    shouldRestartListeningRef.current = false;
     stopRecognition();
   }, [stopRecognition]);
 
@@ -119,19 +103,12 @@ export function useMirriVoice({ isChampion, onTranscript, onSpeakingChange }: Us
     }
     setIsSpeaking(false);
     onSpeakingChange(false);
-
-    // Resume listening after cancelling
-    if (shouldRestartListeningRef.current) {
-      setTimeout(() => startRecognition(), 300);
-    }
-  }, [onSpeakingChange, startRecognition]);
+  }, [onSpeakingChange]);
 
   const speak = useCallback(async (text: string) => {
     if (!text.trim()) return;
 
-    // Stop listening while speaking
     stopRecognition();
-
     setIsSpeaking(true);
     onSpeakingChange(true);
 
@@ -181,18 +158,12 @@ export function useMirriVoice({ isChampion, onTranscript, onSpeakingChange }: Us
     } finally {
       setIsSpeaking(false);
       onSpeakingChange(false);
-
-      // Resume listening after speaking
-      if (shouldRestartListeningRef.current) {
-        setTimeout(() => startRecognition(), 300);
-      }
+      // No auto-restart — user must press push-to-talk again
     }
-  }, [onSpeakingChange, stopRecognition, startRecognition]);
+  }, [onSpeakingChange, stopRecognition]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      shouldRestartListeningRef.current = false;
       stopRecognition();
       abortControllerRef.current?.abort();
     };

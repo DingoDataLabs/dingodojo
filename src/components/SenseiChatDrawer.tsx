@@ -2,11 +2,12 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import dingoLogo from "@/assets/dingo-logo.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
-import { Send, Loader2, Mic, MicOff, Square } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTrigger } from "@/components/ui/sheet";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTrigger } from "@/components/ui/drawer";
+import { Send, Loader2, Mic } from "lucide-react";
 import { toast } from "sonner";
 import { useMirriVoice } from "@/hooks/useMirriVoice";
+import { VoiceModeInput } from "@/components/VoiceModeInput";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -34,7 +35,6 @@ export function SenseiChatDrawer({
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [isCompact, setIsCompact] = useState(false);
   const [voiceMode, setVoiceMode] = useState(false);
-  const prevMessagesLenRef = useRef(messages.length);
   const prevLoadingRef = useRef(isChatLoading);
 
   const isChampion = subscriptionTier === "champion";
@@ -66,7 +66,7 @@ export function SenseiChatDrawer({
     }
   }, [messages, isOpen]);
 
-  // Detect when streaming completes (loading goes from true->false with a new assistant message)
+  // Auto-speak when streaming completes in voice mode
   useEffect(() => {
     if (prevLoadingRef.current && !isChatLoading && voiceMode) {
       const lastMsg = messages[messages.length - 1];
@@ -75,7 +75,6 @@ export function SenseiChatDrawer({
       }
     }
     prevLoadingRef.current = isChatLoading;
-    prevMessagesLenRef.current = messages.length;
   }, [isChatLoading, messages, voiceMode]);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -85,41 +84,57 @@ export function SenseiChatDrawer({
     }
   };
 
-  const toggleVoiceMode = () => {
-    if (!voiceMode) {
-      if (voice.sttUnsupported) {
-        toast("Voice input isn't supported on this browser. Mirri can still speak her replies — or switch to text mode.", { icon: "🎙️" });
-      }
-      setVoiceMode(true);
-      voice.startListening();
-    } else {
-      setVoiceMode(false);
-      voice.stopListening();
+  const handlePushToTalk = () => {
+    if (voice.isSpeaking) {
       voice.cancelSpeech();
+      voice.startListening();
+    } else if (voice.isListening) {
+      voice.stopListening();
+    } else {
+      voice.startListening();
     }
   };
 
-  const voiceStatusContent = (
-    <div className="flex items-center justify-center gap-3">
-      {voice.isSpeaking ? (
-        <>
-          <p className="text-sm text-muted-foreground">Mirri is talking…</p>
-          <Button size="icon" variant="destructive" onClick={voice.cancelSpeech} className="rounded-full">
-            <Square className="w-4 h-4" />
-          </Button>
-        </>
-      ) : voice.isListening ? (
-        <div className="flex items-center gap-2">
-          <span className="w-3 h-3 rounded-full bg-destructive animate-pulse" />
-          <p className="text-sm text-muted-foreground">Listening…</p>
-        </div>
-      ) : (
-        <p className="text-sm text-muted-foreground">Tap the mic to start</p>
-      )}
+  const switchToVoiceMode = () => {
+    if (voice.sttUnsupported) {
+      toast("Voice input isn't supported on this browser. Mirri can still speak her replies — or switch to text mode.", { icon: "🎙️" });
+    }
+    setVoiceMode(true);
+  };
+
+  const switchToTextMode = () => {
+    setVoiceMode(false);
+    voice.stopListening();
+    voice.cancelSpeech();
+  };
+
+  const headerContent = (
+    <div className="flex items-center gap-3">
+      <div className="relative">
+        <img
+          src={dingoLogo}
+          alt="Sensei"
+          className={`w-10 h-10 ${voice.isSpeaking ? "animate-bounce" : ""}`}
+        />
+      </div>
+      <div className="flex-1">
+        <span className="font-display font-bold text-foreground">
+          Mirri the Study Buddy
+        </span>
+        <p className="text-sm text-muted-foreground">Ask me for hints!</p>
+      </div>
     </div>
   );
 
-  const textInputContent = (
+  const inputArea = voiceMode ? (
+    <VoiceModeInput
+      isListening={voice.isListening}
+      isSpeaking={voice.isSpeaking}
+      isChatLoading={isChatLoading}
+      onPushToTalk={handlePushToTalk}
+      onSwitchToText={switchToTextMode}
+    />
+  ) : (
     <div className="flex gap-2">
       <Input
         value={inputMessage}
@@ -137,36 +152,15 @@ export function SenseiChatDrawer({
       >
         <Send className="w-4 h-4" />
       </Button>
-    </div>
-  );
-
-  const headerContent = (
-    <div className="flex items-center gap-3">
-      <div className="relative">
-        <img
-          src={dingoLogo}
-          alt="Sensei"
-          className={`w-10 h-10 ${voice.isListening ? "animate-pulse" : ""} ${voice.isSpeaking ? "animate-bounce" : ""}`}
-        />
-        {voice.isListening && (
-          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-destructive animate-pulse" />
-        )}
-      </div>
-      <div className="flex-1">
-        <span className="font-display font-bold text-foreground">
-          Mirri the Study Buddy
-        </span>
-        <p className="text-sm text-muted-foreground">Ask me for hints!</p>
-      </div>
       {isChampion && (
         <Button
-          variant={voiceMode ? "default" : "ghost"}
+          onClick={switchToVoiceMode}
+          variant="ghost"
           size="icon"
-          onClick={toggleVoiceMode}
-          className="rounded-full"
-          title={voiceMode ? "Switch to text mode" : "Switch to voice mode"}
+          className="rounded-xl w-12 h-10"
+          title="Switch to voice mode"
         >
-          {voiceMode ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+          <Mic className="w-4 h-4" />
         </Button>
       )}
     </div>
@@ -204,7 +198,7 @@ export function SenseiChatDrawer({
       </div>
 
       <div className="flex-shrink-0 p-4 bg-card border-t border-border">
-        {voiceMode ? voiceStatusContent : textInputContent}
+        {inputArea}
       </div>
     </>
   );
@@ -218,7 +212,6 @@ export function SenseiChatDrawer({
     </Button>
   );
 
-  // Mobile/tablet: bottom sheet drawer
   if (isCompact) {
     return (
       <div className="fixed bottom-4 right-4 z-40">
@@ -240,7 +233,6 @@ export function SenseiChatDrawer({
     );
   }
 
-  // Desktop: side sheet
   return (
     <div className="fixed top-16 right-4 z-40 flex items-start gap-2">
       {!isOpen && (

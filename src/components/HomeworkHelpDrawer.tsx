@@ -3,10 +3,11 @@ import dingoLogo from "@/assets/dingo-logo.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Send, Loader2, MessageCircle, Mic, MicOff, Square } from "lucide-react";
+import { Send, Loader2, MessageCircle, Mic } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useMirriVoice } from "@/hooks/useMirriVoice";
+import { VoiceModeInput } from "@/components/VoiceModeInput";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -32,15 +33,12 @@ export function HomeworkHelpDrawer({ gradeLevel, subscriptionTier }: HomeworkHel
 
   const handleTranscript = useCallback((text: string) => {
     setInputMessage(text);
-    // Auto-send after a short delay
     setTimeout(() => {
       sendMessageWithText(text);
     }, 100);
   }, []);
 
-  const handleSpeakingChange = useCallback((speaking: boolean) => {
-    // No-op, state managed in hook
-  }, []);
+  const handleSpeakingChange = useCallback(() => {}, []);
 
   const voice = useMirriVoice({
     isChampion,
@@ -164,19 +162,69 @@ export function HomeworkHelpDrawer({ gradeLevel, subscriptionTier }: HomeworkHel
     }
   };
 
-  const toggleVoiceMode = () => {
-    if (!voiceMode) {
-      if (voice.sttUnsupported) {
-        toast("Voice input isn't supported on this browser. Mirri can still speak her replies — or switch to text mode.", { icon: "🎙️" });
-      }
-      setVoiceMode(true);
-      voice.startListening();
-    } else {
-      setVoiceMode(false);
-      voice.stopListening();
+  const handlePushToTalk = () => {
+    if (voice.isSpeaking) {
       voice.cancelSpeech();
+      voice.startListening();
+    } else if (voice.isListening) {
+      voice.stopListening();
+    } else {
+      voice.startListening();
     }
   };
+
+  const switchToVoiceMode = () => {
+    if (voice.sttUnsupported) {
+      toast("Voice input isn't supported on this browser. Mirri can still speak her replies — or switch to text mode.", { icon: "🎙️" });
+    }
+    setVoiceMode(true);
+  };
+
+  const switchToTextMode = () => {
+    setVoiceMode(false);
+    voice.stopListening();
+    voice.cancelSpeech();
+  };
+
+  const inputArea = voiceMode ? (
+    <VoiceModeInput
+      isListening={voice.isListening}
+      isSpeaking={voice.isSpeaking}
+      isChatLoading={isLoading}
+      onPushToTalk={handlePushToTalk}
+      onSwitchToText={switchToTextMode}
+    />
+  ) : (
+    <div className="flex gap-2">
+      <Input
+        value={inputMessage}
+        onChange={(e) => setInputMessage(e.target.value)}
+        placeholder="What do you need help with?"
+        onKeyPress={handleKeyPress}
+        disabled={isLoading}
+        className="flex-1 rounded-xl"
+      />
+      <Button
+        onClick={sendMessage}
+        disabled={!inputMessage.trim() || isLoading}
+        size="icon"
+        className="rounded-xl w-12 h-10"
+      >
+        <Send className="w-4 h-4" />
+      </Button>
+      {isChampion && (
+        <Button
+          onClick={switchToVoiceMode}
+          variant="ghost"
+          size="icon"
+          className="rounded-xl w-12 h-10"
+          title="Switch to voice mode"
+        >
+          <Mic className="w-4 h-4" />
+        </Button>
+      )}
+    </div>
+  );
 
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -192,29 +240,13 @@ export function HomeworkHelpDrawer({ gradeLevel, subscriptionTier }: HomeworkHel
       <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col">
         <SheetHeader className="p-4 border-b border-border bg-card/50">
           <div className="flex items-center gap-3">
-            <div className="relative">
-              <img src={dingoLogo} alt="Mirri" className={`w-12 h-12 ${voice.isListening ? "animate-pulse" : ""} ${voice.isSpeaking ? "animate-bounce" : ""}`} />
-              {voice.isListening && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-destructive animate-pulse" />
-              )}
-            </div>
+            <img src={dingoLogo} alt="Mirri" className={`w-12 h-12 ${voice.isSpeaking ? "animate-bounce" : ""}`} />
             <div className="flex-1">
               <SheetTitle className="font-display font-bold text-foreground">
                 Mirri — Homework Help
               </SheetTitle>
               <p className="text-sm text-muted-foreground">I'll help you figure it out! 🦘</p>
             </div>
-            {isChampion && (
-              <Button
-                variant={voiceMode ? "default" : "ghost"}
-                size="icon"
-                onClick={toggleVoiceMode}
-                className="rounded-full"
-                title={voiceMode ? "Switch to text mode" : "Switch to voice mode"}
-              >
-                {voiceMode ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-              </Button>
-            )}
           </div>
         </SheetHeader>
 
@@ -259,44 +291,7 @@ export function HomeworkHelpDrawer({ gradeLevel, subscriptionTier }: HomeworkHel
         </div>
 
         <div className="flex-shrink-0 p-4 bg-card border-t border-border">
-          {voiceMode ? (
-            <div className="flex items-center justify-center gap-3">
-              {voice.isSpeaking ? (
-                <>
-                  <p className="text-sm text-muted-foreground">Mirri is talking…</p>
-                  <Button size="icon" variant="destructive" onClick={voice.cancelSpeech} className="rounded-full">
-                    <Square className="w-4 h-4" />
-                  </Button>
-                </>
-              ) : voice.isListening ? (
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-destructive animate-pulse" />
-                  <p className="text-sm text-muted-foreground">Listening…</p>
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">Tap the mic to start</p>
-              )}
-            </div>
-          ) : (
-            <div className="flex gap-2">
-              <Input
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                placeholder="What do you need help with?"
-                onKeyPress={handleKeyPress}
-                disabled={isLoading}
-                className="flex-1 rounded-xl"
-              />
-              <Button
-                onClick={sendMessage}
-                disabled={!inputMessage.trim() || isLoading}
-                size="icon"
-                className="rounded-xl w-12 h-10"
-              >
-                <Send className="w-4 h-4" />
-              </Button>
-            </div>
-          )}
+          {inputArea}
         </div>
       </SheetContent>
     </Sheet>
