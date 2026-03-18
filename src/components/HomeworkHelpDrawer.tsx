@@ -28,6 +28,7 @@ export function HomeworkHelpDrawer({ gradeLevel, subscriptionTier }: HomeworkHel
   const chatEndRef = useRef<HTMLDivElement>(null);
   const streamingCompleteRef = useRef(false);
   const latestAssistantRef = useRef("");
+  const messagesRef = useRef<ChatMessage[]>([]);
 
   const isChampion = subscriptionTier === "champion";
 
