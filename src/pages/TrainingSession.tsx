@@ -2097,11 +2097,39 @@ export default function TrainingSession() {
           <div className="w-1/2 flex flex-col bg-sand/30">
             <div className="flex-shrink-0 p-4 border-b border-border bg-card/50">
               <div className="flex items-center gap-3">
-                <img src={dingoLogo} alt="Sensei" className="w-12 h-12" />
-                <div>
+                <div className="relative">
+                  <img src={dingoLogo} alt="Sensei" className={`w-12 h-12 ${desktopVoice.isListening ? "animate-pulse" : ""} ${desktopVoice.isSpeaking ? "animate-bounce" : ""}`} />
+                  {desktopVoice.isListening && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-destructive animate-pulse" />
+                  )}
+                </div>
+                <div className="flex-1">
                   <h3 className="font-display font-bold text-foreground">Mirri the Study Buddy</h3>
                   <p className="text-sm text-muted-foreground">Ask me for hints!</p>
                 </div>
+                {isChampionUser && (
+                  <Button
+                    variant={desktopVoiceMode ? "default" : "ghost"}
+                    size="icon"
+                    onClick={() => {
+                      if (!desktopVoiceMode) {
+                        if (desktopVoice.sttUnsupported) {
+                          toast("Voice input isn't supported on this browser. Mirri can still speak her replies — or switch to text mode.", { icon: "🎙️" });
+                        }
+                        setDesktopVoiceMode(true);
+                        desktopVoice.startListening();
+                      } else {
+                        setDesktopVoiceMode(false);
+                        desktopVoice.stopListening();
+                        desktopVoice.cancelSpeech();
+                      }
+                    }}
+                    className="rounded-full"
+                    title={desktopVoiceMode ? "Switch to text mode" : "Switch to voice mode"}
+                  >
+                    {desktopVoiceMode ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -2135,25 +2163,44 @@ export default function TrainingSession() {
             </div>
 
             <div className="flex-shrink-0 p-4 border-t border-border bg-card/50">
-              <div className="flex gap-2">
-                <Input
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
-                  placeholder="Ask Mirri for help..."
-                  className="flex-grow h-12 rounded-xl bg-background"
-                  disabled={isChatLoading}
-                />
-                <Button
-                  onClick={sendMessage}
-                  disabled={!inputMessage.trim() || isChatLoading}
-                  className="h-12 w-12 rounded-xl"
-                >
-                  <Send className="w-5 h-5" />
-                </Button>
-              </div>
+              {desktopVoiceMode ? (
+                <div className="flex items-center justify-center gap-3">
+                  {desktopVoice.isSpeaking ? (
+                    <>
+                      <p className="text-sm text-muted-foreground">Mirri is talking…</p>
+                      <Button size="icon" variant="destructive" onClick={desktopVoice.cancelSpeech} className="rounded-full">
+                        <Square className="w-4 h-4" />
+                      </Button>
+                    </>
+                  ) : desktopVoice.isListening ? (
+                    <div className="flex items-center gap-2">
+                      <span className="w-3 h-3 rounded-full bg-destructive animate-pulse" />
+                      <p className="text-sm text-muted-foreground">Listening…</p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Tap the mic to start</p>
+                  )}
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Input
+                    value={inputMessage}
+                    onChange={(e) => setInputMessage(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
+                    placeholder="Ask Mirri for help..."
+                    className="flex-grow h-12 rounded-xl bg-background"
+                    disabled={isChatLoading}
+                  />
+                  <Button
+                    onClick={sendMessage}
+                    disabled={!inputMessage.trim() || isChatLoading}
+                    className="h-12 w-12 rounded-xl"
+                  >
+                    <Send className="w-5 h-5" />
+                  </Button>
+                </div>
+              )}
             </div>
-          </div>
         )}
       </main>
     </div>
