@@ -1,10 +1,12 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import dingoLogo from "@/assets/dingo-logo.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
-import { Send, Loader2, X } from "lucide-react";
+import { Send, Loader2, Mic, MicOff, Square } from "lucide-react";
+import { toast } from "sonner";
+import { useMirriVoice } from "@/hooks/useMirriVoice";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -17,6 +19,7 @@ interface SenseiChatDrawerProps {
   setInputMessage: (value: string) => void;
   isChatLoading: boolean;
   onSendMessage: () => void;
+  subscriptionTier?: string;
 }
 
 export function SenseiChatDrawer({
@@ -25,10 +28,29 @@ export function SenseiChatDrawer({
   setInputMessage,
   isChatLoading,
   onSendMessage,
+  subscriptionTier,
 }: SenseiChatDrawerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [isCompact, setIsCompact] = useState(false);
+  const [voiceMode, setVoiceMode] = useState(false);
+  const prevMessagesLenRef = useRef(messages.length);
+  const prevLoadingRef = useRef(isChatLoading);
+
+  const isChampion = subscriptionTier === "champion";
+
+  const handleTranscript = useCallback((text: string) => {
+    setInputMessage(text);
+    setTimeout(() => onSendMessage(), 100);
+  }, [setInputMessage, onSendMessage]);
+
+  const handleSpeakingChange = useCallback(() => {}, []);
+
+  const voice = useMirriVoice({
+    isChampion,
+    onTranscript: handleTranscript,
+    onSpeakingChange: handleSpeakingChange,
+  });
 
   useEffect(() => {
     const mql = window.matchMedia("(max-width: 1023px)");
@@ -44,12 +66,111 @@ export function SenseiChatDrawer({
     }
   }, [messages, isOpen]);
 
+  // Detect when streaming completes (loading goes from true->false with a new assistant message)
+  useEffect(() => {
+    if (prevLoadingRef.current && !isChatLoading && voiceMode) {
+      const lastMsg = messages[messages.length - 1];
+      if (lastMsg?.role === "assistant" && lastMsg.content) {
+        voice.speak(lastMsg.content);
+      }
+    }
+    prevLoadingRef.current = isChatLoading;
+    prevMessagesLenRef.current = messages.length;
+  }, [isChatLoading, messages, voiceMode]);
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       onSendMessage();
     }
   };
+
+  const toggleVoiceMode = () => {
+    if (!voiceMode) {
+      if (voice.sttUnsupported) {
+        toast("Voice input isn't supported on this browser. Mirri can still speak her replies — or switch to text mode.", { icon: "🎙️" });
+      }
+      setVoiceMode(true);
+      voice.startListening();
+    } else {
+      setVoiceMode(false);
+      voice.stopListening();
+      voice.cancelSpeech();
+    }
+  };
+
+  const voiceStatusContent = (
+    <div className="flex items-center justify-center gap-3">
+      {voice.isSpeaking ? (
+        <>
+          <p className="text-sm text-muted-foreground">Mirri is talking…</p>
+          <Button size="icon" variant="destructive" onClick={voice.cancelSpeech} className="rounded-full">
+            <Square className="w-4 h-4" />
+          </Button>
+        </>
+      ) : voice.isListening ? (
+        <div className="flex items-center gap-2">
+          <span className="w-3 h-3 rounded-full bg-destructive animate-pulse" />
+          <p className="text-sm text-muted-foreground">Listening…</p>
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">Tap the mic to start</p>
+      )}
+    </div>
+  );
+
+  const textInputContent = (
+    <div className="flex gap-2">
+      <Input
+        value={inputMessage}
+        onChange={(e) => setInputMessage(e.target.value)}
+        placeholder="Ask Sensei a question..."
+        onKeyPress={handleKeyPress}
+        disabled={isChatLoading}
+        className="flex-1 rounded-xl"
+      />
+      <Button
+        onClick={onSendMessage}
+        disabled={!inputMessage.trim() || isChatLoading}
+        size="icon"
+        className="rounded-xl w-12 h-10"
+      >
+        <Send className="w-4 h-4" />
+      </Button>
+    </div>
+  );
+
+  const headerContent = (
+    <div className="flex items-center gap-3">
+      <div className="relative">
+        <img
+          src={dingoLogo}
+          alt="Sensei"
+          className={`w-10 h-10 ${voice.isListening ? "animate-pulse" : ""} ${voice.isSpeaking ? "animate-bounce" : ""}`}
+        />
+        {voice.isListening && (
+          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-destructive animate-pulse" />
+        )}
+      </div>
+      <div className="flex-1">
+        <span className="font-display font-bold text-foreground">
+          Mirri the Study Buddy
+        </span>
+        <p className="text-sm text-muted-foreground">Ask me for hints!</p>
+      </div>
+      {isChampion && (
+        <Button
+          variant={voiceMode ? "default" : "ghost"}
+          size="icon"
+          onClick={toggleVoiceMode}
+          className="rounded-full"
+          title={voiceMode ? "Switch to text mode" : "Switch to voice mode"}
+        >
+          {voiceMode ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+        </Button>
+      )}
+    </div>
+  );
 
   const chatContent = (
     <>
@@ -83,24 +204,7 @@ export function SenseiChatDrawer({
       </div>
 
       <div className="flex-shrink-0 p-4 bg-card border-t border-border">
-        <div className="flex gap-2">
-          <Input
-            value={inputMessage}
-            onChange={(e) => setInputMessage(e.target.value)}
-            placeholder="Ask Sensei a question..."
-            onKeyPress={handleKeyPress}
-            disabled={isChatLoading}
-            className="flex-1 rounded-xl"
-          />
-          <Button
-            onClick={onSendMessage}
-            disabled={!inputMessage.trim() || isChatLoading}
-            size="icon"
-            className="rounded-xl w-12 h-10"
-          >
-            <Send className="w-4 h-4" />
-          </Button>
-        </div>
+        {voiceMode ? voiceStatusContent : textInputContent}
       </div>
     </>
   );
@@ -127,15 +231,7 @@ export function SenseiChatDrawer({
           <DrawerTrigger asChild>{triggerButton}</DrawerTrigger>
           <DrawerContent className="max-h-[85vh] flex flex-col">
             <DrawerHeader className="p-4 border-b border-border bg-card/50">
-              <div className="flex items-center gap-3">
-                <img src={dingoLogo} alt="Sensei" className="w-10 h-10" />
-                <div className="flex-1">
-                  <DrawerTitle className="font-display font-bold text-foreground">
-                    Mirri the Study Buddy
-                  </DrawerTitle>
-                  <p className="text-sm text-muted-foreground">Ask me for hints!</p>
-                </div>
-              </div>
+              {headerContent}
             </DrawerHeader>
             {chatContent}
           </DrawerContent>
@@ -144,7 +240,7 @@ export function SenseiChatDrawer({
     );
   }
 
-  // Desktop: side sheet (existing behaviour)
+  // Desktop: side sheet
   return (
     <div className="fixed top-16 right-4 z-40 flex items-start gap-2">
       {!isOpen && (
@@ -156,15 +252,7 @@ export function SenseiChatDrawer({
         <SheetTrigger asChild>{triggerButton}</SheetTrigger>
         <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col">
           <SheetHeader className="p-4 border-b border-border bg-card/50">
-            <div className="flex items-center gap-3">
-              <img src={dingoLogo} alt="Sensei" className="w-12 h-12" />
-              <div className="flex-1">
-                <SheetTitle className="font-display font-bold text-foreground">
-                  Sensei
-                </SheetTitle>
-                <p className="text-sm text-muted-foreground">Ask me for hints!</p>
-              </div>
-            </div>
+            {headerContent}
           </SheetHeader>
           {chatContent}
         </SheetContent>
