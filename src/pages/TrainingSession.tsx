@@ -219,32 +219,26 @@ export default function TrainingSession() {
   const lessonRef = useRef<HTMLDivElement>(null);
   const [desktopVoiceMode, setDesktopVoiceMode] = useState(false);
   const prevChatLoadingRef = useRef(false);
+  const pendingVoiceTranscriptRef = useRef<string | null>(null);
 
   const isChampionUser = profile?.subscription_tier === "champion";
-
-  const handleDesktopTranscript = useCallback((text: string) => {
-    setInputMessage(text);
-    // We need to trigger sendMessage after inputMessage is set
-    setTimeout(() => {
-      // sendMessage reads inputMessage from state, but we set it above
-      // We'll call sendMessage directly with the text via a ref trick
-    }, 100);
-  }, []);
 
   const desktopVoice = useMirriVoice({
     isChampion: isChampionUser,
     onTranscript: (text: string) => {
+      pendingVoiceTranscriptRef.current = text;
       setInputMessage(text);
     },
     onSpeakingChange: () => {},
   });
 
-  // After transcript is set, trigger send
+  // Auto-send when voice transcript sets inputMessage
   useEffect(() => {
-    if (desktopVoiceMode && inputMessage.trim() && desktopVoice.isListening === false && !isChatLoading) {
-      // Only auto-send if voice just delivered a transcript
+    if (pendingVoiceTranscriptRef.current && inputMessage === pendingVoiceTranscriptRef.current && desktopVoiceMode) {
+      pendingVoiceTranscriptRef.current = null;
+      sendMessage();
     }
-  }, [inputMessage, desktopVoiceMode, desktopVoice.isListening, isChatLoading]);
+  }, [inputMessage, desktopVoiceMode]);
 
   // Detect streaming complete for desktop voice
   useEffect(() => {
