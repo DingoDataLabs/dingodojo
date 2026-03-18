@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Send, Sparkles, CheckCircle, Loader2, ChevronRight, HelpCircle, Camera, PenTool, Crown } from "lucide-react";
+import { ArrowLeft, Send, Sparkles, CheckCircle, Loader2, ChevronRight, HelpCircle, Camera, PenTool, Crown, Mic, MicOff, Square } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
