@@ -21,6 +21,7 @@ import { WritingFeedbackModal } from "@/components/WritingFeedbackModal";
 import { MathsWorkingFeedbackModal } from "@/components/MathsWorkingFeedbackModal";
 import { DrawingCanvas } from "@/components/DrawingCanvas";
 import { useWakeLock } from "@/hooks/useWakeLock";
+import { useMirriVoice } from "@/hooks/useMirriVoice";
 
 interface Topic {
   id: string;
