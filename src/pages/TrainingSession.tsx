@@ -1990,6 +1990,7 @@ export default function TrainingSession() {
             setInputMessage={setInputMessage}
             isChatLoading={isChatLoading}
             onSendMessage={sendMessage}
+            subscriptionTier={profile?.subscription_tier}
           />
         )}
 
