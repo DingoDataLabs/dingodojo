@@ -31,7 +31,7 @@ export function HomeworkHelpDrawer({ gradeLevel, subscriptionTier }: HomeworkHel
 
   const isChampion = subscriptionTier === "champion";
 
-  const sendMessageRef = useRef(sendMessageWithText);
+  const sendMessageRef = useRef<(text: string) => void>(() => {});
 
   const handleTranscript = useCallback((text: string) => {
     setInputMessage(text);
