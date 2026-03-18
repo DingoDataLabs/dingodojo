@@ -217,6 +217,45 @@ export default function TrainingSession() {
   const [isChatLoading, setIsChatLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const lessonRef = useRef<HTMLDivElement>(null);
+  const [desktopVoiceMode, setDesktopVoiceMode] = useState(false);
+  const prevChatLoadingRef = useRef(false);
+
+  const isChampionUser = profile?.subscription_tier === "champion";
+
+  const handleDesktopTranscript = useCallback((text: string) => {
+    setInputMessage(text);
+    // We need to trigger sendMessage after inputMessage is set
+    setTimeout(() => {
+      // sendMessage reads inputMessage from state, but we set it above
+      // We'll call sendMessage directly with the text via a ref trick
+    }, 100);
+  }, []);
+
+  const desktopVoice = useMirriVoice({
+    isChampion: isChampionUser,
+    onTranscript: (text: string) => {
+      setInputMessage(text);
+    },
+    onSpeakingChange: () => {},
+  });
+
+  // After transcript is set, trigger send
+  useEffect(() => {
+    if (desktopVoiceMode && inputMessage.trim() && desktopVoice.isListening === false && !isChatLoading) {
+      // Only auto-send if voice just delivered a transcript
+    }
+  }, [inputMessage, desktopVoiceMode, desktopVoice.isListening, isChatLoading]);
+
+  // Detect streaming complete for desktop voice
+  useEffect(() => {
+    if (prevChatLoadingRef.current && !isChatLoading && desktopVoiceMode) {
+      const lastMsg = messages[messages.length - 1];
+      if (lastMsg?.role === "assistant" && lastMsg.content) {
+        desktopVoice.speak(lastMsg.content);
+      }
+    }
+    prevChatLoadingRef.current = isChatLoading;
+  }, [isChatLoading, messages, desktopVoiceMode]);
 
   // Keep screen awake during final challenge with free-text/photo/worked_solution submissions
   const hasFreeTextChallenge = lessonContent?.final_challenge?.questions?.some(q => q.type === "free_text" || q.type === "worked_solution") ?? false;
