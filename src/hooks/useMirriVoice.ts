@@ -177,6 +177,7 @@ export function useMirriVoice({ isChampion, onTranscript, onSpeakingChange }: Us
     isListening,
     isSpeaking,
     sttUnsupported,
+    unlockAudio,
     startListening,
     stopListening,
     speak,
