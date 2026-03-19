@@ -85,6 +85,9 @@ export function SenseiChatDrawer({
   };
 
   const handlePushToTalk = () => {
+    // Synchronously unlock audio for iOS Safari before any async work
+    voice.unlockAudio();
+
     if (voice.isSpeaking) {
       voice.cancelSpeech();
       voice.startListening();
