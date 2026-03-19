@@ -30,15 +30,19 @@ export function useMirriVoice({ isChampion, onTranscript, onSpeakingChange }: Us
     };
   }, []);
 
-  const unlockAudio = useCallback(async () => {
-    if (audioUnlockedRef.current || !audioRef.current) return;
-    try {
-      audioRef.current.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
-      await audioRef.current.play();
-      audioUnlockedRef.current = true;
-    } catch {
-      // Silent fail
-    }
+  const SILENT_MP3 = "data:audio/mpeg;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZFRlYW0gQ3JlYXRpdmUgQ29tbW9ucyBBdHRyaWJ1dGlvbgBURU5DAAAAHQAAA1N3aXRjaCBQbHVzACBodHRwOi8vd3d3LnN3aXRjaHBsdXMuY29tAFRJVDIAAAAGAAADMC4wMDAAVFNTRQAAAA8AAANMYXZmNTcuODMuMTAwAAAAAAAAAAAAAAD/80DEAAAAA0gAAAAATEFNRTMuMTAwVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQsRbAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQMSkAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV";
+
+  // Synchronous unlock — must be called inside a user-gesture handler
+  // before any await, so iOS Safari considers the audio element activated.
+  const unlockAudio = useCallback(() => {
+    if (!audioRef.current) return;
+    const a = audioRef.current;
+    a.src = SILENT_MP3;
+    a.play().then(() => {
+      a.pause();
+      a.src = "";
+    }).catch(() => {});
+    audioUnlockedRef.current = true;
   }, []);
 
   const stopRecognition = useCallback(() => {
