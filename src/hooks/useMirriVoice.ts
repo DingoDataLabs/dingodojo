@@ -59,7 +59,6 @@ export function useMirriVoice({ isChampion, onTranscript, onSpeakingChange }: Us
   const startListening = useCallback(() => {
     if (!SpeechRecognitionAPI || !isChampion) return;
 
-    unlockAudio();
     stopRecognition();
 
     const recognition = new SpeechRecognitionAPI();
